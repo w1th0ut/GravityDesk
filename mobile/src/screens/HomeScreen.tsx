@@ -177,10 +177,6 @@ export const HomeScreen: React.FC<Props> = ({
           </View>
         </View>
 
-        <Text style={styles.cardDesc}>
-          Scan the QR Code on your Desktop GUI for instant pairing without manual entry.
-        </Text>
-
         {/* Big Scan Button */}
         <TouchableOpacity
           style={styles.scanBtn}

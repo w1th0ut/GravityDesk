@@ -538,7 +538,6 @@
             READY TO PAIR
           </div>
         </div>
-        <div class="dash-card-desc">Scan desktop QR Code for automatic pairing without manual Host URL or Token configuration:</div>
 
         <button class="key-btn" style="width:100%;padding:12px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--success);color:#ffffff;" onclick="triggerQrScan()">
           Scan Pairing QR Code
@@ -565,11 +564,7 @@
       <header>
         <div class="header-top">
           <div class="brand-row">
-            <span class="status-dot" id="status-dot"></span>
             <span class="brand">GravityDesk</span>
-          </div>
-          <div class="vitals-text">
-            Bat: <span id="v-bat">-</span> | CPU: <span id="v-cpu">-</span> | RAM: <span id="v-ram">-</span>
           </div>
         </div>
         <div class="chips-row">
@@ -879,7 +874,7 @@
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        statusDot.className = "status-dot online";
+        if (statusDot) statusDot.className = "status-dot online";
         setTerminalActiveState(true);
         ws.send(JSON.stringify({ type: "subscribe", last_seq: currentSeq }));
       };
@@ -908,7 +903,7 @@
       };
 
       ws.onclose = (event) => {
-        statusDot.className = "status-dot";
+        if (statusDot) statusDot.className = "status-dot";
         setTerminalActiveState(false);
         if (event && event.code === 4001) {
           const devStatusEl = document.getElementById("web-dev-status");
@@ -1073,15 +1068,16 @@
           const d = await res.json();
           setTerminalActiveState(d.status === "online");
 
-          // Terminal bar vitals
-          document.getElementById("v-cpu").innerText = `${d.cpu_percent}%`;
-          if (d.memory_percent !== undefined) {
-            document.getElementById("v-ram").innerText = `${d.memory_percent}%`;
+          // Terminal bar vitals (if present)
+          const vCpu = document.getElementById("v-cpu");
+          if (vCpu) vCpu.innerText = `${d.cpu_percent}%`;
+          const vRam = document.getElementById("v-ram");
+          if (vRam && d.memory_percent !== undefined) {
+            vRam.innerText = `${d.memory_percent}%`;
           }
-          if (d.battery) {
-            document.getElementById("v-bat").innerText = `${d.battery.is_charging ? "Chg " : ""}${d.battery.percent}%`;
-          } else {
-            document.getElementById("v-bat").innerText = "AC";
+          const vBat = document.getElementById("v-bat");
+          if (vBat) {
+            vBat.innerText = d.battery ? `${d.battery.is_charging ? "Chg " : ""}${d.battery.percent}%` : "AC";
           }
 
           // Home dashboard vitals

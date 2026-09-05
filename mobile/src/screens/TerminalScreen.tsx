@@ -132,33 +132,10 @@ export const TerminalScreen: React.FC<Props> = ({
     <View style={styles.container}>
       {/* Top Header (<header> matching index.html) */}
       <View style={styles.header}>
-        {/* Row 1: Brand & Vitals */}
+        {/* Row 1: Brand */}
         <View style={styles.headerTop}>
           <View style={styles.brandRow}>
-            <View
-              style={[
-                styles.statusDot,
-                isConnected ? styles.dotOnline : styles.dotOffline,
-              ]}
-            />
             <Text style={styles.brandTitle}>GravityDesk</Text>
-          </View>
-
-          <View style={styles.vitalsText}>
-            <Text style={styles.vitalLabel}>Bat: </Text>
-            <Text style={styles.vitalVal}>
-              {health?.battery
-                ? `${health.battery.percent}%${health.battery.is_charging ? " (Chg)" : ""}`
-                : "-"}
-            </Text>
-            <Text style={styles.vitalLabel}> | CPU: </Text>
-            <Text style={styles.vitalVal}>
-              {health ? `${health.cpu_percent}%` : "-"}
-            </Text>
-            <Text style={styles.vitalLabel}> | RAM: </Text>
-            <Text style={styles.vitalVal}>
-              {health?.memory_percent !== undefined ? `${health.memory_percent}%` : "-"}
-            </Text>
           </View>
         </View>
 
@@ -275,39 +252,12 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  dotOnline: {
-    backgroundColor: "#3fb950",
-  },
-  dotOffline: {
-    backgroundColor: "#f85149",
   },
   brandTitle: {
     fontSize: 13,
     fontWeight: "700",
     color: "#ffffff",
     letterSpacing: 0.2,
-  },
-  vitalsText: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  vitalLabel: {
-    fontFamily: "monospace",
-    fontSize: 11,
-    color: "#737373",
-  },
-  vitalVal: {
-    fontFamily: "monospace",
-    fontSize: 11,
-    color: "#e5e5e5",
-    fontWeight: "600",
   },
   chipsRow: {
     flexDirection: "row",
