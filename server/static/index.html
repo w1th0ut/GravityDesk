@@ -468,6 +468,7 @@
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === "output") {
+          if (msg.seq <= currentSeq) return;
           currentSeq = msg.seq;
           processIncomingData(msg.data);
         }

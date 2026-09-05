@@ -3,6 +3,7 @@ import collections
 import os
 import re
 import shutil
+import subprocess
 import threading
 import time
 from typing import Dict, List, Optional, Set
@@ -180,6 +181,7 @@ class SessionHub:
         self.ring_buffer = collections.deque(maxlen=capacity)
         self.current_seq = 0
         self.lock = threading.Lock()
+        self.running_subprocess: Optional[subprocess.Popen] = None
         self._seed_initial_banner()
 
     def _seed_initial_banner(self) -> None:
@@ -263,35 +265,138 @@ class SessionHub:
         clean_dir = os.path.realpath(new_dir)
         self.current_cwd = clean_dir
 
-        # Print clean notification into terminal feed
+        if self.active_session and self.active_session.is_alive:
+            self.active_session.stop()
+            self.active_session = None
+
         self.broadcast_chunk(f"\r\n\x1b[33m[*] Workspace: {clean_dir}\x1b[0m\r\n\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m ")
 
-        # Start shell session in the new workspace directory
-        self.start_session(cwd=clean_dir)
-
     def send_input(self, data: str) -> None:
-        """Sends input, auto-starting session if idle, formatting clean prompt & AGY tags."""
-        clean_prompt = data.strip()
-        if clean_prompt:
-            self.broadcast_chunk(f"\r\n\x1b[32mprompt>\x1b[0m {clean_prompt}\r\n\x1b[36mAGY>\x1b[0m\r\n")
+        """Processes user input, routing prompts to agy and shell commands to cmd."""
+        clean_text = data.strip()
+        if not clean_text:
+            return
 
-        if not self.active_session or not self.active_session.is_alive:
-            self.start_session(cwd=self.current_cwd)
-            time.sleep(0.05)
+        # 1. Echo prompt to terminal stream
+        self.broadcast_chunk(f"\r\n\x1b[32mprompt>\x1b[0m {clean_text}\r\n\x1b[36mAGY>\x1b[0m ")
 
-        self.active_session.write(data)
+        # 2. If an interactive session is actively running (e.g. spawned via /api/session/start), forward stdin
+        if self.active_session and self.active_session.is_alive:
+            self.active_session.write(data)
+            return
+
+        # 3. Built-in navigation / shell helpers
+        SHELL_CMDS = ("dir", "cls", "mkdir ", "rmdir ", "del ", "git ", "npm ", "node ", "python ", "cat ", "type ", "curl ")
+        cmd_lower = clean_text.lower()
+
+        if cmd_lower.startswith("cd "):
+            target_path = clean_text[3:].strip().strip('"').strip("'")
+            new_path = os.path.abspath(os.path.join(self.current_cwd, target_path))
+            if os.path.isdir(new_path):
+                self.change_directory(new_path)
+            else:
+                self.broadcast_chunk(f"Directory not found: {new_path}\r\n\r\n\x1b[32mprompt>\x1b[0m ")
+            return
+
+        if cmd_lower == "cls" or cmd_lower == "clear":
+            self.broadcast_chunk("\x1b[2J\x1b[H\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m ")
+            return
+
+        if cmd_lower.startswith(SHELL_CMDS):
+            threading.Thread(
+                target=self._run_shell_cmd,
+                args=(clean_text, self.current_cwd),
+                daemon=True,
+            ).start()
+            return
+
+        # 4. Prompt to AGY CLI with conversation continuity (-c)
+        agy_bin = os.environ.get("AGY_BIN_PATH")
+        if not agy_bin or not os.path.exists(agy_bin):
+            agy_bin = DEFAULT_AGY_PATH if os.path.exists(DEFAULT_AGY_PATH) else shutil.which("agy")
+
+        if agy_bin and os.path.exists(agy_bin):
+            threading.Thread(
+                target=self._run_agy_prompt,
+                args=(agy_bin, clean_text, self.current_cwd),
+                daemon=True,
+            ).start()
+        else:
+            # Fallback to shell if agy binary not found
+            threading.Thread(
+                target=self._run_shell_cmd,
+                args=(clean_text, self.current_cwd),
+                daemon=True,
+            ).start()
+
+    def _run_agy_prompt(self, agy_bin: str, prompt_text: str, cwd: str) -> None:
+        """Executes prompt via agy CLI and streams stdout chunks cleanly."""
+        cmd = [agy_bin, "-c", "-p", prompt_text, "--output-format", "text"]
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
+            self.running_subprocess = proc
+            for line in proc.stdout:
+                self.broadcast_chunk(line)
+            proc.wait()
+        except Exception as e:
+            self.broadcast_chunk(f"\r\n[Error running agy: {e}]\r\n")
+        finally:
+            self.running_subprocess = None
+            self.broadcast_chunk("\r\n\x1b[32mprompt>\x1b[0m ")
+
+    def _run_shell_cmd(self, cmd_text: str, cwd: str) -> None:
+        """Executes standard shell command and streams stdout."""
+        try:
+            proc = subprocess.Popen(
+                f"cmd.exe /c {cmd_text}",
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
+            self.running_subprocess = proc
+            for line in proc.stdout:
+                cleaned = clean_output_chunk(line)
+                if cleaned:
+                    self.broadcast_chunk(cleaned)
+            proc.wait()
+        except Exception as e:
+            self.broadcast_chunk(f"\r\n[Error: {e}]\r\n")
+        finally:
+            self.running_subprocess = None
+            self.broadcast_chunk("\r\n\x1b[32mprompt>\x1b[0m ")
 
     def send_signal(self, signal: str) -> None:
-        if self.active_session and self.active_session.is_alive:
-            if signal == "SIGINT":
+        if signal == "SIGINT":
+            if self.running_subprocess and self.running_subprocess.poll() is None:
+                try:
+                    self.running_subprocess.terminate()
+                except Exception:
+                    pass
+                self.broadcast_chunk("\r\n\x1b[31m[Interrupted]\x1b[0m\r\n\x1b[32mprompt>\x1b[0m ")
+            elif self.active_session and self.active_session.is_alive:
                 self.active_session.send_ctrl_c()
 
     def to_dict(self) -> Dict:
+        is_sub_running = bool(self.running_subprocess and self.running_subprocess.poll() is None)
+        is_session_running = bool(self.active_session and self.active_session.is_alive)
         return {
-            "is_alive": bool(self.active_session and self.active_session.is_alive),
+            "is_alive": is_sub_running or is_session_running,
             "cwd": self.current_cwd,
-            "command": self.active_session.command if self.active_session else None,
-            "pid": self.active_session.pid if self.active_session else None,
+            "command": self.active_session.command if self.active_session else DEFAULT_AGY_PATH,
+            "pid": (self.running_subprocess.pid if is_sub_running else (self.active_session.pid if self.active_session else None)),
             "current_seq": self.current_seq,
         }
 

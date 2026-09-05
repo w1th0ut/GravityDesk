@@ -48,15 +48,10 @@ async def lifespan(app: FastAPI):
 
     loop = asyncio.get_running_loop()
     hub.set_loop(loop)
+    hub.current_cwd = os.getcwd()
 
     # Inhibit Windows Sleep while daemon is active
     enable_sleep_inhibit()
-
-    # Start initial terminal session in cwd (cmd.exe)
-    try:
-        hub.start_session(cwd=os.getcwd())
-    except Exception as e:
-        print(f"[Terminal] Initial session error: {e}")
 
     # Terminal Startup Banner & QR
     display_startup_banner(server_ip, port, server_token)
@@ -196,11 +191,6 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
             "seq": hub.current_seq,
         }
     )
-
-    # Immediately replay recent backlog chunks so client gets the clean terminal prompt
-    backlog = hub.get_backlog_since(0)
-    for chunk in backlog:
-        await websocket.send_json(chunk)
 
     async def sender():
         """Forwards output chunks from queue to WebSocket."""
