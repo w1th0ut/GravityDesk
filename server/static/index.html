@@ -394,15 +394,11 @@
         <button onclick="closeFolderModal()" style="background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;">✕</button>
       </div>
       <div class="modal-body">
-        <div style="color:var(--text-muted);margin-bottom:6px;font-size:11px;">FAVORITES</div>
-        <div id="fav-list" style="display:flex;flex-direction:column;gap:3px;margin-bottom:12px;"></div>
-        <div style="color:var(--text-muted);margin-bottom:6px;font-size:11px;">DRIVES &amp; FOLDERS</div>
         <div id="bc-bar" style="margin-bottom:8px;color:var(--accent);font-family:monospace;font-size:11px;"></div>
         <div id="dir-list" style="display:flex;flex-direction:column;gap:2px;"></div>
       </div>
-      <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
-        <button class="key-btn" onclick="toggleFavorite()">⭐ Pin Favorite</button>
-        <button class="send-btn" style="height:32px;" onclick="chooseCurrentFolder()">Select This Folder</button>
+      <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+        <button class="send-btn" style="height:34px;width:100%;" onclick="chooseCurrentFolder()">Select This Folder</button>
       </div>
     </div>
   </div>
@@ -868,30 +864,10 @@
     let modalPath = "";
     async function openFolderModal() {
       document.getElementById("folder-modal").classList.add("open");
-      loadFavorites();
       loadDirectory(activePath || "");
     }
     function closeFolderModal() {
       document.getElementById("folder-modal").classList.remove("open");
-    }
-
-    async function loadFavorites() {
-      const res = await fetch(`/api/favorites?token=${token}`);
-      const favs = await res.json();
-      const listEl = document.getElementById("fav-list");
-      listEl.innerHTML = "";
-      favs.forEach((f) => {
-        const div = document.createElement("div");
-        div.className = "folder-row";
-        div.innerHTML = `⭐ <span>${f.name}</span> <span style="margin-left:auto;color:var(--text-muted);font-size:10px;">${f.path}</span>`;
-        div.onclick = () => {
-          activePath = f.path;
-          updateFolderLabel(activePath);
-          closeFolderModal();
-          switchSessionDir(activePath);
-        };
-        listEl.appendChild(div);
-      });
     }
 
     async function loadDirectory(p) {
@@ -931,11 +907,6 @@
       updateFolderLabel(activePath);
       closeFolderModal();
       switchSessionDir(activePath);
-    }
-
-    async function toggleFavorite() {
-      await fetch(`/api/favorites/toggle?path=${encodeURIComponent(modalPath)}&token=${token}`, { method: "POST" });
-      loadFavorites();
     }
 
     async function initActiveConversation() {
