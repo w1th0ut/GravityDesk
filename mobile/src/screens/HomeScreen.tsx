@@ -215,12 +215,14 @@ export const HomeScreen: React.FC<Props> = ({
         )}
       </View>
 
-      {/* QR Scanner Modal */}
-      <QRScannerModal
-        visible={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScanSuccess={handleQRSuccess}
-      />
+      {/* QR Scanner Modal (mounts only when requested) */}
+      {showScanner && (
+        <QRScannerModal
+          visible={showScanner}
+          onClose={() => setShowScanner(false)}
+          onScanSuccess={handleQRSuccess}
+        />
+      )}
     </ScrollView>
   );
 };

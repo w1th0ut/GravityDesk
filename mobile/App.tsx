@@ -12,6 +12,7 @@ import { useLaptopVitals } from "./src/hooks/useLaptopVitals";
 import { useTerminalSocket } from "./src/hooks/useTerminalSocket";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { TerminalScreen } from "./src/screens/TerminalScreen";
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
 
 type TabKey = "home" | "terminal";
 
@@ -75,67 +76,66 @@ export default function App() {
     reconnect();
   };
 
-  const isSessionRunning =
-    wsSessionRunning || (health?.active_session?.is_alive ?? false);
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#141414" />
 
-      {/* Screen Content */}
-      <View style={styles.mainContent}>
-        {currentTab === "home" ? (
-          <HomeScreen
-            health={health}
-            isConnected={isConnected}
-            isChecking={isChecking}
-            onRefresh={refresh}
-            onNavigateToTerminal={() => setCurrentTab("terminal")}
-            onConnectionChanged={handleConnectionChanged}
-          />
-        ) : (
-          <TerminalScreen
-            health={health}
-            isConnected={isConnected}
-            logs={logs}
-            isWsConnected={isWsConnected}
-            wsSessionRunning={wsSessionRunning}
-            sendInput={sendInput}
-            sendSignal={sendSignal}
-            clearLogs={clearLogs}
-            refreshVitals={refresh}
-          />
-        )}
-      </View>
-
-      {/* Floating Capsule Bottom Navigation Bar (Exact 1:1 match with PWA) */}
-      <View style={styles.floatingNavContainer} pointerEvents="box-none">
-        <View style={styles.capsuleNav}>
-          {/* Tab 1: Home */}
-          <TouchableOpacity
-            style={[styles.capsuleItem, currentTab === "home" && styles.capsuleItemActive]}
-            onPress={() => setCurrentTab("home")}
-            activeOpacity={0.8}
-          >
-            <HomeNavIcon color={currentTab === "home" ? "#ffffff" : "#888888"} size={18} />
-            {currentTab === "home" && (
-              <Text style={styles.capsuleLabelActive}>Home</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Tab 2: Terminal */}
-          <TouchableOpacity
-            style={[styles.capsuleItem, currentTab === "terminal" && styles.capsuleItemActive]}
-            onPress={() => setCurrentTab("terminal")}
-            activeOpacity={0.8}
-          >
-            <TerminalNavIcon color={currentTab === "terminal" ? "#ffffff" : "#888888"} size={18} />
-            {currentTab === "terminal" && (
-              <Text style={styles.capsuleLabelActive}>Terminal</Text>
-            )}
-          </TouchableOpacity>
+      <ErrorBoundary>
+        {/* Screen Content */}
+        <View style={styles.mainContent}>
+          {currentTab === "home" ? (
+            <HomeScreen
+              health={health}
+              isConnected={isConnected}
+              isChecking={isChecking}
+              onRefresh={refresh}
+              onNavigateToTerminal={() => setCurrentTab("terminal")}
+              onConnectionChanged={handleConnectionChanged}
+            />
+          ) : (
+            <TerminalScreen
+              health={health}
+              isConnected={isConnected}
+              logs={logs}
+              isWsConnected={isWsConnected}
+              wsSessionRunning={wsSessionRunning}
+              sendInput={sendInput}
+              sendSignal={sendSignal}
+              clearLogs={clearLogs}
+              refreshVitals={refresh}
+            />
+          )}
         </View>
-      </View>
+
+        {/* Floating Capsule Bottom Navigation Bar (Exact 1:1 match with PWA) */}
+        <View style={styles.floatingNavContainer} pointerEvents="box-none">
+          <View style={styles.capsuleNav}>
+            {/* Tab 1: Home */}
+            <TouchableOpacity
+              style={[styles.capsuleItem, currentTab === "home" && styles.capsuleItemActive]}
+              onPress={() => setCurrentTab("home")}
+              activeOpacity={0.8}
+            >
+              <HomeNavIcon color={currentTab === "home" ? "#ffffff" : "#888888"} size={18} />
+              {currentTab === "home" && (
+                <Text style={styles.capsuleLabelActive}>Home</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Tab 2: Terminal */}
+            <TouchableOpacity
+              style={[styles.capsuleItem, currentTab === "terminal" && styles.capsuleItemActive]}
+              onPress={() => setCurrentTab("terminal")}
+              activeOpacity={0.8}
+            >
+              <TerminalNavIcon color={currentTab === "terminal" ? "#ffffff" : "#888888"} size={18} />
+              {currentTab === "terminal" && (
+                <Text style={styles.capsuleLabelActive}>Terminal</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ErrorBoundary>
     </SafeAreaView>
   );
 }
