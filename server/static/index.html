@@ -321,7 +321,14 @@
         <div class="folder-row" style="color:var(--success);font-weight:700;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:8px;" onclick="chooseConversation('new', 'New Chat')">
           ➕ <span>Start New Chat</span>
         </div>
-        <div style="color:var(--text-muted);margin-bottom:6px;font-size:11px;">RECENT CONVERSATIONS</div>
+        
+        <!-- Filter Tabs & Quick Search -->
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <button id="chat-tab-all" class="key-btn" style="background:var(--accent);color:#fff;" onclick="setChatFilter('all')">All Projects</button>
+          <button id="chat-tab-repo" class="key-btn" onclick="setChatFilter('repo')">📁 Current Repo</button>
+        </div>
+        <input type="text" id="chat-search" class="term-input" style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;font-size:11px;" placeholder="Search conversations or projects..." oninput="renderFilteredChats()" />
+
         <div id="chat-list" style="display:flex;flex-direction:column;gap:3px;"></div>
       </div>
     </div>
@@ -610,6 +617,10 @@
     }
 
     // Chat Resume Modal
+    let allChats = [];
+    let chatFilterScope = 'all'; // 'all' or 'repo'
+    let currentRepoName = '';
+
     async function openChatModal() {
       document.getElementById("chat-modal").classList.add("open");
       loadConversations();
@@ -619,6 +630,21 @@
       document.getElementById("chat-modal").classList.remove("open");
     }
 
+    function setChatFilter(scope) {
+      chatFilterScope = scope;
+      const allBtn = document.getElementById("chat-tab-all");
+      const repoBtn = document.getElementById("chat-tab-repo");
+      if (allBtn) {
+        allBtn.style.background = scope === 'all' ? 'var(--accent)' : '#1e1e1e';
+        allBtn.style.color = scope === 'all' ? '#fff' : '#e5e5e5';
+      }
+      if (repoBtn) {
+        repoBtn.style.background = scope === 'repo' ? 'var(--accent)' : '#1e1e1e';
+        repoBtn.style.color = scope === 'repo' ? '#fff' : '#e5e5e5';
+      }
+      renderFilteredChats();
+    }
+
     async function loadConversations() {
       const listEl = document.getElementById("chat-list");
       listEl.innerHTML = '<div style="color:var(--text-muted);padding:8px;font-size:11px;">Loading conversations...</div>';
@@ -626,52 +652,109 @@
         const res = await fetch(`/api/conversations?token=${token}`);
         if (!res.ok) throw new Error("Fetch failed");
         const data = await res.json();
-        const chats = data.conversations || [];
-        const activeId = data.active_id;
-        listEl.innerHTML = "";
+        allChats = data.conversations || [];
+        window._activeChatId = data.active_id;
+        currentRepoName = data.current_repo || '';
 
-        if (chats.length === 0) {
-          listEl.innerHTML = '<div style="color:var(--text-muted);padding:8px;font-size:11px;">No previous conversations found</div>';
-          return;
+        const repoTab = document.getElementById("chat-tab-repo");
+        if (repoTab && currentRepoName) {
+          repoTab.innerText = `📁 ${currentRepoName}`;
         }
 
-        chats.forEach((c) => {
-          const div = document.createElement("div");
-          div.className = "folder-row";
-          div.style.flexDirection = "column";
-          div.style.alignItems = "flex-start";
-          div.style.padding = "6px 8px";
-          div.style.borderRadius = "4px";
-          div.style.marginBottom = "3px";
-          if (activeId && c.id === activeId) {
-            div.style.borderLeft = "2px solid var(--accent)";
-            div.style.background = "#1a1a24";
-          }
-          div.innerHTML = `
-            <div style="font-weight:600;font-size:12px;color:var(--text);word-break:break-word;">${escapeHtml(c.title || "Chat " + c.id.slice(0, 8))}</div>
-            <div style="font-size:10px;color:var(--text-muted);display:flex;gap:8px;margin-top:2px;">
-              <span>#${escapeHtml(c.id.slice(0, 8))}</span>
-              <span>${escapeHtml(c.time_str || "")}</span>
-            </div>
-          `;
-          div.onclick = () => chooseConversation(c.id, c.title);
-          listEl.appendChild(div);
-        });
+        renderFilteredChats();
       } catch (err) {
         listEl.innerHTML = '<div style="color:var(--danger);padding:8px;font-size:11px;">Failed to load conversations</div>';
       }
     }
 
-    async function chooseConversation(id, title) {
+    function renderFilteredChats() {
+      const listEl = document.getElementById("chat-list");
+      const query = (document.getElementById("chat-search")?.value || "").toLowerCase().trim();
+      listEl.innerHTML = "";
+
+      const filtered = allChats.filter(c => {
+        if (chatFilterScope === 'repo' && !c.is_current) {
+          return false;
+        }
+        if (query) {
+          const matchTitle = (c.title || "").toLowerCase().includes(query);
+          const matchWs = (c.workspace_name || "").toLowerCase().includes(query);
+          const matchId = (c.id || "").toLowerCase().includes(query);
+          return matchTitle || matchWs || matchId;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="color:var(--text-muted);padding:8px;font-size:11px;">No conversations found</div>';
+        return;
+      }
+
+      filtered.forEach((c) => {
+        const div = document.createElement("div");
+        div.className = "folder-row";
+        div.style.flexDirection = "column";
+        div.style.alignItems = "flex-start";
+        div.style.padding = "7px 9px";
+        div.style.borderRadius = "4px";
+        div.style.border = "1px solid var(--border)";
+        div.style.background = "#141414";
+        div.style.marginBottom = "4px";
+
+        const isActive = window._activeChatId && c.id === window._activeChatId;
+        if (isActive) {
+          div.style.borderColor = "var(--success)";
+          div.style.background = "#101d14";
+        }
+
+        const wsBadge = c.workspace_name
+          ? `<span style="background:#21262d;color:var(--accent);padding:1px 5px;border-radius:3px;font-size:10px;">📁 ${escapeHtml(c.workspace_name)}</span>`
+          : '';
+        const activeBadge = isActive
+          ? `<span style="background:rgba(63,185,80,0.2);color:var(--success);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;">ACTIVE</span>`
+          : '';
+
+        div.innerHTML = `
+          <div style="display:flex;justify-content:space-between;width:100%;align-items:flex-start;gap:6px;">
+            <div style="font-weight:600;font-size:12px;color:#ffffff;line-height:1.3;flex:1;word-break:break-word;">
+              ${escapeHtml(c.title || "Chat " + c.id.slice(0, 8))}
+            </div>
+            ${activeBadge}
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">
+            ${wsBadge}
+            <span>${c.steps || 1} steps</span>
+            <span>•</span>
+            <span>${escapeHtml(c.time_str || "")}</span>
+          </div>
+        `;
+
+        div.onclick = () => chooseConversation(c.id, c.title, c.workspace_path);
+        listEl.appendChild(div);
+      });
+    }
+
+    async function chooseConversation(id, title, wsPath) {
       closeChatModal();
+      window._activeChatId = id === "new" ? null : id;
       const chatNameEl = document.getElementById("chat-name");
       if (chatNameEl) {
         const display = id === "new" ? "New Chat" : (title ? (title.length > 13 ? title.slice(0, 11) + ".." : title) : id.slice(0, 8));
         chatNameEl.innerText = display;
         chatNameEl.title = title || id;
       }
+      if (wsPath) {
+        updateFolderLabel(wsPath);
+        activePath = wsPath;
+      }
       try {
-        await fetch(`/api/conversations/select?id=${encodeURIComponent(id)}&title=${encodeURIComponent(title || "")}&token=${token}`, {
+        const params = new URLSearchParams({
+          id: id,
+          title: title || "",
+          workspace_path: wsPath || "",
+          token: token
+        });
+        await fetch(`/api/conversations/select?${params.toString()}`, {
           method: "POST"
         });
       } catch (err) {}

@@ -145,10 +145,12 @@ async def select_workspace(path: str = Query(...), _: str = Depends(verify_token
 
 @app.get("/api/conversations")
 async def get_conversations(_: str = Depends(verify_token)):
-    """Returns list of past agy conversations for resumption."""
-    convs = list_conversations()
+    """Returns list of past agy conversations for resumption matching desktop agy /resume."""
+    convs = list_conversations(current_cwd=hub.current_cwd)
     return {
         "active_id": hub.active_conversation_id,
+        "current_cwd": hub.current_cwd,
+        "current_repo": os.path.basename(hub.current_cwd.rstrip("\\/")) if hub.current_cwd else "",
         "conversations": convs,
     }
 
@@ -157,13 +159,19 @@ async def get_conversations(_: str = Depends(verify_token)):
 async def select_conversation(
     id: str = Query(...),
     title: Optional[str] = Query(None),
+    workspace_path: Optional[str] = Query(None),
     _: str = Depends(verify_token),
 ):
-    """Switches active conversation session (resume chat)."""
+    """Switches active conversation session (resume chat) and optionally switches workspace folder."""
+    if workspace_path and os.path.isdir(workspace_path) and id != "new":
+        if os.path.realpath(workspace_path).lower() != os.path.realpath(hub.current_cwd).lower():
+            hub.change_directory(workspace_path)
+
     hub.resume_conversation(id, title or "")
     return {
         "status": "resumed",
         "active_id": hub.active_conversation_id,
+        "cwd": hub.current_cwd,
     }
 
 
