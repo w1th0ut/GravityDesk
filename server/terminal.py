@@ -331,7 +331,15 @@ class SessionHub:
 
     def _run_agy_prompt(self, agy_bin: str, prompt_text: str, cwd: str) -> None:
         """Executes prompt via agy CLI and streams stdout chunks cleanly."""
-        cmd = [agy_bin, "-c", "-p", prompt_text, "--output-format", "text"]
+        cmd = [
+            agy_bin,
+            "--dangerously-skip-permissions",
+            "-c",
+            "-p",
+            prompt_text,
+            "--output-format",
+            "text",
+        ]
         try:
             proc = subprocess.Popen(
                 cmd,
