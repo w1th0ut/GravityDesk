@@ -17,6 +17,7 @@ from server.devices import (
     delete_device,
     get_devices,
     is_device_authorized,
+    notify_device_event,
     pair_device,
     rename_device,
     revoke_device,
@@ -44,6 +45,10 @@ def kick_device_sockets(device_id: str) -> None:
     """Closes all active streaming WebSocket connections for a revoked device."""
     with sockets_lock:
         sockets = list(active_device_sockets.get(device_id, set()))
+        if device_id in active_device_sockets:
+            del active_device_sockets[device_id]
+
+    notify_device_event("disconnected", {"id": device_id})
 
     if not sockets:
         return
@@ -380,6 +385,7 @@ async def terminal_websocket(
         with sockets_lock:
             active_device_sockets[device_id].add(websocket)
         touch_device(device_id, client_host)
+        notify_device_event("connected", {"id": device_id, "ip": client_host})
 
     # Initial status notification
     await websocket.send_json(
@@ -439,6 +445,7 @@ async def terminal_websocket(
                     active_device_sockets[device_id].discard(websocket)
                     if not active_device_sockets[device_id]:
                         del active_device_sockets[device_id]
+            notify_device_event("disconnected", {"id": device_id})
         sender_task.cancel()
         hub.remove_listener(client_queue)
         hub.notify_event("Client disconnected")

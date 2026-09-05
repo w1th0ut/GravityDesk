@@ -26,6 +26,11 @@ def _notify_listeners(event: str, device: Dict[str, Any]) -> None:
             pass
 
 
+def notify_device_event(event: str, device: Dict[str, Any]) -> None:
+    """Public helper to broadcast device connection and lifecycle events."""
+    _notify_listeners(event, device)
+
+
 def get_devices(filepath: str = DEVICES_FILE) -> List[Dict[str, Any]]:
     """Loads all recorded devices from disk in a thread-safe manner."""
     with _lock:

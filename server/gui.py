@@ -50,6 +50,7 @@ class GravityDeskGUI:
         update_server_token(self.token)
 
         self.qr_image_tk: Optional[ImageTk.PhotoImage] = None
+        self._last_rendered_device_state = None
 
         # Build UI
         self._setup_styles()
@@ -60,7 +61,7 @@ class GravityDeskGUI:
         hub.add_event_callback(self.log_event_threadsafe)
 
         # Connect Device pairing/revocation listener
-        add_device_listener(lambda event, dev: self.root.after(0, self.refresh_devices_ui))
+        add_device_listener(lambda event, dev: self.root.after(0, lambda: self.refresh_devices_ui(force=True)))
 
         # Intercept window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -232,24 +233,40 @@ class GravityDeskGUI:
             activeforeground=C_TEXT,
             relief=tk.FLAT,
             cursor="hand2",
-            command=self.refresh_devices_ui,
+            command=lambda: self.refresh_devices_ui(force=True),
         )
         refresh_btn.pack(side=tk.RIGHT)
 
         self.devices_container = tk.Frame(self.devices_card, bg=C_CARD)
         self.devices_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
-        self.refresh_devices_ui()
+        self.refresh_devices_ui(force=True)
 
-    def refresh_devices_ui(self):
+    def refresh_devices_ui(self, force: bool = False):
         if not hasattr(self, "devices_container"):
             return
 
-        for w in self.devices_container.winfo_children():
-            w.destroy()
-
         devices = get_devices()
         online_ids = get_online_device_ids()
+
+        current_state = tuple(
+            (
+                d.get("id"),
+                d.get("name"),
+                d.get("status"),
+                d.get("ip"),
+                d.get("id") in online_ids,
+            )
+            for d in devices
+        )
+
+        if not force and getattr(self, "_last_rendered_device_state", None) == current_state:
+            return
+
+        self._last_rendered_device_state = current_state
+
+        for w in self.devices_container.winfo_children():
+            w.destroy()
 
         if not devices:
             empty_box = tk.Frame(self.devices_container, bg=C_INPUT_BG, highlightthickness=1, highlightbackground=C_BORDER)
@@ -389,7 +406,7 @@ class GravityDeskGUI:
             clean_name = new_name.strip()
             rename_device(dev_id, clean_name)
             self.log_event(f"✏️ Nama perangkat '{current_name}' diubah menjadi '{clean_name}'.")
-            self.refresh_devices_ui()
+            self.refresh_devices_ui(force=True)
 
     def revoke_single_device(self, dev_id: str, dev_name: str):
         confirm = messagebox.askyesno(
@@ -405,7 +422,7 @@ class GravityDeskGUI:
         revoke_device(dev_id)
         kick_device_sockets(dev_id)
         self.log_event(f"🚫 Akses perangkat '{dev_name}' dicabut.")
-        self.refresh_devices_ui()
+        self.refresh_devices_ui(force=True)
 
     def delete_single_device(self, dev_id: str, dev_name: str):
         confirm = messagebox.askyesno(
@@ -417,7 +434,7 @@ class GravityDeskGUI:
         if confirm:
             delete_device(dev_id)
             self.log_event(f"🗑️ Perangkat '{dev_name}' dihapus dari daftar.")
-            self.refresh_devices_ui()
+            self.refresh_devices_ui(force=True)
 
     def _build_session_card(self, parent):
         card = tk.Frame(parent, bg=C_CARD, highlightthickness=1, highlightbackground=C_BORDER)
@@ -734,18 +751,22 @@ class GravityDeskGUI:
                 self.ws_lbl.config(text=hub.current_cwd)
 
             active_devs = [d for d in get_devices() if d.get("status") == "active"]
-            self.clients_lbl.config(text=f"{len(active_devs)} terdaftar ({len(hub.listeners)} aktif)")
+            online_count = len(get_online_device_ids())
+            self.clients_lbl.config(text=f"{len(active_devs)} terdaftar ({online_count} online)")
 
             chat_name = "New Chat"
             if hub.active_conversation_id:
                 chat_name = f"Chat: {hub.active_conversation_id[:12]}..."
             self.chat_lbl.config(text=chat_name)
 
+            # Keep device list and online/offline status updated in real-time
+            self.refresh_devices_ui()
+
         except Exception:
             pass
 
-        # Schedule next poll
-        self.root.after(2000, self._poll_telemetry)
+        # Schedule next poll (1000ms for high responsiveness)
+        self.root.after(1000, self._poll_telemetry)
 
     def on_close(self):
         if self.is_running and self.server:
