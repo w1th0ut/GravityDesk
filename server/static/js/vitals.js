@@ -67,7 +67,7 @@ export async function fetchVitals() {
       const homeSleep = document.getElementById("home-v-sleep");
       if (homeSleep) homeSleep.innerText = d.sleep_inhibit_active ? "Active" : "Disabled";
       const homeStatusTitle = document.getElementById("home-status-title");
-      if (homeStatusTitle) homeStatusTitle.innerText = "Connected to Host (Tailscale Online)";
+      if (homeStatusTitle) homeStatusTitle.innerText = "Connected to Host";
       const homeStatusSub = document.getElementById("home-status-sub");
       if (homeStatusSub) homeStatusSub.innerText = `Host: ${d.tailscale_ip || window.location.host}`;
       const homeDot = document.getElementById("home-status-dot");

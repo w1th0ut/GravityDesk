@@ -141,7 +141,7 @@ export const HomeScreen: React.FC<Props> = ({
           <View style={styles.statusTitleBox}>
             <Text style={styles.statusMainText}>
               {isConnected
-                ? "Connected to Host (Tailscale Online)"
+                ? "Connected to Host"
                 : isChecking
                 ? "Checking Connection..."
                 : "Host Offline / Disconnected"}

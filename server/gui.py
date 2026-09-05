@@ -16,7 +16,6 @@ from server.devices import (
     add_device_listener,
     delete_device,
     get_devices,
-    rename_device,
     revoke_all_devices,
     revoke_device,
 )
@@ -352,23 +351,6 @@ class GravityDeskGUI:
             btn_box = tk.Frame(item_card, bg=C_INPUT_BG)
             btn_box.pack(side=tk.RIGHT, padx=6, pady=6)
 
-            # Rename button
-            rename_btn = tk.Button(
-                btn_box,
-                text="Rename",
-                font=("Segoe UI", 7),
-                bg="#21262d",
-                fg=C_TEXT,
-                activebackground=C_BORDER,
-                activeforeground="#ffffff",
-                relief=tk.FLAT,
-                padx=6,
-                pady=2,
-                cursor="hand2",
-                command=lambda i=d_id, n=d_name: self.rename_single_device(i, n),
-            )
-            rename_btn.pack(side=tk.LEFT, padx=(0, 4))
-
             # Revoke button
             revoke_btn = tk.Button(
                 btn_box,
@@ -385,19 +367,6 @@ class GravityDeskGUI:
                 command=lambda i=d_id, n=d_name: self.revoke_single_device(i, n),
             )
             revoke_btn.pack(side=tk.LEFT)
-
-    def rename_single_device(self, dev_id: str, current_name: str):
-        new_name = simpledialog.askstring(
-            "Rename Device",
-            f"Enter new name for device '{current_name}':",
-            initialvalue=current_name,
-            parent=self.root,
-        )
-        if new_name and new_name.strip() and new_name.strip() != current_name:
-            clean_name = new_name.strip()
-            rename_device(dev_id, clean_name)
-            self.log_event(f"Device '{current_name}' renamed to '{clean_name}'.")
-            self.refresh_devices_ui(force=True)
 
     def revoke_single_device(self, dev_id: str, dev_name: str):
         confirm = messagebox.askyesno(
