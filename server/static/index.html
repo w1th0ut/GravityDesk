@@ -164,13 +164,13 @@
       padding: 8px 10px;
       display: flex;
       gap: 6px;
-      align-items: center;
+      align-items: flex-end;
       flex-shrink: 0;
     }
 
     .mic-btn {
       width: 32px;
-      height: 32px;
+      height: 36px;
       background: transparent;
       border: none;
       color: var(--text-muted);
@@ -199,9 +199,11 @@
 
     .input-prefix {
       font-family: "Cascadia Code", Consolas, monospace;
-      color: var(--accent);
-      font-size: 14px;
+      color: var(--success);
+      font-size: 12px;
       font-weight: 700;
+      padding-bottom: 9px;
+      flex-shrink: 0;
     }
 
     .term-input {
@@ -209,11 +211,19 @@
       background: #0c0c0c;
       border: 1px solid var(--border);
       color: #ffffff;
-      padding: 8px 10px;
+      padding: 7px 10px;
       border-radius: 6px;
       font-size: 13px;
       font-family: "Cascadia Code", Consolas, monospace;
       outline: none;
+      resize: none;
+      min-height: 36px;
+      max-height: 130px;
+      line-height: 1.4;
+      overflow-y: auto;
+      box-sizing: border-box;
+      word-break: break-word;
+      white-space: pre-wrap;
     }
     .term-input:focus { border-color: var(--accent); }
 
@@ -320,8 +330,8 @@
         <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
       </svg>
     </button>
-    <span class="input-prefix" style="color:var(--success);font-weight:700;font-size:12px;">prompt&gt;</span>
-    <input type="text" id="term-input" class="term-input" placeholder="Type message or command..." autocomplete="off" />
+    <span class="input-prefix">prompt&gt;</span>
+    <textarea id="term-input" class="term-input" placeholder="Type message or command..." rows="1" autocomplete="off"></textarea>
     <button class="send-btn" id="send-btn" onclick="sendPrompt()">Send</button>
   </div>
 
@@ -529,6 +539,14 @@
       ws.onerror = () => ws.close();
     }
 
+    function autoResizeInput() {
+      termInput.style.height = "auto";
+      const nextHeight = Math.min(termInput.scrollHeight, 130);
+      termInput.style.height = Math.max(36, nextHeight) + "px";
+    }
+
+    termInput.addEventListener("input", autoResizeInput);
+
     function sendPrompt() {
       const text = termInput.value.trim();
       if (!text) return;
@@ -540,6 +558,7 @@
         }
         ws.send(JSON.stringify({ type: "stdin", data: text + "\r\n" }));
         termInput.value = "";
+        autoResizeInput();
       }
     }
 
@@ -565,7 +584,10 @@
     }
 
     termInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") sendPrompt();
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendPrompt();
+      }
     });
 
     // Telemetry Polling
@@ -613,6 +635,7 @@
           let t = "";
           for (let i = e.resultIndex; i < e.results.length; ++i) t += e.results[i][0].transcript;
           termInput.value = t;
+          autoResizeInput();
         };
 
         recognition.onend = () => stopVoice();
