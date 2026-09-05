@@ -146,7 +146,7 @@ export const HomeScreen: React.FC<Props> = ({
 
             <View style={styles.telemetryItem}>
               <Text style={styles.telemetryLabel}>Sleep Inhibit</Text>
-              <Text style={[styles.telemetryValue, { color: "#3fb950" }]}>
+              <Text style={styles.telemetryValue}>
                 {health.sleep_inhibit_active ? "Active" : "Disabled"}
               </Text>
             </View>
@@ -351,17 +351,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   deviceBadge: {
-    backgroundColor: "#262626",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#333333",
+    justifyContent: "center",
   },
   deviceBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     color: "#3fb950",
+    letterSpacing: 0.5,
   },
   scanBtn: {
     backgroundColor: "#238636",
