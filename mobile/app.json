@@ -21,6 +21,14 @@
         "android.permission.CAMERA",
         "android.permission.INTERNET"
       ]
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3acc8508-a3c4-4c49-bbc1-27508925955a"
+      }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }
