@@ -3,22 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>GravityDesk Minimalist UI</title>
+  <title>GravityDesk Console</title>
   <style>
     :root {
-      --bg: #0b0f19;
-      --card: #151d30;
-      --card-border: #1e293b;
-      --card-hover: #1e293b;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --primary: #6366f1;
-      --primary-hover: #4f46e5;
-      --accent: #38bdf8;
-      --success: #10b981;
-      --danger: #ef4444;
-      --user-bubble: #312e81;
-      --user-border: #4338ca;
+      --bg: #0c0c0c;
+      --card: #141414;
+      --border: #262626;
+      --text: #cccccc;
+      --text-muted: #737373;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --danger: #f85149;
     }
 
     * {
@@ -26,7 +21,6 @@
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
     }
 
     body {
@@ -36,490 +30,300 @@
       flex-direction: column;
       height: 100dvh;
       overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    /* Top Bar */
+    /* Minimal Top Header */
     header {
-      background: rgba(21, 29, 48, 0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--card-border);
-      padding: 10px 14px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      z-index: 10;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
-    .brand-group {
+    .brand-row {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .brand-title {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: -0.3px;
-      color: #fff;
+    .brand {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
     }
 
     .status-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--danger);
-      box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
     }
     .status-dot.online {
       background: var(--success);
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
-    }
-
-    .vitals-pill {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      background: rgba(30, 41, 59, 0.6);
-      padding: 4px 8px;
-      border-radius: 12px;
-      border: 1px solid var(--card-border);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .vitals-pill span { color: var(--text); font-weight: 700; }
-
-    /* Sub-header Navigation */
-    .subbar {
-      background: #0f172a;
-      padding: 8px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--card-border);
-      gap: 8px;
+      box-shadow: 0 0 6px rgba(63, 185, 80, 0.6);
     }
 
     .folder-chip {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--card);
-      border: 1px solid var(--card-border);
-      padding: 5px 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      color: var(--accent);
-      font-weight: 600;
-      max-width: 60%;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      cursor: pointer;
-    }
-
-    .mode-toggle-btn {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 5px 10px;
-      border-radius: 8px;
-      background: #1e293b;
-      color: var(--text);
-      border: 1px solid var(--card-border);
-      cursor: pointer;
-    }
-
-    /* Main Feed / Stream Container */
-    #feed-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      scroll-behavior: smooth;
-    }
-
-    /* Agent Info Card */
-    .agent-hero-card {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(56, 189, 248, 0.05));
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      border-radius: 14px;
-      padding: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .agent-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .agent-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .agent-meta {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .session-toggle-btn {
-      padding: 7px 14px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      transition: 0.15s;
-    }
-    .btn-start { background: var(--primary); color: #fff; }
-    .btn-stop { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
-
-    /* Feed Messages */
-    .msg-card {
-      background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 12px 14px;
-      font-size: 13px;
-      line-height: 1.55;
-      color: var(--text);
-      word-break: break-word;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    .user-bubble {
-      align-self: flex-end;
-      background: var(--user-bubble);
-      border: 1px solid var(--user-border);
-      color: #e0e7ff;
-      border-radius: 14px 14px 2px 14px;
-      max-width: 85%;
-      padding: 10px 14px;
-      font-weight: 500;
-    }
-
-    .agent-bubble {
-      align-self: flex-start;
-      border-radius: 14px 14px 14px 2px;
-      max-width: 95%;
-      width: 100%;
-    }
-
-    .msg-header {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    /* Clean Code & Output blocks inside messages */
-    .code-block {
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 10px;
-      font-family: "SF Mono", Consolas, Menlo, monospace;
-      font-size: 12px;
-      line-height: 1.45;
-      color: #38bdf8;
-      overflow-x: auto;
-      margin: 6px 0;
-      white-space: pre-wrap;
-    }
-
-    /* Confirmation Action Card */
-    .confirm-card {
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      border-radius: 12px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .confirm-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: #fbbf24;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .confirm-actions {
-      display: flex;
-      gap: 8px;
-    }
-    .confirm-btn {
-      flex: 1;
-      padding: 8px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      text-align: center;
-    }
-    .btn-yes { background: var(--success); color: #fff; }
-    .btn-no { background: var(--danger); color: #fff; }
-
-    /* Raw Terminal Container (hidden by default) */
-    #raw-terminal {
-      display: none;
-      flex: 1;
-      background: #050811;
-      padding: 10px;
-      overflow-y: auto;
-      font-family: "SF Mono", Consolas, monospace;
-      font-size: 12px;
-      line-height: 1.45;
-      color: #94a3b8;
-      white-space: pre-wrap;
-    }
-
-    /* Floating Quick Bar */
-    .quick-bar {
-      background: #0f172a;
-      padding: 6px 12px;
-      display: flex;
-      gap: 6px;
-      border-top: 1px solid var(--card-border);
-      overflow-x: auto;
-    }
-    .quick-pill {
-      background: var(--card);
-      color: var(--text);
-      border: 1px solid var(--card-border);
-      padding: 4px 10px;
+      background: #1e1e1e;
+      border: 1px solid var(--border);
+      padding: 3px 8px;
       border-radius: 6px;
       font-size: 11px;
-      font-weight: 600;
+      color: var(--accent);
+      font-family: "Cascadia Code", Consolas, monospace;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .vitals-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: "Cascadia Code", Consolas, monospace;
+    }
+    .vitals-text span { color: #e5e5e5; }
+
+    /* Edge-to-Edge Pure Terminal */
+    #terminal-screen {
+      flex: 1;
+      background: var(--bg);
+      padding: 8px 10px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      font-family: "Cascadia Code", Consolas, Menlo, "Courier New", monospace;
+      font-size: 12.5px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #cccccc;
+    }
+
+    .term-line {
+      display: block;
+      min-height: 1.4em;
+    }
+
+    /* Terminal SGR Colors */
+    .c-30 { color: #484f58; }
+    .c-31 { color: #f85149; }
+    .c-32 { color: #3fb950; }
+    .c-33 { color: #d29922; }
+    .c-34 { color: #58a6ff; }
+    .c-35 { color: #bc8cff; }
+    .c-36 { color: #39c5cf; }
+    .c-37 { color: #e6edf3; }
+    .c-90 { color: #6e7681; }
+    .c-91 { color: #ffa198; }
+    .c-92 { color: #56d364; }
+    .c-93 { color: #e3b341; }
+    .c-94 { color: #79c0ff; }
+    .c-95 { color: #d2a8ff; }
+    .c-96 { color: #56d4dd; }
+    .c-97 { color: #ffffff; }
+    .t-bold { font-weight: 700; }
+
+    /* Quick Action Keys */
+    .quick-bar {
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 5px 10px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+
+    .key-btn {
+      background: #1e1e1e;
+      border: 1px solid var(--border);
+      color: #e5e5e5;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: "Cascadia Code", Consolas, monospace;
       cursor: pointer;
       flex-shrink: 0;
     }
-    .quick-pill:active { background: var(--primary); color: #fff; }
-    .pill-sigint { border-color: rgba(239, 68, 68, 0.4); color: var(--danger); }
+    .key-btn:active { background: var(--accent); color: #fff; }
+    .btn-ctrlc { color: var(--danger); border-color: rgba(248, 81, 73, 0.4); }
 
     /* Input Dock */
-    .dock {
+    .input-dock {
       background: var(--card);
-      border-top: 1px solid var(--card-border);
-      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      padding: 8px 10px;
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .mic-btn {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      background: #1e293b;
-      border: 1px solid var(--card-border);
-      color: var(--text);
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      background: #1e1e1e;
+      border: 1px solid var(--border);
+      color: #e5e5e5;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 16px;
       cursor: pointer;
-      font-size: 18px;
       flex-shrink: 0;
     }
     .mic-btn.recording {
       background: var(--danger);
       color: #fff;
-      animation: pulse 1.2s infinite;
     }
 
-    .prompt-box {
-      flex: 1;
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 10px;
+    .input-prefix {
+      font-family: "Cascadia Code", Consolas, monospace;
+      color: var(--accent);
       font-size: 14px;
+      font-weight: 700;
+    }
+
+    .term-input {
+      flex: 1;
+      background: #0c0c0c;
+      border: 1px solid var(--border);
+      color: #ffffff;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: "Cascadia Code", Consolas, monospace;
       outline: none;
     }
-    .prompt-box:focus { border-color: var(--primary); }
+    .term-input:focus { border-color: var(--accent); }
 
     .send-btn {
-      background: var(--primary);
-      color: #fff;
+      background: #1f6feb;
+      color: #ffffff;
       border: none;
-      padding: 0 16px;
-      height: 42px;
-      border-radius: 10px;
-      font-size: 13px;
+      padding: 0 14px;
+      height: 36px;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-shrink: 0;
     }
 
-    /* Workspace Modal */
+    /* Simple Folder Picker Modal */
     .modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(4px);
+      background: rgba(0,0,0,0.8);
       z-index: 50;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 14px;
     }
     .modal.open { display: flex; }
-    .modal-sheet {
+    .modal-box {
       background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       width: 100%;
-      max-width: 480px;
+      max-width: 440px;
       max-height: 80vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
-    .modal-top {
-      padding: 14px;
-      border-bottom: 1px solid var(--card-border);
+    .modal-head {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      font-size: 13px;
       font-weight: 700;
     }
-    .modal-content {
-      padding: 14px;
+    .modal-body {
+      padding: 12px;
       overflow-y: auto;
       flex: 1;
+      font-size: 12px;
     }
-    .folder-item {
-      padding: 10px;
-      border-radius: 8px;
+    .folder-row {
+      padding: 8px;
+      border-radius: 4px;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      font-size: 13px;
+      gap: 6px;
+      font-family: "Cascadia Code", Consolas, monospace;
     }
-    .folder-item:hover { background: #1e293b; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
+    .folder-row:hover { background: #1e1e1e; }
   </style>
 </head>
 <body>
 
   <!-- Top Bar -->
   <header>
-    <div class="brand-group">
+    <div class="brand-row">
       <span class="status-dot" id="status-dot"></span>
-      <span class="brand-title">⚡ GravityDesk</span>
+      <span class="brand">⚡ GravityDesk</span>
+      <div class="folder-chip" id="folder-chip" onclick="openFolderModal()">
+        📁 <span id="folder-name">Select Folder</span>
+      </div>
     </div>
-    <div class="vitals-pill">
-      <div>CPU: <span id="v-cpu">-</span></div>
-      <div>RAM: <span id="v-ram">-</span></div>
-      <div>Bat: <span id="v-bat">-</span></div>
+    <div class="vitals-text">
+      Bat: <span id="v-bat">-</span> | CPU: <span id="v-cpu">-</span>
     </div>
   </header>
 
-  <!-- Subbar: Active Folder & View Switcher -->
-  <div class="subbar">
-    <div class="folder-chip" onclick="openWorkspaceModal()">
-      📁 <span id="cur-folder">Select Workspace</span>
-    </div>
-    <button class="mode-toggle-btn" id="view-mode-btn" onclick="toggleViewMode()">
-      🖥️ Raw View
-    </button>
-  </div>
+  <!-- Edge-to-Edge Clean Terminal Screen -->
+  <div id="terminal-screen"></div>
 
-  <!-- Minimalist Feed View -->
-  <div id="feed-container">
-    <div class="agent-hero-card">
-      <div class="agent-info">
-        <div class="agent-name">
-          <span>Anti-Gravity (agy)</span>
-          <span style="font-size: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 6px; border-radius: 6px;">Gemini 3.8 Flash</span>
-        </div>
-        <div class="agent-meta" id="agent-status-line">Status: Ready & Listening</div>
-      </div>
-      <button id="session-btn" class="session-toggle-btn btn-start" onclick="toggleSession()">Start</button>
-    </div>
-
-    <!-- Active Tool Confirmation (shown dynamically when agy prompts) -->
-    <div id="confirm-box" class="confirm-card" style="display: none;">
-      <div class="confirm-title">⚠️ Approval Requested by agy CLI</div>
-      <div id="confirm-msg" style="font-size: 12px; color: #cbd5e1;">Do you want to proceed with tool execution?</div>
-      <div class="confirm-actions">
-        <button class="confirm-btn btn-yes" onclick="sendPromptDirect('y\n')">✓ Approve (y)</button>
-        <button class="confirm-btn btn-no" onclick="sendPromptDirect('n\n')">✕ Reject (n)</button>
-      </div>
-    </div>
-
-    <!-- Dynamic Message Stream -->
-    <div id="messages-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
-  </div>
-
-  <!-- Raw Terminal Fallback View -->
-  <div id="raw-terminal"></div>
-
-  <!-- Quick Shortcut Toolbar -->
+  <!-- Quick Shortcut Keys -->
   <div class="quick-bar">
-    <button class="quick-pill pill-sigint" onclick="sendSignal('SIGINT')">Stop (Ctrl+C)</button>
-    <button class="quick-pill" onclick="sendPromptDirect('y\n')">Yes (y)</button>
-    <button class="quick-pill" onclick="sendPromptDirect('n\n')">No (n)</button>
-    <button class="quick-pill" onclick="sendPromptDirect('\n')">Enter ↵</button>
-    <button class="quick-pill" onclick="clearFeed()">Clear Feed</button>
+    <button class="key-btn btn-ctrlc" onclick="sendSignal('SIGINT')">Ctrl+C</button>
+    <button class="key-btn" onclick="sendInput('y\n')">Yes (y)</button>
+    <button class="key-btn" onclick="sendInput('n\n')">No (n)</button>
+    <button class="key-btn" onclick="sendInput('\n')">Enter ↵</button>
+    <button class="key-btn" onclick="clearTerminal()">Clear</button>
+    <button class="key-btn" onclick="scrollToBottom()">Bottom ↓</button>
   </div>
 
-  <!-- Floating Input Dock -->
-  <div class="dock">
-    <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleMic()">🎙️</button>
-    <input type="text" id="prompt-input" class="prompt-box" placeholder="Speak or type prompt for agy..." autocomplete="off" />
-    <button class="send-btn" onclick="handleSend()">Send</button>
+  <!-- Input Dock -->
+  <div class="input-dock">
+    <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleVoice()">🎙️</button>
+    <span class="input-prefix">&gt;</span>
+    <input type="text" id="term-input" class="term-input" placeholder="Prompt agy..." autocomplete="off" />
+    <button class="send-btn" onclick="sendPrompt()">Send</button>
   </div>
 
-  <!-- Folder Modal -->
-  <div id="workspace-modal" class="modal">
-    <div class="modal-sheet">
-      <div class="modal-top">
-        <span>Workspace Explorer</span>
-        <button onclick="closeWorkspaceModal()" style="background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;">✕</button>
+  <!-- Minimal Folder Picker Modal -->
+  <div id="folder-modal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <span>Select Folder</span>
+        <button onclick="closeFolderModal()" style="background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;">✕</button>
       </div>
-      <div class="modal-content">
-        <div style="font-size: 11px; font-weight:700; color: var(--text-muted); margin-bottom: 6px;">FAVORITES</div>
-        <div id="fav-list" style="display:flex; flex-direction:column; gap:4px; margin-bottom: 12px;"></div>
-        <div style="font-size: 11px; font-weight:700; color: var(--text-muted); margin-bottom: 6px;">DRIVES & FOLDERS</div>
-        <div id="bc-bar" style="font-size: 12px; color: var(--accent); margin-bottom: 8px;"></div>
-        <div id="dir-list" style="display:flex; flex-direction:column; gap:2px;"></div>
+      <div class="modal-body">
+        <div style="color:var(--text-muted);margin-bottom:6px;font-size:11px;">FAVORITES</div>
+        <div id="fav-list" style="display:flex;flex-direction:column;gap:3px;margin-bottom:12px;"></div>
+        <div style="color:var(--text-muted);margin-bottom:6px;font-size:11px;">DRIVES &amp; FOLDERS</div>
+        <div id="bc-bar" style="margin-bottom:8px;color:var(--accent);font-family:monospace;font-size:11px;"></div>
+        <div id="dir-list" style="display:flex;flex-direction:column;gap:2px;"></div>
       </div>
-      <div style="padding: 12px; border-top: 1px solid var(--card-border); display:flex; justify-content:space-between;">
-        <button class="mode-toggle-btn" onclick="toggleFavoritePin()">⭐ Pin Favorite</button>
-        <button class="send-btn" style="height:36px;" onclick="chooseCurrentFolder()">Select Folder</button>
+      <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
+        <button class="key-btn" onclick="toggleFavorite()">⭐ Pin Favorite</button>
+        <button class="send-btn" style="height:32px;" onclick="chooseCurrentFolder()">Select This Folder</button>
       </div>
     </div>
   </div>
@@ -528,31 +332,109 @@
     let ws = null;
     let currentSeq = 0;
     let activePath = "";
-    let isSessionRunning = false;
     let token = new URLSearchParams(window.location.search).get("token") || "";
-    let isRawMode = false;
 
+    const terminalScreen = document.getElementById("terminal-screen");
     const statusDot = document.getElementById("status-dot");
-    const feedContainer = document.getElementById("feed-container");
-    const messagesList = document.getElementById("messages-list");
-    const rawTerminal = document.getElementById("raw-terminal");
-    const promptInput = document.getElementById("prompt-input");
-    const curFolderEl = document.getElementById("cur-folder");
-    const sessionBtn = document.getElementById("session-btn");
-    const agentStatusLine = document.getElementById("agent-status-line");
-    const confirmBox = document.getElementById("confirm-box");
-    const confirmMsg = document.getElementById("confirm-msg");
+    const folderNameEl = document.getElementById("folder-name");
+    const termInput = document.getElementById("term-input");
     const micBtn = document.getElementById("mic-btn");
 
-    // Clean Noise Filtering (Strip OSC, Title codes, and ASCII logo distortion)
-    function sanitizeTerminalText(raw) {
-      if (!raw) return "";
-      return raw
-        // Strip OSC Window Title escape codes (e.g. ]0;cmd.exe\x07)
-        .replace(/(\x1B\]|\x9D)[0-9;]*[^\x07\x1B\r\n]*(\x07|\x1B\\)?/g, "")
-        // Strip other control escape sequences
-        .replace(/\x1B\[[0-9;?]*[a-zA-Z]/g, "")
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+    // Line Buffer for Terminal Output (handles \r in-place overwrite for spinners)
+    const MAX_LINES = 1500;
+    let lines = [""];
+
+    // ANSI SGR Color Parser (converts ANSI escape sequence to HTML spans)
+    function ansiToHtml(str) {
+      let html = "";
+      let currentColorClass = "";
+      let isBold = false;
+      const regex = /\x1B\[([0-9;]*)m/g;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = regex.exec(str)) !== null) {
+        const textBefore = str.slice(lastIndex, match.index);
+        if (textBefore) {
+          const escaped = escapeHtml(textBefore);
+          const classes = [currentColorClass, isBold ? "t-bold" : ""].filter(Boolean).join(" ");
+          html += classes ? `<span class="${classes}">${escaped}</span>` : escaped;
+        }
+
+        const codes = (match[1] || "0").split(";").map(c => parseInt(c, 10));
+        for (const code of codes) {
+          if (code === 0) {
+            currentColorClass = "";
+            isBold = false;
+          } else if (code === 1) {
+            isBold = true;
+          } else if (code >= 30 && code <= 37) {
+            currentColorClass = `c-${code}`;
+          } else if (code >= 90 && code <= 97) {
+            currentColorClass = `c-${code}`;
+          }
+        }
+        lastIndex = regex.lastIndex;
+      }
+
+      const remaining = str.slice(lastIndex);
+      if (remaining) {
+        const escaped = escapeHtml(remaining);
+        const classes = [currentColorClass, isBold ? "t-bold" : ""].filter(Boolean).join(" ");
+        html += classes ? `<span class="${classes}">${escaped}</span>` : escaped;
+      }
+
+      return html;
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function renderActiveLines() {
+      // Fast DOM update: render all buffered lines
+      terminalScreen.innerHTML = lines
+        .map(line => `<div class="term-line">${ansiToHtml(line)}</div>`)
+        .join("");
+      scrollToBottom();
+    }
+
+    function processIncomingData(chunk) {
+      // Strip OSC Window Title sequences (\x1B]0;...\x07)
+      chunk = chunk.replace(/(\x1B\]|\x9D)[0-9;]*[^\x07\x1B\r\n]*(\x07|\x1B\\)?/g, "");
+      // Strip cursor hide/show/restore codes
+      chunk = chunk.replace(/\x1B\[\?[0-9]+[a-zA-Z]/g, "");
+
+      let lineUpdated = false;
+
+      for (let i = 0; i < chunk.length; i++) {
+        const ch = chunk[i];
+
+        if (ch === "\r") {
+          // If followed by \n, let \n create the new line
+          if (i + 1 < chunk.length && chunk[i + 1] === "\n") {
+            continue;
+          }
+          // Standalone carriage return (\r): Overwrite the current active line in-place!
+          lines[lines.length - 1] = "";
+          lineUpdated = true;
+        } else if (ch === "\n") {
+          // New line
+          lines.push("");
+          if (lines.length > MAX_LINES) lines.shift();
+          lineUpdated = true;
+        } else {
+          lines[lines.length - 1] += ch;
+          lineUpdated = true;
+        }
+      }
+
+      if (lineUpdated) {
+        renderActiveLines();
+      }
     }
 
     function connectWS() {
@@ -571,10 +453,7 @@
         const msg = JSON.parse(event.data);
         if (msg.type === "output") {
           currentSeq = msg.seq;
-          handleIncomingChunk(msg.data);
-        } else if (msg.type === "status") {
-          isSessionRunning = msg.state === "RUNNING";
-          updateSessionUI();
+          processIncomingData(msg.data);
         }
       };
 
@@ -586,82 +465,19 @@
       ws.onerror = () => ws.close();
     }
 
-    let currentAgentCard = null;
-    let currentAgentPre = null;
-
-    function handleIncomingChunk(raw) {
-      // Feed to raw terminal buffer regardless
-      rawTerminal.textContent += raw;
-      if (isRawMode) {
-        rawTerminal.scrollTop = rawTerminal.scrollHeight;
-      }
-
-      // Minimalist Clean Processing
-      const clean = sanitizeTerminalText(raw);
-      if (!clean.trim()) return;
-
-      // Filter out raw ASCII avatar noise or desktop divider lines
-      if (clean.includes("bagasss2077") || clean.includes("Downloads/GravityDesk") || clean.includes("Gemini 3.8 Flash")) {
-        agentStatusLine.innerText = "Active Model: Gemini 3.8 Flash (High)";
-        return;
-      }
-
-      // Detect confirmation prompts (e.g. [y/n] or Proceed?)
-      if (/(\[y\/n\]|\(y\/n\)|proceed\?|approve\?)/i.test(clean)) {
-        confirmMsg.innerText = clean.trim();
-        confirmBox.style.display = "flex";
-      } else if (confirmBox.style.display !== "none" && /(running|done|executing|cancelled)/i.test(clean)) {
-        confirmBox.style.display = "none";
-      }
-
-      // Skip lines that are purely horizontal dividers (----------------)
-      if (/^[-=_~]{4,}$/.test(clean.trim())) {
-        return;
-      }
-
-      // Append cleanly to current agent card
-      if (!currentAgentCard) {
-        currentAgentCard = document.createElement("div");
-        currentAgentCard.className = "msg-card agent-bubble";
-        currentAgentCard.innerHTML = `<div class="msg-header"><span>🤖 Anti-Gravity Response</span></div>`;
-        currentAgentPre = document.createElement("div");
-        currentAgentPre.className = "code-block";
-        currentAgentCard.appendChild(currentAgentPre);
-        messagesList.appendChild(currentAgentCard);
-      }
-
-      currentAgentPre.textContent += clean;
-      feedContainer.scrollTop = feedContainer.scrollHeight;
-    }
-
-    function handleSend() {
-      const text = promptInput.value.trim();
+    function sendPrompt() {
+      const text = termInput.value.trim();
       if (!text) return;
-
-      // Render clean user bubble in feed
-      const userBubble = document.createElement("div");
-      userBubble.className = "msg-card user-bubble";
-      userBubble.textContent = text;
-      messagesList.appendChild(userBubble);
-
-      // Reset agent card pointer so new output creates a fresh card
-      currentAgentCard = null;
-      currentAgentPre = null;
-      confirmBox.style.display = "none";
-
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "stdin", data: text + "\r\n" }));
+        termInput.value = "";
       }
-
-      promptInput.value = "";
-      feedContainer.scrollTop = feedContainer.scrollHeight;
     }
 
-    function sendPromptDirect(data) {
+    function sendInput(data) {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "stdin", data: data }));
       }
-      confirmBox.style.display = "none";
     }
 
     function sendSignal(sig) {
@@ -670,31 +486,17 @@
       }
     }
 
-    function clearFeed() {
-      messagesList.innerHTML = "";
-      rawTerminal.textContent = "";
-      currentAgentCard = null;
-      currentAgentPre = null;
+    function clearTerminal() {
+      lines = [""];
+      terminalScreen.innerHTML = "";
     }
 
-    function toggleViewMode() {
-      isRawMode = !isRawMode;
-      const btn = document.getElementById("view-mode-btn");
-      if (isRawMode) {
-        feedContainer.style.display = "none";
-        rawTerminal.style.display = "block";
-        btn.innerText = "✨ Clean UI";
-        rawTerminal.scrollTop = rawTerminal.scrollHeight;
-      } else {
-        rawTerminal.style.display = "none";
-        feedContainer.style.display = "flex";
-        btn.innerText = "🖥️ Raw View";
-        feedContainer.scrollTop = feedContainer.scrollHeight;
-      }
+    function scrollToBottom() {
+      terminalScreen.scrollTop = terminalScreen.scrollHeight;
     }
 
-    promptInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") handleSend();
+    termInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendPrompt();
     });
 
     // Telemetry Polling
@@ -704,55 +506,25 @@
         if (res.ok) {
           const d = await res.json();
           document.getElementById("v-cpu").innerText = `${d.cpu_percent}%`;
-          document.getElementById("v-ram").innerText = `${d.memory_percent}%`;
           if (d.battery) {
             const bolt = d.battery.is_charging ? "⚡" : "";
             document.getElementById("v-bat").innerText = `${bolt}${d.battery.percent}%`;
           }
-          if (d.active_session) {
-            isSessionRunning = d.active_session.is_alive;
-            updateSessionUI();
-            if (d.active_session.cwd && !activePath) {
-              activePath = d.active_session.cwd;
-              updateFolderDisplay(activePath);
-            }
+          if (d.active_session && d.active_session.cwd && !activePath) {
+            activePath = d.active_session.cwd;
+            updateFolderLabel(activePath);
           }
         }
       } catch (err) {}
     }
 
-    function updateFolderDisplay(path) {
-      const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
-      curFolderEl.innerText = name;
-      curFolderEl.title = path;
+    function updateFolderLabel(p) {
+      const name = p.split(/[\\/]/).filter(Boolean).pop() || p;
+      folderNameEl.innerText = name;
+      folderNameEl.title = p;
     }
 
-    function updateSessionUI() {
-      if (isSessionRunning) {
-        sessionBtn.innerText = "Stop";
-        sessionBtn.className = "session-toggle-btn btn-stop";
-        agentStatusLine.innerText = "Session Active";
-      } else {
-        sessionBtn.innerText = "Start";
-        sessionBtn.className = "session-toggle-btn btn-start";
-        agentStatusLine.innerText = "Session Stopped";
-      }
-    }
-
-    async function toggleSession() {
-      if (isSessionRunning) {
-        await fetch(`/api/session/stop?token=${token}`, { method: "POST" });
-      } else {
-        await fetch(`/api/session/start?token=${token}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cwd: activePath }),
-        });
-      }
-      fetchVitals();
-    }
-
-    // Voice STT
+    // Voice Input (Web Speech API)
     let recognition = null;
     let isRecording = false;
 
@@ -766,39 +538,39 @@
       recognition.onresult = (e) => {
         let t = "";
         for (let i = e.resultIndex; i < e.results.length; ++i) t += e.results[i][0].transcript;
-        promptInput.value = t;
+        termInput.value = t;
       };
-      recognition.onend = () => stopMic();
-      recognition.onerror = () => stopMic();
+      recognition.onend = () => stopVoice();
+      recognition.onerror = () => stopVoice();
     } else {
       micBtn.style.display = "none";
     }
 
-    function toggleMic() {
+    function toggleVoice() {
       if (!recognition) return;
       if (isRecording) {
         recognition.stop();
-        stopMic();
+        stopVoice();
       } else {
         recognition.start();
         isRecording = true;
         micBtn.classList.add("recording");
       }
     }
-    function stopMic() {
+    function stopVoice() {
       isRecording = false;
       micBtn.classList.remove("recording");
     }
 
-    // Workspace Modal
-    let modalNavPath = "";
-    async function openWorkspaceModal() {
-      document.getElementById("workspace-modal").classList.add("open");
+    // Folder Modal
+    let modalPath = "";
+    async function openFolderModal() {
+      document.getElementById("folder-modal").classList.add("open");
       loadFavorites();
       loadDirectory(activePath || "");
     }
-    function closeWorkspaceModal() {
-      document.getElementById("workspace-modal").classList.remove("open");
+    function closeFolderModal() {
+      document.getElementById("folder-modal").classList.remove("open");
     }
 
     async function loadFavorites() {
@@ -808,12 +580,13 @@
       listEl.innerHTML = "";
       favs.forEach((f) => {
         const div = document.createElement("div");
-        div.className = "folder-item";
-        div.innerHTML = `⭐ <b>${f.name}</b> <span style="font-size:11px;color:var(--text-muted);margin-left:auto">${f.path}</span>`;
+        div.className = "folder-row";
+        div.innerHTML = `⭐ <span>${f.name}</span> <span style="margin-left:auto;color:var(--text-muted);font-size:10px;">${f.path}</span>`;
         div.onclick = () => {
           activePath = f.path;
-          updateFolderDisplay(activePath);
-          closeWorkspaceModal();
+          updateFolderLabel(activePath);
+          closeFolderModal();
+          switchSessionDir(activePath);
         };
         listEl.appendChild(div);
       });
@@ -822,41 +595,51 @@
     async function loadDirectory(p) {
       const res = await fetch(`/api/workspaces?path=${encodeURIComponent(p)}&token=${token}`);
       const data = await res.json();
-      modalNavPath = data.current_path;
+      modalPath = data.current_path;
 
       const bcEl = document.getElementById("bc-bar");
       bcEl.innerHTML = "";
       data.breadcrumbs.forEach((b, i) => {
-        const span = document.createElement("span");
-        span.style.cursor = "pointer";
-        span.innerText = b.name + (i < data.breadcrumbs.length - 1 ? " / " : "");
-        span.onclick = () => loadDirectory(b.path);
-        bcEl.appendChild(span);
+        const s = document.createElement("span");
+        s.style.cursor = "pointer";
+        s.innerText = b.name + (i < data.breadcrumbs.length - 1 ? " / " : "");
+        s.onclick = () => loadDirectory(b.path);
+        bcEl.appendChild(s);
       });
 
       const dirEl = document.getElementById("dir-list");
       dirEl.innerHTML = "";
-      data.entries.forEach((entry) => {
+      data.entries.forEach((e) => {
         const div = document.createElement("div");
-        div.className = "folder-item";
-        div.innerHTML = `📁 <span>${entry.name}</span>`;
-        div.onclick = () => loadDirectory(entry.path);
+        div.className = "folder-row";
+        div.innerHTML = `📁 <span>${e.name}</span>`;
+        div.onclick = () => loadDirectory(e.path);
         dirEl.appendChild(div);
       });
     }
 
-    function chooseCurrentFolder() {
-      activePath = modalNavPath;
-      updateFolderDisplay(activePath);
-      closeWorkspaceModal();
+    async function switchSessionDir(p) {
+      await fetch(`/api/session/start?token=${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cwd: p }),
+      });
+      clearTerminal();
     }
 
-    async function toggleFavoritePin() {
-      await fetch(`/api/favorites/toggle?path=${encodeURIComponent(modalNavPath)}&token=${token}`, { method: "POST" });
+    function chooseCurrentFolder() {
+      activePath = modalPath;
+      updateFolderLabel(activePath);
+      closeFolderModal();
+      switchSessionDir(activePath);
+    }
+
+    async function toggleFavorite() {
+      await fetch(`/api/favorites/toggle?path=${encodeURIComponent(modalPath)}&token=${token}`, { method: "POST" });
       loadFavorites();
     }
 
-    // Init
+    // Initialize
     window.addEventListener("DOMContentLoaded", () => {
       connectWS();
       fetchVitals();
