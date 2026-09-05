@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from server.conversations import list_conversations
-from server.network import get_or_create_token, get_tailscale_or_lan_ip, print_ascii_qr
+from server.network import get_or_create_token, get_tailscale_or_lan_ip, print_ascii_qr, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import TerminalSession, hub
 from server.workspaces import get_favorites, list_directory, toggle_favorite
@@ -19,6 +19,12 @@ from server.workspaces import get_favorites, list_directory, toggle_favorite
 # Global State
 server_token: str = ""
 server_ip: str = ""
+
+
+def update_server_token(new_token: str) -> None:
+    """Dynamically updates active authentication token without restarting server."""
+    global server_token
+    server_token = new_token
 
 
 def display_startup_banner(ip: str, port: int, token: str) -> None:
@@ -214,6 +220,8 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
         hub.set_loop(loop)
 
     hub.add_listener(client_queue)
+    client_host = websocket.client.host if websocket.client else "Client"
+    hub.notify_event(f"Connected: {client_host}")
 
     # Initial status notification
     await websocket.send_json(
@@ -269,6 +277,7 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
     finally:
         sender_task.cancel()
         hub.remove_listener(client_queue)
+        hub.notify_event("Client disconnected")
 
 
 # Mount static directory for mobile web view

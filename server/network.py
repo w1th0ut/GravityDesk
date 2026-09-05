@@ -74,6 +74,27 @@ def get_or_create_token(env_path: str = ".env") -> str:
     return token
 
 
+def revoke_and_create_token(env_path: str = ".env") -> str:
+    """Generates a new 256-bit token and overwrites GRAVITYDESK_TOKEN in .env."""
+    token_key = "GRAVITYDESK_TOKEN"
+    new_token = secrets.token_hex(32)
+    lines = []
+    found = False
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip().startswith(f"{token_key}="):
+                    lines.append(f"{token_key}={new_token}\n")
+                    found = True
+                else:
+                    lines.append(line)
+    if not found:
+        lines.append(f"{token_key}={new_token}\n")
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+    return new_token
+
+
 def print_ascii_qr(payload: str) -> None:
     """Prints a clear ASCII QR code directly into the terminal console."""
     qr = qrcode.QRCode(border=1)

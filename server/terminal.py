@@ -183,7 +183,20 @@ class SessionHub:
         self.lock = threading.Lock()
         self.running_subprocess: Optional[subprocess.Popen] = None
         self.active_conversation_id: Optional[str] = None
+        self.event_callbacks: list = []
         self._seed_initial_banner()
+
+    def add_event_callback(self, cb) -> None:
+        """Registers a callback for desktop GUI activity logs."""
+        self.event_callbacks.append(cb)
+
+    def notify_event(self, text: str) -> None:
+        """Dispatches an event description to registered GUI listeners."""
+        for cb in self.event_callbacks:
+            try:
+                cb(text)
+            except Exception:
+                pass
 
     def _seed_initial_banner(self) -> None:
         banner = (
@@ -292,18 +305,23 @@ class SessionHub:
             self.active_session = None
 
         self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Workspace: {clean_dir}\r\n\x1b[32mprompt>\x1b[0m ")
+        self.notify_event(f"Workspace set to: {os.path.basename(clean_dir)}")
 
     def resume_conversation(self, conv_id: str, title: str = "") -> None:
         """Switches active conversation target for subsequent prompts."""
         self.active_conversation_id = conv_id if conv_id != "new" else None
         label = title or (f"Chat {conv_id[:8]}" if conv_id != "new" else "New Chat")
         self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Resumed chat: {label}\r\n\x1b[32mprompt>\x1b[0m ")
+        self.notify_event(f"Resumed conversation: {label}")
 
     def send_input(self, data: str) -> None:
         """Processes user input, routing prompts to agy and shell commands to cmd."""
         clean_text = data.strip()
         if not clean_text:
             return
+
+        preview = clean_text if len(clean_text) <= 45 else clean_text[:42] + "..."
+        self.notify_event(f"User prompt: {preview}")
 
         # 1. Echo prompt to terminal stream with Thinking indicator (overwriting idle prompt>)
         self.broadcast_chunk(f"\r\x1b[32mprompt>\x1b[0m {clean_text}\r\n\x1b[36mAGY>\x1b[0m \x1b[33mThinking...\x1b[0m\r\n")
