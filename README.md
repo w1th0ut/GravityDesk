@@ -23,7 +23,7 @@
 - 🖥️ **Modern Desktop GUI Control Center**: Clean dark-mode Tkinter management window showing host status, detected Tailscale IPv4, dynamic high-resolution QR pairing code, 1-click token copy, workspace picker, and real-time activity log.
 - ⚡ **Zero-Lag ConPTY Virtual Terminal**: Native Windows Pseudo Console (`pywinpty`) integration streaming ANSI output directly over WebSocket with a 3,000-chunk ring buffer for lossless session catch-up.
 - 🧠 **Google Antigravity (`agy`) First-Class Citizen**: Autonomous session continuity with `--dangerously-skip-permissions`, mobile-responsive ASCII welcome banner, and real-time conversation resume synchronized directly with local Antigravity SQLite storage.
-- 📱 **Mobile-Optimized PWA & Native Client**: Auto-expanding WhatsApp-style multiline prompt input, native Android voice-to-text dictation, quick signals (`Ctrl+C`, `Enter`), and live workstation vitals (CPU %, RAM %, Battery %, Charging status).
+- 📱 **Native Android Companion App**: Auto-expanding WhatsApp-style multiline prompt input, native Android voice-to-text dictation, quick signals (`Ctrl+C`), and live workstation vitals (CPU %, RAM %, Battery %, Charging status).
 - 🚫 **Instant Access Revocation**: One-click 256-bit cryptographic token rotation instantly locks out stale or lost mobile sessions and invalidates active connections in real time.
 - 🔒 **Zero-Trust Defense-in-Depth**: Operates exclusively over encrypted Tailscale WireGuard mesh tunnels, timing-safe authentication (`hmac.compare_digest`), path-traversal safeguards, and strict command execution allowlists.
 - 🔋 **Windows Sleep Inhibit**: Prevents host laptops from entering standby or suspend mode during active remote sessions using the native Win32 API (`kernel32.SetThreadExecutionState`).
@@ -36,7 +36,6 @@
 | **Host Workstation** | Windows 10 / 11, Python 3.12+, Tkinter, Pillow, Win32 API |
 | **Backend Daemon** | FastAPI, Uvicorn, `pywinpty`, `psutil`, `qrcode`, SQLite |
 | **Networking** | Tailscale (WireGuard Mesh), WebSocket (`/ws/terminal`), HTTP REST |
-| **Mobile PWA** | Vanilla HTML5 / ES6 Modules, Virtualized ANSI Renderer, Web Speech API |
 | **Mobile Native** | React Native, Expo, TypeScript, `expo-secure-store` |
 | **Target Engine** | Google Antigravity CLI (`agy`) |
 
@@ -138,9 +137,7 @@ GravityDesk/
 │   ├── network.py             # Tailscale IP resolver, token generator & QR
 │   ├── conversations.py       # AGY SQLite resume & session sync
 │   ├── workspaces.py          # Directory explorer & path safety validation
-│   ├── gui.py                 # Desktop GUI Control Center (Tkinter)
-│   └── static/
-│       └── index.html         # Responsive mobile PWA terminal interface
+│   └── gui.py                 # Desktop GUI Control Center (Tkinter)
 ├── mobile/                    # React Native / Expo client bounded context
 │   ├── App.tsx                # Main mobile application entrypoint
 │   └── src/                   # Native components, hooks, and secure storage

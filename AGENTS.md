@@ -14,7 +14,6 @@ Consult [`server/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/serve
 ┌──────────────────────────────────────────────────────────┐
 │                   Mobile Client (Android)                │
 │   • Expo / React Native App (`mobile/`)                  │
-│   • Web PWA Terminal (`server/static/index.html`)        │
 │   • Native Voice-to-Text & Quick Action Bar              │
 └────────────────────────────┬─────────────────────────────┘
                              │  Tailscale Mesh (WireGuard)
@@ -38,10 +37,9 @@ Consult [`server/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/serve
 
 | Subsystem | Root Path | Primary Responsibilities | Domain Reference |
 |---|---|---|---|
-| **Backend Daemon** | [`server/`](file:///C:/Users/bagas/Downloads/GravityDesk/server) | FastAPI REST/WebSocket endpoints, ConPTY runner, Tailscale resolver, process supervisor, system vitals, sleep inhibitor. | [`server/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/server/CONTEXT.md) |
+| **Backend Daemon** | [`server/`](file:///C:/Users/bagas/Downloads/GravityDesk/server) | FastAPI REST/WebSocket endpoints, ConPTY runner, Tailscale resolver, process supervisor, system vitals, sleep inhibitor. | [`server/main.py`](file:///C:/Users/bagas/Downloads/GravityDesk/server/main.py) |
 | **Desktop Control Center** | [`gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/gui.py), [`server/gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/server/gui.py) | Modern Tkinter desktop dashboard, dynamic QR Code pairing, 1-click token copy, workspace directory picker, Instant Access Revocation. | [`server/gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/server/gui.py) |
-| **Mobile Client** | [`mobile/`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile) | React Native (Expo) TypeScript application, Android native voice dictation, virtualized ANSI terminal renderer. | [`mobile/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile/CONTEXT.md) |
-| **PWA Web Terminal** | [`server/static/index.html`](file:///C:/Users/bagas/Downloads/GravityDesk/server/static/index.html) | Zero-install web client, WhatsApp-style multiline input, ASCII AGY welcome banner, ANSI terminal rendering, auto-reconnect. | [`server/static/index.html`](file:///C:/Users/bagas/Downloads/GravityDesk/server/static/index.html) |
+| **Mobile Client** | [`mobile/`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile) | React Native (Expo) TypeScript application, Android native voice dictation, virtualized ANSI terminal renderer. | [`mobile/src/screens/TerminalScreen.tsx`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile/src/screens/TerminalScreen.tsx) |
 | **Integration Tests** | [`tests/`](file:///C:/Users/bagas/Downloads/GravityDesk/tests) | End-to-end security, token entropy, ConPTY lifecycle, and endpoint contracts. | [`tests/test_server.py`](file:///C:/Users/bagas/Downloads/GravityDesk/tests/test_server.py) |
 
 ---

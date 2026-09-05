@@ -118,7 +118,7 @@ export default function App() {
           )}
         </View>
 
-        {/* Floating Capsule Bottom Navigation Bar (Exact 1:1 match with PWA) */}
+        {/* Floating Capsule Bottom Navigation Bar */}
         <View style={styles.floatingNavContainer} pointerEvents="box-none">
           <View style={styles.capsuleNav}>
             {/* Tab 1: Home */}
