@@ -372,11 +372,7 @@ const styles = StyleSheet.create({
   deviceIdentityRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1e1e1e",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#262626",
+    paddingVertical: 4,
     gap: 12,
   },
   deviceInfoText: {
