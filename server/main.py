@@ -3,6 +3,7 @@ import asyncio
 import collections
 from contextlib import asynccontextmanager
 import os
+from pathlib import Path
 import secrets
 import sys
 import threading
@@ -101,7 +102,7 @@ async def lifespan(app: FastAPI):
 
     loop = asyncio.get_running_loop()
     hub.set_loop(loop)
-    hub.current_cwd = os.getcwd()
+    hub.current_cwd = os.environ.get("DEFAULT_WORKSPACE", str(Path.home()))
 
     # Inhibit Windows Sleep while daemon is active
     enable_sleep_inhibit()
@@ -340,7 +341,7 @@ async def select_conversation(
 @app.post("/api/session/start")
 async def start_session(req: SessionStartRequest, _: str = Depends(verify_token)):
     """Spawns an interactive CLI session inside Windows PTY."""
-    target_cwd = req.cwd or hub.current_cwd or os.getcwd()
+    target_cwd = req.cwd or hub.current_cwd or os.environ.get("DEFAULT_WORKSPACE", str(Path.home()))
     try:
         session = hub.start_session(cwd=target_cwd, command=req.command)
     except ValueError as val_err:

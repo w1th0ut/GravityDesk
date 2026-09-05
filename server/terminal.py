@@ -1,6 +1,7 @@
 import asyncio
 import collections
 import os
+from pathlib import Path
 import re
 import shutil
 import subprocess
@@ -176,7 +177,7 @@ class SessionHub:
     def __init__(self, capacity: int = 3000):
         self.active_session: Optional[TerminalSession] = None
         self.listeners: Set[asyncio.Queue] = set()
-        self.current_cwd: str = os.getcwd()
+        self.current_cwd: str = os.environ.get("DEFAULT_WORKSPACE", str(Path.home()))
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.ring_buffer = collections.deque(maxlen=capacity)
         self.current_seq = 0
