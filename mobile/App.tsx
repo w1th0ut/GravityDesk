@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,6 +13,7 @@ import { useTerminalSocket } from "./src/hooks/useTerminalSocket";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { TerminalScreen } from "./src/screens/TerminalScreen";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { clearCredentials } from "./src/storage/credentials";
 
 type TabKey = "home" | "terminal";
 
@@ -58,7 +59,16 @@ const TerminalNavIcon: React.FC<{ color: string; size?: number }> = ({ color, si
 );
 
 export default function App() {
-  const { health, isConnected, isChecking, refresh } = useLaptopVitals(3000);
+  const [currentTab, setCurrentTab] = useState<TabKey>("home");
+  const [revocationCount, setRevocationCount] = useState<number>(0);
+
+  const handleRevocation = useCallback(async () => {
+    await clearCredentials();
+    setCurrentTab("home");
+    setRevocationCount((c) => c + 1);
+  }, []);
+
+  const { health, isConnected, isChecking, refresh } = useLaptopVitals(3000, handleRevocation);
   const {
     logs,
     isWsConnected,
@@ -67,9 +77,7 @@ export default function App() {
     sendSignal,
     clearLogs,
     reconnect,
-  } = useTerminalSocket(50);
-
-  const [currentTab, setCurrentTab] = useState<TabKey>("home");
+  } = useTerminalSocket(50, handleRevocation);
 
   const handleConnectionChanged = () => {
     refresh();
@@ -91,6 +99,7 @@ export default function App() {
               onRefresh={refresh}
               onNavigateToTerminal={() => setCurrentTab("terminal")}
               onConnectionChanged={handleConnectionChanged}
+              revocationCount={revocationCount}
             />
           ) : (
             <TerminalScreen

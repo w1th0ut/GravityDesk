@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ interface Props {
   onRefresh: () => Promise<void>;
   onNavigateToTerminal: () => void;
   onConnectionChanged: () => void;
+  revocationCount?: number;
 }
 
 export const HomeScreen: React.FC<Props> = ({
@@ -33,6 +34,7 @@ export const HomeScreen: React.FC<Props> = ({
   onRefresh,
   onNavigateToTerminal,
   onConnectionChanged,
+  revocationCount,
 }) => {
   const [hostUrl, setHostUrl] = useState("");
   const [token, setToken] = useState("");
@@ -42,19 +44,39 @@ export const HomeScreen: React.FC<Props> = ({
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [showScanner, setShowScanner] = useState(false);
 
+  const syncCredentials = useCallback(async () => {
+    const creds = await loadCredentials();
+    if (creds && creds.token && creds.hostUrl) {
+      setHostUrl(creds.hostUrl);
+      setToken(creds.token);
+      if (creds.deviceId) setDeviceId(creds.deviceId);
+      if (creds.deviceName) setDeviceName(creds.deviceName);
+    } else {
+      setHostUrl("");
+      setToken("");
+    }
+  }, []);
+
   useEffect(() => {
     getOrCreateDeviceId().then(setDeviceId);
     setDeviceName(getDeviceName());
+    syncCredentials();
+  }, [syncCredentials]);
 
-    loadCredentials().then((creds) => {
-      if (creds) {
-        setHostUrl(creds.hostUrl);
-        setToken(creds.token);
-        if (creds.deviceId) setDeviceId(creds.deviceId);
-        if (creds.deviceName) setDeviceName(creds.deviceName);
-      }
-    });
-  }, []);
+  useEffect(() => {
+    syncCredentials();
+  }, [isConnected, syncCredentials]);
+
+  useEffect(() => {
+    if (revocationCount && revocationCount > 0) {
+      setHostUrl("");
+      setToken("");
+      setStatusMsg({
+        type: "error",
+        text: "Device access has been revoked by the host. Please scan the pairing QR code to reconnect.",
+      });
+    }
+  }, [revocationCount]);
 
 
   const handleQRSuccess = async (scannedHost: string, scannedToken: string) => {
@@ -95,7 +117,9 @@ export const HomeScreen: React.FC<Props> = ({
     }
   };
 
-  const isPaired = isConnected || !!token;
+  const isPaired = isConnected && !!token;
+  const badgeText = isConnected ? "REGISTERED" : token ? "PAIRED" : "READY TO PAIR";
+  const badgeColor = isConnected ? "#3fb950" : token ? "#d29922" : "#8b949e";
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -171,8 +195,8 @@ export const HomeScreen: React.FC<Props> = ({
             </Text>
           </View>
           <View style={styles.deviceBadge}>
-            <Text style={styles.deviceBadgeText}>
-              {isConnected ? "REGISTERED" : token ? "PAIRED" : "READY TO PAIR"}
+            <Text style={[styles.deviceBadgeText, { color: badgeColor }]}>
+              {badgeText}
             </Text>
           </View>
         </View>

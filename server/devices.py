@@ -151,6 +151,35 @@ def revoke_device(device_id: str, filepath: str = DEVICES_FILE) -> Optional[Dict
     return target_device
 
 
+def revoke_all_devices(filepath: str = DEVICES_FILE) -> List[Dict[str, Any]]:
+    """Revokes access for all currently active devices."""
+    revoked_list: List[Dict[str, Any]] = []
+    now_iso = time.strftime("%Y-%m-%d %H:%M:%S")
+
+    with _lock:
+        if not os.path.exists(filepath):
+            return []
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                devices = json.load(f)
+        except Exception:
+            return []
+
+        for d in devices:
+            if d.get("status") == "active":
+                d["status"] = "revoked"
+                d["last_seen"] = now_iso
+                revoked_list.append(d)
+
+        if revoked_list:
+            _save_devices_locked(devices, filepath)
+
+    for dev in revoked_list:
+        _notify_listeners("revoked", dev)
+
+    return revoked_list
+
+
 def is_device_authorized(device_id: Optional[str], filepath: str = DEVICES_FILE) -> bool:
     """
     Checks if device exists and has 'active' status.

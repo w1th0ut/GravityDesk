@@ -12,8 +12,21 @@ import psutil
 import qrcode
 import uvicorn
 
-from server.devices import add_device_listener, delete_device, get_devices, rename_device, revoke_device
-from server.main import app, get_online_device_ids, kick_device_sockets, update_server_token
+from server.devices import (
+    add_device_listener,
+    delete_device,
+    get_devices,
+    rename_device,
+    revoke_all_devices,
+    revoke_device,
+)
+from server.main import (
+    app,
+    get_online_device_ids,
+    kick_all_device_sockets,
+    kick_device_sockets,
+    update_server_token,
+)
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import hub
@@ -398,10 +411,14 @@ class GravityDeskGUI:
             return
 
         revoke_device(dev_id)
-        delete_device(dev_id)
         kick_device_sockets(dev_id)
-        self.log_event(f"Device '{dev_name}' access revoked and removed.")
+        self.log_event(f"Device '{dev_name}' access revoked and disconnected.")
         self.refresh_devices_ui(force=True)
+        active_devs = [d for d in get_devices() if d.get("status") == "active"]
+        online_count = len(get_online_device_ids())
+        if hasattr(self, "clients_lbl"):
+            self.clients_lbl.config(text=f"{len(active_devs)} registered ({online_count} online)")
+
 
     def _build_session_card(self, parent):
         card = tk.Frame(parent, bg=C_CARD, highlightthickness=1, highlightbackground=C_BORDER)
@@ -611,7 +628,7 @@ class GravityDeskGUI:
         confirm = messagebox.askyesno(
             "Revoke Pairing Token",
             "Are you sure you want to revoke the current pairing token?\n\n"
-            "This generates a fresh token and immediately blocks existing unverified sessions until re-scanned.",
+            "This generates a fresh 256-bit token and immediately revokes all registered devices and active sessions.",
             icon="warning",
         )
         if not confirm:
@@ -619,8 +636,14 @@ class GravityDeskGUI:
 
         self.token = revoke_and_create_token()
         update_server_token(self.token)
+        revoke_all_devices()
+        kick_all_device_sockets()
         self.update_qr()
-        self.log_event("Pairing token revoked. Generated new access key.")
+        self.refresh_devices_ui(force=True)
+        active_devs = [d for d in get_devices() if d.get("status") == "active"]
+        if hasattr(self, "clients_lbl"):
+            self.clients_lbl.config(text=f"{len(active_devs)} registered (0 online)")
+        self.log_event("Pairing token revoked. All devices disconnected. Generated new access key.")
 
     def change_workspace(self):
         target = filedialog.askdirectory(initialdir=hub.current_cwd, title="Select Project Directory")

@@ -244,6 +244,41 @@ def test_device_pairing_and_revocation():
         assert not any(d["id"] == test_device_id for d in list_after.json())
 
 
+def test_revoke_all_devices():
+    """Verifies that revoke_all_devices marks all active devices as revoked and blocks them."""
+    from server.devices import get_devices, pair_device, revoke_all_devices, delete_device
+    token = get_or_create_token()
+    dev1 = "test-mass-revoke-1"
+    dev2 = "test-mass-revoke-2"
+
+    pair_device(dev1, "Device 1", "android", "127.0.0.1")
+    pair_device(dev2, "Device 2", "android", "127.0.0.1")
+
+    try:
+        active_before = [d for d in get_devices() if d.get("status") == "active"]
+        assert any(d["id"] == dev1 for d in active_before)
+        assert any(d["id"] == dev2 for d in active_before)
+
+        # Execute mass revocation
+        revoked = revoke_all_devices()
+        assert len(revoked) >= 2
+
+        active_after = [d for d in get_devices() if d.get("status") == "active"]
+        assert not any(d["id"] == dev1 for d in active_after)
+        assert not any(d["id"] == dev2 for d in active_after)
+
+        # Test API rejection
+        with TestClient(app) as client:
+            res1 = client.get(f"/api/health?token={token}", headers={"X-Device-Id": dev1})
+            assert res1.status_code == 403
+            res2 = client.get(f"/api/health?token={token}", headers={"X-Device-Id": dev2})
+            assert res2.status_code == 403
+    finally:
+        delete_device(dev1)
+        delete_device(dev2)
+
+
+
 if __name__ == "__main__":
     print("Running Hardened Architecture & Security Test Suite...")
     test_token_entropy()

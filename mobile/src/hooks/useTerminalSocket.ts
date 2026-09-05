@@ -12,7 +12,10 @@ export interface UseTerminalSocketReturn {
   reconnect: () => void;
 }
 
-export function useTerminalSocket(batchIntervalMs: number = 50): UseTerminalSocketReturn {
+export function useTerminalSocket(
+  batchIntervalMs: number = 50,
+  onRevoked?: () => void
+): UseTerminalSocketReturn {
   const [logs, setLogs] = useState<string[]>([]);
   const [isWsConnected, setIsWsConnected] = useState<boolean>(false);
   const [isSessionRunning, setIsSessionRunning] = useState<boolean>(false);
@@ -73,6 +76,7 @@ export function useTerminalSocket(batchIntervalMs: number = 50): UseTerminalSock
           const msg: any = JSON.parse(event.data);
           if (msg.type === "revoked") {
             setIsWsConnected(false);
+            onRevoked?.();
             return;
           }
           if (msg.type === "output") {
@@ -97,8 +101,9 @@ export function useTerminalSocket(batchIntervalMs: number = 50): UseTerminalSock
       socket.onclose = (event: any) => {
         setIsWsConnected(false);
         wsRef.current = null;
-        if (event && event.code === 4001) {
-          // Device access was revoked by host
+        if (event && (event.code === 4001 || event.code === 1008)) {
+          // Device access was revoked by host or unauthorized
+          onRevoked?.();
           return;
         }
         // Schedule auto-reconnect
@@ -116,7 +121,7 @@ export function useTerminalSocket(batchIntervalMs: number = 50): UseTerminalSock
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = setTimeout(connect, 3000);
     }
-  }, [batchIntervalMs, flushBuffer]);
+  }, [batchIntervalMs, flushBuffer, onRevoked]);
 
   useEffect(() => {
     connect();

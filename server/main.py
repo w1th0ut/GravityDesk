@@ -61,6 +61,21 @@ def kick_device_sockets(device_id: str) -> None:
             asyncio.run_coroutine_threadsafe(_close_socket_async(ws), hub.loop)
 
 
+def kick_all_device_sockets() -> None:
+    """Closes all active streaming WebSocket connections across all devices."""
+    with sockets_lock:
+        all_sockets: List[WebSocket] = []
+        for sockets in active_device_sockets.values():
+            all_sockets.extend(sockets)
+        active_device_sockets.clear()
+
+    notify_device_event("disconnected_all", {})
+
+    for ws in all_sockets:
+        if hub.loop and hub.loop.is_running():
+            asyncio.run_coroutine_threadsafe(_close_socket_async(ws), hub.loop)
+
+
 async def _close_socket_async(ws: WebSocket) -> None:
     try:
         await ws.send_json({"type": "revoked", "message": "Akses perangkat telah dicabut dari host."})
