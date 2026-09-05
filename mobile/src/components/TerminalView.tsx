@@ -41,6 +41,16 @@ const ANSI_COLOR_MAP: Record<number, string> = {
   97: "#ffffff",
 };
 
+function cleanChunkText(raw: string): string {
+  return raw
+    .replace(/Microsoft Windows \[Version[^\]]+\]/gi, "")
+    .replace(/\(c\) Microsoft Corporation[^\r\n]*/gi, "")
+    .replace(/All rights reserved[^\r\n]*/gi, "")
+    .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "");
+}
+
 /**
  * Deep ANSI SGR State Machine Parser matching index.html.
  * Transforms raw ANSI escape strings into structured, colored spans.
@@ -57,11 +67,14 @@ function parseAnsiToSpans(rawChunk: string): StyledSpan[] {
   while ((match = regex.exec(rawChunk)) !== null) {
     const textBefore = rawChunk.slice(lastIndex, match.index);
     if (textBefore) {
-      spans.push({
-        text: textBefore.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, ""),
-        color: currentColor,
-        bold: isBold,
-      });
+      const clean = cleanChunkText(textBefore);
+      if (clean) {
+        spans.push({
+          text: clean,
+          color: currentColor,
+          bold: isBold,
+        });
+      }
     }
 
     const codeStr = match[1];
@@ -87,11 +100,14 @@ function parseAnsiToSpans(rawChunk: string): StyledSpan[] {
 
   const remaining = rawChunk.slice(lastIndex);
   if (remaining) {
-    spans.push({
-      text: remaining.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, ""),
-      color: currentColor,
-      bold: isBold,
-    });
+    const clean = cleanChunkText(remaining);
+    if (clean) {
+      spans.push({
+        text: clean,
+        color: currentColor,
+        bold: isBold,
+      });
+    }
   }
 
   return spans;
@@ -158,17 +174,22 @@ export const TerminalView = forwardRef<TerminalViewRef, Props>(
           }}
           ListEmptyComponent={
             <View style={styles.emptyBanner}>
-              <Text style={styles.bannerAscii}>
-{`   ____                 _ _         ____            _    
-  / ___|_ __ __ ___   _(_) |_ _   _|  _ \\  ___  ___| | __
- | |  _| '__/ _\` \\ \\ / / | __| | | | | | |/ _ \\/ __| |/ /
- | |_| | | | (_| |\\ V /| | |_| |_| | |_| |  __/\\__ \\   < 
-  \\____|_|  \\__,_| \\_/ |_|\\__|\\__, |____/ \\___||___/_|\\_\\
-                              |___/                      `}
+              <Text style={styles.bannerAgyAscii}>
+{`  █████   ██████  ██    ██
+ ██   ██ ██        ██  ██ 
+ ███████ ██  ███    ████  
+ ██   ██ ██    ██    ██   
+ ██   ██  ██████     ██   `}
               </Text>
-              <Text style={styles.bannerStatus}>[+] AGY Ready • Host Stream Active</Text>
-              <Text style={styles.bannerSub}>
-                Type your prompt or select an action below to begin.
+              <Text style={styles.bannerDivider}>──────────────────────────────</Text>
+              <Text style={styles.bannerTitle}>
+                <Text style={styles.cyanText}>Anti-Gravity</Text>
+                <Text style={styles.whiteText}> (AGY) Remote CLI</Text>
+              </Text>
+              <Text style={styles.bannerSubtitle}>Ready for prompts & commands.</Text>
+              <Text style={styles.bannerPrompt}>
+                <Text style={styles.greenText}>prompt&gt;</Text>
+                <Text style={styles.whiteText}> </Text>
               </Text>
             </View>
           }
@@ -208,28 +229,47 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   emptyBanner: {
-    paddingVertical: 16,
-    paddingHorizontal: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 0,
   },
-  bannerAscii: {
+  bannerAgyAscii: {
     fontFamily: "monospace",
-    fontSize: 9,
-    lineHeight: 12,
-    color: "#58a6ff",
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: "#39c5cf",
     fontWeight: "700",
   },
-  bannerStatus: {
+  bannerDivider: {
     fontFamily: "monospace",
-    fontSize: 11,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: "#6e7681",
+  },
+  bannerTitle: {
+    fontFamily: "monospace",
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
+  cyanText: {
+    color: "#39c5cf",
+  },
+  whiteText: {
+    color: "#e6edf3",
+  },
+  bannerSubtitle: {
+    fontFamily: "monospace",
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: "#6e7681",
+    marginBottom: 16,
+  },
+  bannerPrompt: {
+    fontFamily: "monospace",
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
+  greenText: {
     color: "#3fb950",
-    fontWeight: "700",
-    marginTop: 10,
-  },
-  bannerSub: {
-    fontFamily: "monospace",
-    fontSize: 11,
-    color: "#737373",
-    marginTop: 4,
   },
 });
 

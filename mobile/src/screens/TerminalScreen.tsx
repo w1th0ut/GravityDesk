@@ -156,7 +156,10 @@ export const TerminalScreen: React.FC<Props> = ({
       <PromptBar
         onSendInput={sendInput}
         onSendSignal={sendSignal}
-        onClearLogs={clearLogs}
+        onClearLogs={() => {
+          clearLogs();
+          terminalRef.current?.scrollToBottom();
+        }}
         onScrollToBottom={() => terminalRef.current?.scrollToBottom()}
       />
 

@@ -69,7 +69,18 @@ export function processIncomingData(chunk) {
 }
 
 export function clearTerminal() {
-  state.lines = ["\x1b[32mprompt>\x1b[0m "];
+  state.lines = [
+    "\x1b[36m  █████   ██████  ██    ██\x1b[0m",
+    "\x1b[36m ██   ██ ██        ██  ██ \x1b[0m",
+    "\x1b[36m ███████ ██  ███    ████  \x1b[0m",
+    "\x1b[36m ██   ██ ██    ██    ██   \x1b[0m",
+    "\x1b[36m ██   ██  ██████     ██   \x1b[0m",
+    "\x1b[90m──────────────────────────────\x1b[0m",
+    "\x1b[36mAnti-Gravity\x1b[0m \x1b[37m(AGY) Remote CLI\x1b[0m",
+    "\x1b[90mReady for prompts & commands.\x1b[0m",
+    "",
+    "\x1b[32mprompt>\x1b[0m "
+  ];
   renderActiveLines();
 }
 

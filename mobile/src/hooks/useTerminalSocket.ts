@@ -12,6 +12,17 @@ export interface UseTerminalSocketReturn {
   reconnect: () => void;
 }
 
+export const AGY_BANNER =
+  "\x1b[36m  █████   ██████  ██    ██\x1b[0m\r\n" +
+  "\x1b[36m ██   ██ ██        ██  ██ \x1b[0m\r\n" +
+  "\x1b[36m ███████ ██  ███    ████  \x1b[0m\r\n" +
+  "\x1b[36m ██   ██ ██    ██    ██   \x1b[0m\r\n" +
+  "\x1b[36m ██   ██  ██████     ██   \x1b[0m\r\n" +
+  "\x1b[90m──────────────────────────────\x1b[0m\r\n" +
+  "\x1b[36mAnti-Gravity\x1b[0m \x1b[37m(AGY) Remote CLI\x1b[0m\r\n" +
+  "\x1b[90mReady for prompts & commands.\x1b[0m\r\n\r\n" +
+  "\x1b[32mprompt>\x1b[0m ";
+
 export function useTerminalSocket(
   batchIntervalMs: number = 50,
   onRevoked?: () => void
@@ -148,7 +159,7 @@ export function useTerminalSocket(
   }, []);
 
   const clearLogs = useCallback(() => {
-    setLogs([]);
+    setLogs([AGY_BANNER]);
     bufferRef.current = [];
   }, []);
 
