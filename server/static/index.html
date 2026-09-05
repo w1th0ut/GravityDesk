@@ -523,22 +523,22 @@
         </div>
       </div>
 
-      <!-- Pairing & Config Card -->
+      <!-- Device Identity & Pairing Card -->
       <div class="dash-card">
-        <div class="dash-card-title">📱 Info Pairing Host</div>
-        <div class="dash-card-desc">Scan QR Code desktop atau masukkan URL dan Token untuk menghubungkan konsol:</div>
-
-        <div>
-          <div class="input-lbl">Laptop Host URL:</div>
-          <input type="text" id="home-host-input" class="term-input" style="width:100%;margin-bottom:8px;" />
+        <div class="dash-card-title">📱 Identitas Perangkat Ini</div>
+        <div style="display:flex;align-items:center;background:#0d1117;padding:10px 12px;border-radius:8px;border:1px solid #21262d;margin:8px 0;gap:10px;">
+          <div style="font-size:20px;">💻</div>
+          <div style="flex:1;">
+            <div id="web-dev-name" style="font-size:13px;font-weight:700;color:#ffffff;">Web Browser</div>
+            <div id="web-dev-id" style="font-size:10.5px;color:var(--accent);font-family:monospace;margin-top:2px;">ID: Menghasilkan ID...</div>
+          </div>
+          <div style="background:#21262d;border:1px solid #30363d;padding:3px 7px;border-radius:4px;font-size:9px;font-weight:700;color:var(--success);" id="web-dev-status">
+            SIAP PAIR
+          </div>
         </div>
+        <div class="dash-card-desc">Scan QR Code desktop untuk pairing otomatis tanpa perlu mengetik Host URL atau Token manual:</div>
 
-        <div>
-          <div class="input-lbl">Auth Token (256-bit):</div>
-          <input type="text" id="home-token-input" class="term-input" style="width:100%;margin-bottom:8px;" />
-        </div>
-
-        <button class="key-btn" style="width:100%;padding:10px;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="triggerQrScan()">
+        <button class="key-btn" style="width:100%;padding:12px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--success);color:#ffffff;" onclick="triggerQrScan()">
           📷 Scan QR Code Pairing
         </button>
         <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleQrImage(event)" />
@@ -669,6 +669,59 @@
     let activePath = "";
     let token = new URLSearchParams(window.location.search).get("token") || "";
 
+    function getWebDeviceId() {
+      let id = localStorage.getItem("gravitydesk_web_device_id");
+      if (!id) {
+        id = "web-" + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem("gravitydesk_web_device_id", id);
+      }
+      return id;
+    }
+
+    function getWebDeviceName() {
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      return isMobile ? "Mobile Web Browser" : "Desktop Web Browser";
+    }
+
+    async function registerWebDevice() {
+      const devNameEl = document.getElementById("web-dev-name");
+      const devIdEl = document.getElementById("web-dev-id");
+      const devStatusEl = document.getElementById("web-dev-status");
+      const did = getWebDeviceId();
+      const dname = getWebDeviceName();
+      if (devNameEl) devNameEl.innerText = dname;
+      if (devIdEl) devIdEl.innerText = `ID: ${did.slice(0, 12)}...`;
+
+      if (!token) {
+        if (devStatusEl) {
+          devStatusEl.innerText = "SIAP PAIR";
+          devStatusEl.style.color = "var(--warning)";
+        }
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/devices/pair`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            device_id: did,
+            device_name: dname,
+            platform: "web",
+            pair_token: token,
+          }),
+        });
+        if (res.ok) {
+          if (devStatusEl) {
+            devStatusEl.innerText = "TERDAFTAR";
+            devStatusEl.style.color = "var(--success)";
+          }
+        }
+      } catch (e) {
+        console.warn("Device registration error:", e);
+      }
+    }
+
     const terminalScreen = document.getElementById("terminal-screen");
     const statusDot = document.getElementById("status-dot");
     const folderNameEl = document.getElementById("folder-name");
@@ -793,7 +846,8 @@
     function connectWS() {
       const loc = window.location;
       const proto = loc.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${proto}//${loc.host}/ws/terminal?token=${token}`;
+      const devId = getWebDeviceId();
+      const wsUrl = `${proto}//${loc.host}/ws/terminal?token=${token}&device_id=${encodeURIComponent(devId)}`;
 
       ws = new WebSocket(wsUrl);
 
@@ -805,6 +859,15 @@
 
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
+        if (msg.type === "revoked") {
+          setTerminalActiveState(false);
+          const devStatusEl = document.getElementById("web-dev-status");
+          if (devStatusEl) {
+            devStatusEl.innerText = "DICABUT";
+            devStatusEl.style.color = "var(--danger)";
+          }
+          return;
+        }
         if (msg.type === "output") {
           const sendBtn = document.getElementById("send-btn");
           if (sendBtn && sendBtn.innerText === "Thinking...") {
@@ -817,9 +880,17 @@
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         statusDot.className = "status-dot";
         setTerminalActiveState(false);
+        if (event && event.code === 4001) {
+          const devStatusEl = document.getElementById("web-dev-status");
+          if (devStatusEl) {
+            devStatusEl.innerText = "DICABUT";
+            devStatusEl.style.color = "var(--danger)";
+          }
+          return;
+        }
         setTimeout(connectWS, 2000);
       };
 
@@ -935,6 +1006,21 @@
           if (barcodes.length > 0) {
             const rawUrl = barcodes[0].rawValue;
             if (rawUrl) {
+              try {
+                const urlObj = new URL(rawUrl, window.location.origin);
+                const qToken = urlObj.searchParams.get("token");
+                if (qToken) {
+                  token = qToken;
+                  const currentUrl = new URL(window.location.href);
+                  currentUrl.searchParams.set("token", token);
+                  window.history.replaceState({}, "", currentUrl.toString());
+                  await registerWebDevice();
+                  connectWS();
+                  fetchVitals();
+                  alert("Pairing Berhasil! Perangkat web telah didaftarkan ke host.");
+                  return;
+                }
+              } catch (err) {}
               window.location.href = rawUrl;
               return;
             }
@@ -952,7 +1038,10 @@
     // Telemetry Polling
     async function fetchVitals() {
       try {
-        const res = await fetch(`/api/health?token=${token}`);
+        const devId = getWebDeviceId();
+        const res = await fetch(`/api/health?token=${token}`, {
+          headers: { "X-Device-Id": devId }
+        });
         if (res.ok) {
           const d = await res.json();
           setTerminalActiveState(d.status === "online");
@@ -962,17 +1051,17 @@
           if (d.memory_percent !== undefined) {
             document.getElementById("v-ram").innerText = `${d.memory_percent}%`;
           }
-          let bolt = "";
-          let batStr = "-";
           if (d.battery) {
-            bolt = d.battery.is_charging ? "⚡" : "";
-            batStr = `${bolt}${d.battery.percent}%`;
-            document.getElementById("v-bat").innerText = batStr;
+            document.getElementById("v-bat").innerText = `${d.battery.is_charging ? "⚡" : ""}${d.battery.percent}%`;
+          } else {
+            document.getElementById("v-bat").innerText = "AC";
           }
 
-          // Home Dashboard vitals
+          // Home dashboard vitals
           const homeBat = document.getElementById("home-v-bat");
-          if (homeBat) homeBat.innerText = d.battery ? `${bolt ? "⚡ " : "🔋 "}${d.battery.percent}%` : "--";
+          if (homeBat) {
+            homeBat.innerText = d.battery ? `${d.battery.is_charging ? "⚡ " : "🔋 "}${d.battery.percent}%` : "🔌 AC Power";
+          }
           const homeCpu = document.getElementById("home-v-cpu");
           if (homeCpu) homeCpu.innerText = `${d.cpu_percent}%`;
           const homeRam = document.getElementById("home-v-ram");
@@ -985,14 +1074,6 @@
           if (homeStatusSub) homeStatusSub.innerText = `Host: ${d.tailscale_ip || window.location.host}`;
           const homeDot = document.getElementById("home-status-dot");
           if (homeDot) homeDot.className = "status-dot online";
-          const homeHostInput = document.getElementById("home-host-input");
-          if (homeHostInput && !homeHostInput.value) {
-            homeHostInput.value = `${window.location.protocol}//${window.location.host}`;
-          }
-          const homeTokenInput = document.getElementById("home-token-input");
-          if (homeTokenInput && !homeTokenInput.value) {
-            homeTokenInput.value = token;
-          }
 
           if (d.active_session && d.active_session.cwd && !activePath) {
             activePath = d.active_session.cwd;
@@ -1000,6 +1081,13 @@
           }
         } else {
           setTerminalActiveState(false);
+          if (res.status === 403) {
+            const devStatusEl = document.getElementById("web-dev-status");
+            if (devStatusEl) {
+              devStatusEl.innerText = "DICABUT";
+              devStatusEl.style.color = "var(--danger)";
+            }
+          }
         }
       } catch (err) {
         setTerminalActiveState(false);
@@ -1302,6 +1390,7 @@
 
     // Initialize
     window.addEventListener("DOMContentLoaded", () => {
+      registerWebDevice();
       connectWS();
       fetchVitals();
       initActiveConversation();

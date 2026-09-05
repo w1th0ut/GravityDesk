@@ -51,7 +51,8 @@ export function useTerminalSocket(batchIntervalMs: number = 50): UseTerminalSock
       const isSecure = base.startsWith("https:");
       const wsProto = isSecure ? "wss:" : "ws:";
       const hostPart = base.replace(/^https?:\/\//, "");
-      const wsUrl = `${wsProto}//${hostPart}/ws/terminal?token=${encodeURIComponent(creds.token)}`;
+      const devParam = creds.deviceId ? `&device_id=${encodeURIComponent(creds.deviceId)}` : "";
+      const wsUrl = `${wsProto}//${hostPart}/ws/terminal?token=${encodeURIComponent(creds.token)}${devParam}`;
 
       const socket = new WebSocket(wsUrl);
       wsRef.current = socket;
@@ -69,31 +70,37 @@ export function useTerminalSocket(batchIntervalMs: number = 50): UseTerminalSock
 
       socket.onmessage = (event) => {
         try {
-          const msg: TerminalIncomingMessage = JSON.parse(event.data);
+          const msg: any = JSON.parse(event.data);
+          if (msg.type === "revoked") {
+            setIsWsConnected(false);
+            return;
+          }
           if (msg.type === "output") {
             if (msg.seq > currentSeqRef.current) {
               currentSeqRef.current = msg.seq;
             }
             bufferRef.current.push(msg.data);
-
-            if (!flushTimerRef.current) {
-              flushTimerRef.current = setTimeout(() => {
-                flushBuffer();
-                flushTimerRef.current = null;
-              }, batchIntervalMs);
-            }
           } else if (msg.type === "status") {
             setIsSessionRunning(msg.state === "RUNNING");
+            if (msg.seq && msg.seq > currentSeqRef.current) {
+              currentSeqRef.current = msg.seq;
+            }
           }
-        } catch (e) {
+        } catch {
+          // Fallback if payload is raw string
           bufferRef.current.push(event.data);
+        } finally {
           flushBuffer();
         }
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event: any) => {
         setIsWsConnected(false);
         wsRef.current = null;
+        if (event && event.code === 4001) {
+          // Device access was revoked by host
+          return;
+        }
         // Schedule auto-reconnect
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = setTimeout(connect, 2500);

@@ -130,6 +130,93 @@ def test_conversations_list_and_select():
         assert res_sel.json()["active_id"] is None
 
 
+def test_device_pairing_and_revocation():
+    """Verifies complete device management lifecycle: pairing, auth, revocation, and re-pairing."""
+    token = get_or_create_token()
+    test_device_id = "test-device-uuid-9999"
+    test_device_name = "Samsung Galaxy S24 Test"
+    devices_file = "devices.json"
+
+    with TestClient(app) as client:
+        # 1. Invalid token returns 401
+        bad_pair = client.post(
+            "/api/devices/pair",
+            json={
+                "device_id": test_device_id,
+                "device_name": test_device_name,
+                "platform": "android",
+                "pair_token": "wrong-token",
+            },
+        )
+        assert bad_pair.status_code == 401
+
+        # 2. Valid token successfully pairs device
+        pair_res = client.post(
+            "/api/devices/pair",
+            json={
+                "device_id": test_device_id,
+                "device_name": test_device_name,
+                "platform": "android",
+                "pair_token": token,
+            },
+        )
+        assert pair_res.status_code == 200
+        data = pair_res.json()
+        assert data["status"] == "paired"
+        assert data["device"]["id"] == test_device_id
+        assert data["device"]["status"] == "active"
+
+        # 3. Active device passes health check with X-Device-Id header
+        health_res = client.get(
+            f"/api/health?token={token}",
+            headers={"X-Device-Id": test_device_id},
+        )
+        assert health_res.status_code == 200
+        assert health_res.json()["status"] == "online"
+
+        # 4. Device appears in device list
+        list_res = client.get(f"/api/devices?token={token}")
+        assert list_res.status_code == 200
+        dev_list = list_res.json()
+        assert any(d["id"] == test_device_id and d["status"] == "active" for d in dev_list)
+
+        # 5. Revoke the device
+        revoke_res = client.post(
+            f"/api/devices/revoke?token={token}",
+            json={"device_id": test_device_id},
+        )
+        assert revoke_res.status_code == 200
+        assert revoke_res.json()["status"] == "revoked"
+
+        # 6. Revoked device is blocked from API endpoints with 403 Forbidden
+        blocked_res = client.get(
+            f"/api/health?token={token}",
+            headers={"X-Device-Id": test_device_id},
+        )
+        assert blocked_res.status_code == 403
+        assert "dicabut" in blocked_res.json()["detail"].lower()
+
+        # 7. Re-pairing the device re-authorizes it seamlessly
+        repair_res = client.post(
+            "/api/devices/pair",
+            json={
+                "device_id": test_device_id,
+                "device_name": test_device_name,
+                "platform": "android",
+                "pair_token": token,
+            },
+        )
+        assert repair_res.status_code == 200
+        assert repair_res.json()["device"]["status"] == "active"
+
+        # 8. Re-authorized device passes health check again
+        ok_res = client.get(
+            f"/api/health?token={token}",
+            headers={"X-Device-Id": test_device_id},
+        )
+        assert ok_res.status_code == 200
+
+
 if __name__ == "__main__":
     print("Running Hardened Architecture & Security Test Suite...")
     test_token_entropy()
@@ -150,4 +237,6 @@ if __name__ == "__main__":
     print("[PASS] test_command_allowlist_enforcement (Blocked Remote Code Execution)")
     test_session_lifecycle()
     print("[PASS] test_session_lifecycle (PTY lifecycle & atomic state)")
+    test_device_pairing_and_revocation()
+    print("[PASS] test_device_pairing_and_revocation (Device pairing, revocation & re-pairing)")
     print("\nALL HARDENED INTEGRATION TESTS PASSED WITH ZERO ERRORS! 🚀")

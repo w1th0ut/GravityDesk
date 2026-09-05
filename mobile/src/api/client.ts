@@ -34,6 +34,9 @@ export async function apiFetch<T>(
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
+  if (creds?.deviceId) {
+    headers.set("X-Device-Id", creds.deviceId);
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6000);

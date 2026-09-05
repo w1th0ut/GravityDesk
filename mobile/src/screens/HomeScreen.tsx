@@ -2,16 +2,20 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { HealthResponse } from "../types";
-import { loadCredentials, saveCredentials, clearCredentials } from "../storage/credentials";
-import { fetchHealth } from "../api/health";
+import {
+  loadCredentials,
+  saveCredentials,
+  clearCredentials,
+  getOrCreateDeviceId,
+  getDeviceName,
+} from "../storage/credentials";
+import { fetchHealth, pairDeviceApi } from "../api/health";
 import { QRScannerModal } from "../components/QRScannerModal";
 
 interface Props {
@@ -31,66 +35,73 @@ export const HomeScreen: React.FC<Props> = ({
   onNavigateToTerminal,
   onConnectionChanged,
 }) => {
-  const [hostUrl, setHostUrl] = useState("http://100.90.147.12:8000");
+  const [hostUrl, setHostUrl] = useState("");
   const [token, setToken] = useState("");
-  const [isTesting, setIsTesting] = useState(false);
+  const [deviceId, setDeviceId] = useState("");
+  const [deviceName, setDeviceName] = useState("");
+  const [isPairing, setIsPairing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
+    getOrCreateDeviceId().then(setDeviceId);
+    setDeviceName(getDeviceName());
+
     loadCredentials().then((creds) => {
       if (creds) {
         setHostUrl(creds.hostUrl);
         setToken(creds.token);
+        if (creds.deviceId) setDeviceId(creds.deviceId);
+        if (creds.deviceName) setDeviceName(creds.deviceName);
       }
     });
   }, []);
 
-  const connectWithCredentials = async (host: string, secret: string) => {
-    setIsTesting(true);
-    setStatusMsg({ type: "info", text: "Menguji koneksi ke laptop..." });
-    try {
-      const res = await fetchHealth(host, secret);
-      if (res.status === "online") {
-        await saveCredentials({ hostUrl: host, token: secret });
-        setStatusMsg({ type: "success", text: "Koneksi Berhasil! Kredensial tersimpan." });
-        await onRefresh();
-        onConnectionChanged();
-      } else {
-        setStatusMsg({ type: "error", text: "Host merespon tetapi status bukan online." });
-      }
-    } catch (err: any) {
-      setStatusMsg({
-        type: "error",
-        text: `Gagal terhubung ke ${host}. Pastikan Tailscale di HP & Laptop aktif, dan GUI server menyala.`,
-      });
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const handleManualSave = async () => {
-    const trimmedHost = hostUrl.trim();
-    const trimmedToken = token.trim();
-    if (!trimmedHost || !trimmedToken) {
-      setStatusMsg({ type: "error", text: "Mohon isi Host URL dan Pairing Token." });
-      return;
-    }
-    await connectWithCredentials(trimmedHost, trimmedToken);
-  };
-
   const handleClear = async () => {
     await clearCredentials();
+    setHostUrl("");
     setToken("");
-    setStatusMsg({ type: "info", text: "Kredensial pairing telah dihapus." });
+    setStatusMsg({ type: "info", text: "Koneksi pairing telah diputus." });
     await onRefresh();
     onConnectionChanged();
   };
 
   const handleQRSuccess = async (scannedHost: string, scannedToken: string) => {
-    setHostUrl(scannedHost);
-    setToken(scannedToken);
-    await connectWithCredentials(scannedHost, scannedToken);
+    setIsPairing(true);
+    setStatusMsg({ type: "info", text: "Mendaftarkan perangkat ke laptop..." });
+
+    const currentDevId = deviceId || (await getOrCreateDeviceId());
+    const currentDevName = deviceName || getDeviceName();
+
+    try {
+      // Register device with host daemon via pair endpoint
+      await pairDeviceApi(scannedHost, scannedToken, currentDevId, currentDevName, "android");
+
+      // Persist credentials
+      await saveCredentials({
+        hostUrl: scannedHost,
+        token: scannedToken,
+        deviceId: currentDevId,
+        deviceName: currentDevName,
+      });
+
+      setHostUrl(scannedHost);
+      setToken(scannedToken);
+      setStatusMsg({
+        type: "success",
+        text: `Perangkat '${currentDevName}' berhasil terdaftar & tersambung!`,
+      });
+
+      await onRefresh();
+      onConnectionChanged();
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: `Gagal pairing: ${err.message || "Pastikan Tailscale aktif dan QR code masih berlaku."}`,
+      });
+    } finally {
+      setIsPairing(false);
+    }
   };
 
   return (
@@ -98,7 +109,7 @@ export const HomeScreen: React.FC<Props> = ({
       {/* Header Banner */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>⚡ GravityDesk Control</Text>
-        <Text style={styles.headerSubtitle}>Status Koneksi & Pairing Tailscale</Text>
+        <Text style={styles.headerSubtitle}>Status Koneksi & Manajemen Perangkat</Text>
       </View>
 
       {/* Main Connection Status Card */}
@@ -150,50 +161,39 @@ export const HomeScreen: React.FC<Props> = ({
         )}
       </View>
 
-      {/* Pairing & Scanner Section */}
+      {/* Device Identity & Zero-Input QR Pairing Card */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>📱 Pairing Laptop & Mobile</Text>
+        <Text style={styles.cardTitle}>📱 Identitas Perangkat Ini</Text>
+
+        <View style={styles.deviceIdentityBox}>
+          <Text style={styles.deviceIcon}>📱</Text>
+          <View style={styles.deviceInfoText}>
+            <Text style={styles.deviceNameText}>{deviceName || "Perangkat Android"}</Text>
+            <Text style={styles.deviceIdText}>
+              ID Klien: {deviceId ? `${deviceId.slice(0, 8)}...` : "Menghasilkan ID..."}
+            </Text>
+          </View>
+          <View style={styles.deviceBadge}>
+            <Text style={styles.deviceBadgeText}>{isConnected ? "TERDAFTAR" : "SIAP PAIR"}</Text>
+          </View>
+        </View>
+
         <Text style={styles.cardDesc}>
-          Scan QR Code yang tampil di Desktop Control Center laptop Anda untuk menghubungkan secara instan:
+          Scan QR Code di Desktop GUI laptop Anda untuk pairing otomatis tanpa perlu mengetik Host URL atau Token manual.
         </Text>
 
         {/* Big Scan Button */}
-        <TouchableOpacity style={styles.scanBtn} onPress={() => setShowScanner(true)}>
-          <Text style={styles.scanBtnText}>📷 Buka Scanner Kamera QR Code</Text>
+        <TouchableOpacity
+          style={styles.scanBtn}
+          onPress={() => setShowScanner(true)}
+          disabled={isPairing}
+        >
+          {isPairing ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.scanBtnText}>📷 Scan QR Code Pairing</Text>
+          )}
         </TouchableOpacity>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ATAU INPUT MANUAL</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Manual Inputs */}
-        <View style={styles.formGroup}>
-          <Text style={styles.inputLabel}>Laptop Host URL (Tailscale IP):</Text>
-          <TextInput
-            style={styles.input}
-            value={hostUrl}
-            onChangeText={setHostUrl}
-            placeholder="http://100.x.y.z:8000"
-            placeholderTextColor="#8b949e"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.inputLabel}>Auth Token (256-bit):</Text>
-          <TextInput
-            style={styles.input}
-            value={token}
-            onChangeText={setToken}
-            placeholder="Paste 64-karakter token hex"
-            placeholderTextColor="#8b949e"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
 
         {statusMsg && (
           <View
@@ -221,23 +221,11 @@ export const HomeScreen: React.FC<Props> = ({
           </View>
         )}
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.btn, styles.btnPrimary]}
-            onPress={handleManualSave}
-            disabled={isTesting}
-          >
-            {isTesting ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.btnPrimaryText}>Simpan & Hubungkan</Text>
-            )}
+        {isConnected && (
+          <TouchableOpacity style={styles.clearBtn} onPress={handleClear}>
+            <Text style={styles.clearBtnText}>🗑️ Putuskan / Reset Pairing Perangkat Ini</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.btn, styles.btnDanger]} onPress={handleClear}>
-            <Text style={styles.btnDangerText}>Hapus</Text>
-          </TouchableOpacity>
-        </View>
+        )}
       </View>
 
       {/* QR Scanner Modal */}
@@ -282,16 +270,25 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#f0f6fc",
+  },
+  cardDesc: {
+    fontSize: 12,
+    color: "#8b949e",
+    lineHeight: 18,
+  },
   statusHeader: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
+    alignItems: "center",
+    gap: 10,
   },
   statusDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginTop: 4,
   },
   dotOnline: {
     backgroundColor: "#3fb950",
@@ -303,111 +300,115 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statusMainText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: "#ffffff",
   },
   statusSubText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#8b949e",
-    marginTop: 3,
-    lineHeight: 16,
+    marginTop: 2,
   },
   telemetryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "#21262d",
+    paddingTop: 12,
+  },
+  telemetryItem: {
+    flex: 1,
+    minWidth: "45%",
     backgroundColor: "#0d1117",
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#21262d",
   },
-  telemetryItem: {
-    width: "48%",
-  },
   telemetryLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#8b949e",
+    textTransform: "uppercase",
+    fontWeight: "600",
   },
   telemetryValue: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#e6edf3",
+    color: "#ffffff",
     marginTop: 2,
   },
-  terminalJumpBtn: {
-    backgroundColor: "#1f6feb",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  terminalJumpText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#ffffff",
-  },
-  cardDesc: {
-    fontSize: 12,
-    color: "#8b949e",
-    lineHeight: 18,
-  },
-  scanBtn: {
-    backgroundColor: "#21262d",
-    borderWidth: 1,
-    borderColor: "#58a6ff",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  scanBtnText: {
-    color: "#58a6ff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  divider: {
+  deviceIdentityBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginVertical: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#30363d",
-  },
-  dividerText: {
-    fontSize: 10,
-    color: "#8b949e",
-    fontWeight: "700",
-  },
-  formGroup: {
-    gap: 6,
-  },
-  inputLabel: {
-    fontSize: 12,
-    color: "#c9d1d9",
-    fontWeight: "600",
-  },
-  input: {
     backgroundColor: "#0d1117",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#21262d",
+    gap: 12,
+  },
+  deviceIcon: {
+    fontSize: 24,
+  },
+  deviceInfoText: {
+    flex: 1,
+  },
+  deviceNameText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  deviceIdText: {
+    fontSize: 11,
+    color: "#58a6ff",
+    fontFamily: "monospace",
+    marginTop: 2,
+  },
+  deviceBadge: {
+    backgroundColor: "#21262d",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: "#30363d",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  },
+  deviceBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#3fb950",
+  },
+  scanBtn: {
+    backgroundColor: "#238636",
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanBtnText: {
     color: "#ffffff",
-    fontSize: 13,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  clearBtn: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(248, 81, 73, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(248, 81, 73, 0.4)",
+    marginTop: 4,
+  },
+  clearBtnText: {
+    color: "#f85149",
+    fontWeight: "600",
+    fontSize: 12,
   },
   feedbackBox: {
     padding: 10,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   feedbackSuccess: {
     backgroundColor: "rgba(63, 185, 80, 0.15)",
@@ -436,36 +437,5 @@ const styles = StyleSheet.create({
   },
   textInfo: {
     color: "#58a6ff",
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 4,
-  },
-  btn: {
-    paddingVertical: 11,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnPrimary: {
-    flex: 1,
-    backgroundColor: "#1f6feb",
-  },
-  btnPrimaryText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  btnDanger: {
-    width: 80,
-    backgroundColor: "rgba(248, 81, 73, 0.15)",
-    borderWidth: 1,
-    borderColor: "#f85149",
-  },
-  btnDangerText: {
-    color: "#f85149",
-    fontWeight: "600",
-    fontSize: 13,
   },
 });

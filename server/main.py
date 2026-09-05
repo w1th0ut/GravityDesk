@@ -1,16 +1,19 @@
 import argparse
 import asyncio
+import collections
 from contextlib import asynccontextmanager
 import os
 import secrets
 import sys
-from typing import Optional
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+import threading
+from typing import Dict, List, Optional, Set
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from server.conversations import list_conversations
+from server.devices import get_devices, is_device_authorized, pair_device, revoke_device, touch_device
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, print_ascii_qr, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import TerminalSession, hub
@@ -19,6 +22,29 @@ from server.workspaces import get_favorites, list_directory, toggle_favorite
 # Global State
 server_token: str = ""
 server_ip: str = ""
+active_device_sockets: Dict[str, Set[WebSocket]] = collections.defaultdict(set)
+sockets_lock = threading.Lock()
+
+
+def kick_device_sockets(device_id: str) -> None:
+    """Closes all active streaming WebSocket connections for a revoked device."""
+    with sockets_lock:
+        sockets = list(active_device_sockets.get(device_id, set()))
+
+    if not sockets:
+        return
+
+    for ws in sockets:
+        if hub.loop and hub.loop.is_running():
+            asyncio.run_coroutine_threadsafe(_close_socket_async(ws), hub.loop)
+
+
+async def _close_socket_async(ws: WebSocket) -> None:
+    try:
+        await ws.send_json({"type": "revoked", "message": "Akses perangkat telah dicabut dari host."})
+        await ws.close(code=4001, reason="Device Revoked")
+    except Exception:
+        pass
 
 
 def update_server_token(new_token: str) -> None:
@@ -86,10 +112,13 @@ app.add_middleware(
 def verify_token(
     token: Optional[str] = Query(None),
     authorization: Optional[str] = Header(None),
+    x_device_id: Optional[str] = Header(None, alias="X-Device-Id"),
+    device_id: Optional[str] = Query(None),
 ) -> str:
     """
     Timing-attack-safe authentication token validator.
     Supports either Bearer token in Authorization header or query parameter.
+    Validates device authorization if device ID is specified.
     """
     client_token = token
     if authorization and authorization.startswith("Bearer "):
@@ -100,7 +129,73 @@ def verify_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing pairing token",
         )
+
+    active_id = x_device_id or device_id
+    if active_id:
+        if not is_device_authorized(active_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Akses perangkat telah dicabut atau belum terdaftar",
+            )
+        touch_device(active_id)
+
     return client_token
+
+
+class PairDeviceRequest(BaseModel):
+    device_id: str
+    device_name: str
+    platform: Optional[str] = "android"
+    pair_token: str
+
+
+class RevokeDeviceRequest(BaseModel):
+    device_id: str
+
+
+@app.post("/api/devices/pair")
+async def pair_device_endpoint(req: PairDeviceRequest, request: Request):
+    """Pairs a device (Android / Web) using the QR scan pair token."""
+    if not req.pair_token or not secrets.compare_digest(req.pair_token, server_token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token pairing tidak valid",
+        )
+
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    device = pair_device(
+        device_id=req.device_id,
+        name=req.device_name,
+        platform=req.platform or "android",
+        ip=client_ip,
+    )
+    hub.notify_event(f"Perangkat terhubung: {device['name']} ({device['platform']})")
+    return {
+        "status": "paired",
+        "device": device,
+        "token": server_token,
+    }
+
+
+@app.get("/api/devices")
+async def get_devices_endpoint(_: str = Depends(verify_token)):
+    """Returns list of registered devices."""
+    return get_devices()
+
+
+@app.post("/api/devices/revoke")
+async def revoke_device_endpoint(req: RevokeDeviceRequest, _: str = Depends(verify_token)):
+    """Revokes a specific device and immediately kicks its active sessions."""
+    device = revoke_device(req.device_id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Perangkat tidak ditemukan",
+        )
+
+    kick_device_sockets(req.device_id)
+    hub.notify_event(f"Akses perangkat dicabut: {device['name']}")
+    return {"status": "revoked", "device": device}
 
 
 class SessionStartRequest(BaseModel):
@@ -206,10 +301,18 @@ async def stop_session(_: str = Depends(verify_token)):
 
 
 @app.websocket("/ws/terminal")
-async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(None)):
+async def terminal_websocket(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None),
+    device_id: Optional[str] = Query(None),
+):
     """Bidirectional streaming terminal WebSocket with reconnect catch-up."""
     if not token or not secrets.compare_digest(token, server_token):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    if device_id and not is_device_authorized(device_id):
+        await websocket.close(code=4001, reason="Device Revoked")
         return
 
     await websocket.accept()
@@ -222,6 +325,11 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
     hub.add_listener(client_queue)
     client_host = websocket.client.host if websocket.client else "Client"
     hub.notify_event(f"Connected: {client_host}")
+
+    if device_id:
+        with sockets_lock:
+            active_device_sockets[device_id].add(websocket)
+        touch_device(device_id, client_host)
 
     # Initial status notification
     await websocket.send_json(
@@ -275,6 +383,12 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
     except Exception as e:
         print(f"[WebSocket] Error: {e}")
     finally:
+        if device_id:
+            with sockets_lock:
+                if device_id in active_device_sockets:
+                    active_device_sockets[device_id].discard(websocket)
+                    if not active_device_sockets[device_id]:
+                        del active_device_sockets[device_id]
         sender_task.cancel()
         hub.remove_listener(client_queue)
         hub.notify_event("Client disconnected")

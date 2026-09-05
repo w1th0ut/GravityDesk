@@ -80,4 +80,6 @@ export type TerminalIncomingMessage = TerminalOutputMessage | TerminalStatusMess
 export interface ConnectionConfig {
   hostUrl: string;
   token: string;
+  deviceId?: string;
+  deviceName?: string;
 }

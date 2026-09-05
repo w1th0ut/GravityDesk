@@ -6,6 +6,7 @@ node_modules/
 dist/
 .codegraph/
 favorites.json
+devices.json
 .pytest_cache/
 *.log
 local.properties

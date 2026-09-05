@@ -12,7 +12,8 @@ import psutil
 import qrcode
 import uvicorn
 
-from server.main import app, update_server_token
+from server.devices import add_device_listener, get_devices, revoke_device
+from server.main import app, kick_device_sockets, update_server_token
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import hub
@@ -35,8 +36,8 @@ class GravityDeskGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("GravityDesk — Server & Pairing Control")
-        self.root.geometry("880x680")
-        self.root.minsize(820, 620)
+        self.root.geometry("960x760")
+        self.root.minsize(900, 700)
         self.root.configure(bg=C_BG)
 
         # Server state
@@ -57,6 +58,9 @@ class GravityDeskGUI:
 
         # Connect Hub activity logger
         hub.add_event_callback(self.log_event_threadsafe)
+
+        # Connect Device pairing/revocation listener
+        add_device_listener(lambda event, dev: self.root.after(0, self.refresh_devices_ui))
 
         # Intercept window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -131,12 +135,13 @@ class GravityDeskGUI:
         body_frame = tk.Frame(self.root, bg=C_BG)
         body_frame.pack(fill=tk.BOTH, expand=True, padx=14, pady=6)
 
-        # Left Column (Pairing & Network)
-        left_col = tk.Frame(body_frame, bg=C_BG, width=320)
+        # Left Column (Pairing & Devices)
+        left_col = tk.Frame(body_frame, bg=C_BG, width=370)
         left_col.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 7))
         left_col.pack_propagate(False)
 
         self._build_pairing_card(left_col)
+        self._build_devices_card(left_col)
         self._build_token_card(left_col)
 
         # Right Column (Session, Vitals, Logs)
@@ -158,18 +163,18 @@ class GravityDeskGUI:
             fg=C_MUTED,
             bg=C_CARD,
         )
-        lbl.pack(anchor="w", padx=12, pady=(10, 6))
+        lbl.pack(anchor="w", padx=12, pady=(8, 4))
 
         # QR Canvas
-        qr_container = tk.Frame(card, bg="#ffffff", padx=8, pady=8)
-        qr_container.pack(pady=4)
+        qr_container = tk.Frame(card, bg="#ffffff", padx=6, pady=6)
+        qr_container.pack(pady=2)
 
         self.qr_canvas = tk.Label(qr_container, bg="#ffffff")
         self.qr_canvas.pack()
 
         # Pairing URL
         url_frame = tk.Frame(card, bg=C_CARD)
-        url_frame.pack(fill=tk.X, padx=12, pady=(8, 10))
+        url_frame.pack(fill=tk.X, padx=12, pady=(6, 8))
 
         tk.Label(url_frame, text="Access URL:", font=("Segoe UI", 8), fg=C_MUTED, bg=C_CARD).pack(anchor="w")
 
@@ -184,7 +189,7 @@ class GravityDeskGUI:
             readonlybackground=C_INPUT_BG,
             state="readonly",
         )
-        url_entry.pack(fill=tk.X, pady=(2, 6))
+        url_entry.pack(fill=tk.X, pady=(2, 4))
 
         copy_btn = tk.Button(
             url_frame,
@@ -196,11 +201,146 @@ class GravityDeskGUI:
             activeforeground="#ffffff",
             relief=tk.FLAT,
             padx=8,
-            pady=3,
+            pady=2,
             cursor="hand2",
             command=self.copy_url,
         )
         copy_btn.pack(fill=tk.X)
+
+    def _build_devices_card(self, parent):
+        self.devices_card = tk.Frame(parent, bg=C_CARD, highlightthickness=1, highlightbackground=C_BORDER)
+        self.devices_card.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+
+        top_row = tk.Frame(self.devices_card, bg=C_CARD)
+        top_row.pack(fill=tk.X, padx=12, pady=(8, 4))
+
+        lbl = tk.Label(
+            top_row,
+            text="PERANGKAT TERDAFTAR (PAIRED)",
+            font=("Segoe UI", 9, "bold"),
+            fg=C_MUTED,
+            bg=C_CARD,
+        )
+        lbl.pack(side=tk.LEFT)
+
+        refresh_btn = tk.Button(
+            top_row,
+            text="🔄 Refresh",
+            font=("Segoe UI", 7),
+            bg=C_CARD,
+            fg=C_MUTED,
+            activebackground=C_BORDER,
+            activeforeground=C_TEXT,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self.refresh_devices_ui,
+        )
+        refresh_btn.pack(side=tk.RIGHT)
+
+        self.devices_container = tk.Frame(self.devices_card, bg=C_CARD)
+        self.devices_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 8))
+
+        self.refresh_devices_ui()
+
+    def refresh_devices_ui(self):
+        if not hasattr(self, "devices_container"):
+            return
+
+        for w in self.devices_container.winfo_children():
+            w.destroy()
+
+        devices = get_devices()
+        if not devices:
+            empty_box = tk.Frame(self.devices_container, bg=C_INPUT_BG, highlightthickness=1, highlightbackground=C_BORDER)
+            empty_box.pack(fill=tk.X, pady=6)
+            tk.Label(
+                empty_box,
+                text="Belum ada perangkat terdaftar.\nScan QR code di atas dengan HP untuk pairing.",
+                font=("Segoe UI", 8),
+                fg=C_MUTED,
+                bg=C_INPUT_BG,
+                justify=tk.CENTER,
+                pady=10,
+            ).pack()
+            return
+
+        for dev in devices:
+            d_id = dev.get("id", "")
+            d_name = dev.get("name", "Unknown Device")
+            d_platform = dev.get("platform", "android")
+            d_ip = dev.get("ip", "127.0.0.1")
+            d_status = dev.get("status", "active")
+            is_active = (d_status == "active")
+
+            icon = "📱" if d_platform == "android" else ("💻" if d_platform == "web" else "📟")
+
+            item_card = tk.Frame(self.devices_container, bg=C_INPUT_BG, highlightthickness=1, highlightbackground=C_BORDER)
+            item_card.pack(fill=tk.X, pady=2)
+
+            left_box = tk.Frame(item_card, bg=C_INPUT_BG)
+            left_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=8, pady=4)
+
+            title_row = tk.Frame(left_box, bg=C_INPUT_BG)
+            title_row.pack(fill=tk.X)
+
+            tk.Label(
+                title_row,
+                text=f"{icon} {d_name}",
+                font=("Segoe UI", 8, "bold"),
+                fg=C_TEXT if is_active else C_MUTED,
+                bg=C_INPUT_BG,
+                anchor="w",
+            ).pack(side=tk.LEFT)
+
+            status_pill = tk.Label(
+                title_row,
+                text="● AKTIF" if is_active else "● DICABUT",
+                font=("Segoe UI", 7, "bold"),
+                fg=C_SUCCESS if is_active else C_DANGER,
+                bg=C_INPUT_BG,
+            )
+            status_pill.pack(side=tk.RIGHT)
+
+            tk.Label(
+                left_box,
+                text=f"{d_platform.upper()} • {d_ip} • ID: {d_id[:8]}...",
+                font=("Cascadia Code", 7),
+                fg=C_MUTED,
+                bg=C_INPUT_BG,
+                anchor="w",
+            ).pack(fill=tk.X, pady=(1, 0))
+
+            if is_active:
+                revoke_btn = tk.Button(
+                    item_card,
+                    text="Cabut",
+                    font=("Segoe UI", 7, "bold"),
+                    bg="#3b1219",
+                    fg=C_DANGER,
+                    activebackground=C_DANGER,
+                    activeforeground="#ffffff",
+                    relief=tk.FLAT,
+                    padx=6,
+                    pady=1,
+                    cursor="hand2",
+                    command=lambda i=d_id, n=d_name: self.revoke_single_device(i, n),
+                )
+                revoke_btn.pack(side=tk.RIGHT, padx=6, pady=4)
+
+    def revoke_single_device(self, dev_id: str, dev_name: str):
+        confirm = messagebox.askyesno(
+            "Cabut Akses Perangkat",
+            f"Apakah Anda yakin ingin mencabut akses perangkat:\n\n'{dev_name}' (ID: {dev_id[:8]}...)?\n\n"
+            "Koneksi perangkat ini akan langsung diputus dari host. Untuk menghubungkannya kembali, cukup scan QR Code lagi dari HP.",
+            icon="warning",
+        )
+        if not confirm:
+            return
+
+        revoke_device(dev_id)
+        kick_device_sockets(dev_id)
+        self.log_event(f"🚫 Akses perangkat '{dev_name}' dicabut.")
+        self.refresh_devices_ui()
 
     def _build_token_card(self, parent):
         card = tk.Frame(parent, bg=C_CARD, highlightthickness=1, highlightbackground=C_BORDER)
@@ -445,7 +585,7 @@ class GravityDeskGUI:
         qr.add_data(pair_url)
         qr.make(fit=True)
         img = qr.make_image(fill_color="#000000", back_color="#ffffff").convert("RGBA")
-        img = img.resize((175, 175), Image.Resampling.NEAREST)
+        img = img.resize((150, 150), Image.Resampling.NEAREST)
 
         self.qr_image_tk = ImageTk.PhotoImage(img)
         self.qr_canvas.config(image=self.qr_image_tk)
@@ -577,8 +717,8 @@ class GravityDeskGUI:
             if self.ws_lbl["text"] != hub.current_cwd:
                 self.ws_lbl.config(text=hub.current_cwd)
 
-            client_count = len(hub.listeners)
-            self.clients_lbl.config(text=f"{client_count} device{'s' if client_count != 1 else ''}")
+            active_devs = [d for d in get_devices() if d.get("status") == "active"]
+            self.clients_lbl.config(text=f"{len(active_devs)} terdaftar ({len(hub.listeners)} aktif)")
 
             chat_name = "New Chat"
             if hub.active_conversation_id:
