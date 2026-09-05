@@ -4,7 +4,7 @@ import sys
 import threading
 import time
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Optional
 
 from PIL import Image, ImageTk
@@ -12,8 +12,8 @@ import psutil
 import qrcode
 import uvicorn
 
-from server.devices import add_device_listener, get_devices, revoke_device
-from server.main import app, kick_device_sockets, update_server_token
+from server.devices import add_device_listener, delete_device, get_devices, rename_device, revoke_device
+from server.main import app, get_online_device_ids, kick_device_sockets, update_server_token
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import hub
@@ -142,7 +142,6 @@ class GravityDeskGUI:
 
         self._build_pairing_card(left_col)
         self._build_devices_card(left_col)
-        self._build_token_card(left_col)
 
         # Right Column (Session, Vitals, Logs)
         right_col = tk.Frame(body_frame, bg=C_BG)
@@ -212,7 +211,7 @@ class GravityDeskGUI:
         self.devices_card.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
         top_row = tk.Frame(self.devices_card, bg=C_CARD)
-        top_row.pack(fill=tk.X, padx=12, pady=(8, 4))
+        top_row.pack(fill=tk.X, padx=12, pady=(10, 6))
 
         lbl = tk.Label(
             top_row,
@@ -238,7 +237,7 @@ class GravityDeskGUI:
         refresh_btn.pack(side=tk.RIGHT)
 
         self.devices_container = tk.Frame(self.devices_card, bg=C_CARD)
-        self.devices_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 8))
+        self.devices_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         self.refresh_devices_ui()
 
@@ -250,9 +249,11 @@ class GravityDeskGUI:
             w.destroy()
 
         devices = get_devices()
+        online_ids = get_online_device_ids()
+
         if not devices:
             empty_box = tk.Frame(self.devices_container, bg=C_INPUT_BG, highlightthickness=1, highlightbackground=C_BORDER)
-            empty_box.pack(fill=tk.X, pady=6)
+            empty_box.pack(fill=tk.X, pady=8)
             tk.Label(
                 empty_box,
                 text="Belum ada perangkat terdaftar.\nScan QR code di atas dengan HP untuk pairing.",
@@ -260,7 +261,7 @@ class GravityDeskGUI:
                 fg=C_MUTED,
                 bg=C_INPUT_BG,
                 justify=tk.CENTER,
-                pady=10,
+                pady=14,
             ).pack()
             return
 
@@ -270,49 +271,83 @@ class GravityDeskGUI:
             d_platform = dev.get("platform", "android")
             d_ip = dev.get("ip", "127.0.0.1")
             d_status = dev.get("status", "active")
-            is_active = (d_status == "active")
-
-            icon = "📱" if d_platform == "android" else ("💻" if d_platform == "web" else "📟")
+            is_revoked = (d_status == "revoked")
+            is_online = (not is_revoked and d_id in online_ids)
 
             item_card = tk.Frame(self.devices_container, bg=C_INPUT_BG, highlightthickness=1, highlightbackground=C_BORDER)
-            item_card.pack(fill=tk.X, pady=2)
+            item_card.pack(fill=tk.X, pady=3)
 
             left_box = tk.Frame(item_card, bg=C_INPUT_BG)
-            left_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=8, pady=4)
+            left_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=8, pady=6)
 
             title_row = tk.Frame(left_box, bg=C_INPUT_BG)
             title_row.pack(fill=tk.X)
 
+            # Device Name (Clean, NO EMOJI)
+            name_color = C_TEXT if is_online else (C_DANGER if is_revoked else C_MUTED)
             tk.Label(
                 title_row,
-                text=f"{icon} {d_name}",
-                font=("Segoe UI", 8, "bold"),
-                fg=C_TEXT if is_active else C_MUTED,
+                text=d_name,
+                font=("Segoe UI", 9, "bold"),
+                fg=name_color,
                 bg=C_INPUT_BG,
                 anchor="w",
             ).pack(side=tk.LEFT)
 
-            status_pill = tk.Label(
-                title_row,
-                text="● AKTIF" if is_active else "● DICABUT",
-                font=("Segoe UI", 7, "bold"),
-                fg=C_SUCCESS if is_active else C_DANGER,
-                bg=C_INPUT_BG,
-            )
-            status_pill.pack(side=tk.RIGHT)
+            # Status pill (● ONLINE / ○ OFFLINE / ● DICABUT)
+            if is_revoked:
+                status_text = "● DICABUT"
+                status_color = C_DANGER
+            elif is_online:
+                status_text = "● ONLINE"
+                status_color = C_SUCCESS
+            else:
+                status_text = "○ OFFLINE"
+                status_color = C_MUTED
 
             tk.Label(
+                title_row,
+                text=status_text,
+                font=("Segoe UI", 7, "bold"),
+                fg=status_color,
+                bg=C_INPUT_BG,
+            ).pack(side=tk.RIGHT)
+
+            meta_text = f"{d_platform.upper()} • {d_ip} • ID: {d_id[:8]}..."
+            tk.Label(
                 left_box,
-                text=f"{d_platform.upper()} • {d_ip} • ID: {d_id[:8]}...",
+                text=meta_text,
                 font=("Cascadia Code", 7),
                 fg=C_MUTED,
                 bg=C_INPUT_BG,
                 anchor="w",
-            ).pack(fill=tk.X, pady=(1, 0))
+            ).pack(fill=tk.X, pady=(2, 0))
 
-            if is_active:
+            # Action Buttons Box
+            btn_box = tk.Frame(item_card, bg=C_INPUT_BG)
+            btn_box.pack(side=tk.RIGHT, padx=6, pady=6)
+
+            # Rename button
+            rename_btn = tk.Button(
+                btn_box,
+                text="Rename",
+                font=("Segoe UI", 7),
+                bg="#21262d",
+                fg=C_TEXT,
+                activebackground=C_BORDER,
+                activeforeground="#ffffff",
+                relief=tk.FLAT,
+                padx=6,
+                pady=2,
+                cursor="hand2",
+                command=lambda i=d_id, n=d_name: self.rename_single_device(i, n),
+            )
+            rename_btn.pack(side=tk.LEFT, padx=(0, 4))
+
+            # Revoke or Delete button
+            if not is_revoked:
                 revoke_btn = tk.Button(
-                    item_card,
+                    btn_box,
                     text="Cabut",
                     font=("Segoe UI", 7, "bold"),
                     bg="#3b1219",
@@ -321,11 +356,40 @@ class GravityDeskGUI:
                     activeforeground="#ffffff",
                     relief=tk.FLAT,
                     padx=6,
-                    pady=1,
+                    pady=2,
                     cursor="hand2",
                     command=lambda i=d_id, n=d_name: self.revoke_single_device(i, n),
                 )
-                revoke_btn.pack(side=tk.RIGHT, padx=6, pady=4)
+                revoke_btn.pack(side=tk.LEFT)
+            else:
+                del_btn = tk.Button(
+                    btn_box,
+                    text="Hapus",
+                    font=("Segoe UI", 7),
+                    bg="#21262d",
+                    fg=C_MUTED,
+                    activebackground=C_BORDER,
+                    activeforeground="#ffffff",
+                    relief=tk.FLAT,
+                    padx=6,
+                    pady=2,
+                    cursor="hand2",
+                    command=lambda i=d_id, n=d_name: self.delete_single_device(i, n),
+                )
+                del_btn.pack(side=tk.LEFT)
+
+    def rename_single_device(self, dev_id: str, current_name: str):
+        new_name = simpledialog.askstring(
+            "Ubah Nama Perangkat",
+            f"Masukkan nama baru untuk perangkat '{current_name}':",
+            initialvalue=current_name,
+            parent=self.root,
+        )
+        if new_name and new_name.strip() and new_name.strip() != current_name:
+            clean_name = new_name.strip()
+            rename_device(dev_id, clean_name)
+            self.log_event(f"✏️ Nama perangkat '{current_name}' diubah menjadi '{clean_name}'.")
+            self.refresh_devices_ui()
 
     def revoke_single_device(self, dev_id: str, dev_name: str):
         confirm = messagebox.askyesno(
@@ -333,6 +397,7 @@ class GravityDeskGUI:
             f"Apakah Anda yakin ingin mencabut akses perangkat:\n\n'{dev_name}' (ID: {dev_id[:8]}...)?\n\n"
             "Koneksi perangkat ini akan langsung diputus dari host. Untuk menghubungkannya kembali, cukup scan QR Code lagi dari HP.",
             icon="warning",
+            parent=self.root,
         )
         if not confirm:
             return
@@ -342,65 +407,17 @@ class GravityDeskGUI:
         self.log_event(f"🚫 Akses perangkat '{dev_name}' dicabut.")
         self.refresh_devices_ui()
 
-    def _build_token_card(self, parent):
-        card = tk.Frame(parent, bg=C_CARD, highlightthickness=1, highlightbackground=C_BORDER)
-        card.pack(fill=tk.X)
-
-        lbl = tk.Label(
-            card,
-            text="SECURITY & ACCESS TOKEN",
-            font=("Segoe UI", 9, "bold"),
-            fg=C_MUTED,
-            bg=C_CARD,
+    def delete_single_device(self, dev_id: str, dev_name: str):
+        confirm = messagebox.askyesno(
+            "Hapus Perangkat",
+            f"Hapus riwayat perangkat '{dev_name}' dari daftar?",
+            icon="warning",
+            parent=self.root,
         )
-        lbl.pack(anchor="w", padx=12, pady=(10, 6))
-
-        token_frame = tk.Frame(card, bg=C_CARD)
-        token_frame.pack(fill=tk.X, padx=12, pady=(0, 10))
-
-        self.token_display_var = tk.StringVar()
-        token_entry = tk.Entry(
-            token_frame,
-            textvariable=self.token_display_var,
-            font=("Cascadia Code", 8),
-            bg=C_INPUT_BG,
-            fg="#e5e5e5",
-            relief=tk.FLAT,
-            readonlybackground=C_INPUT_BG,
-            state="readonly",
-        )
-        token_entry.pack(fill=tk.X, pady=(0, 6))
-
-        btn_row = tk.Frame(token_frame, bg=C_CARD)
-        btn_row.pack(fill=tk.X)
-
-        copy_t_btn = tk.Button(
-            btn_row,
-            text="Copy Token",
-            font=("Segoe UI", 8),
-            bg="#21262d",
-            fg=C_TEXT,
-            activebackground=C_BORDER,
-            activeforeground="#ffffff",
-            relief=tk.FLAT,
-            cursor="hand2",
-            command=self.copy_token,
-        )
-        copy_t_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
-
-        revoke_btn = tk.Button(
-            btn_row,
-            text="🚫 Revoke Access",
-            font=("Segoe UI", 8, "bold"),
-            bg="#3b1219",
-            fg=C_DANGER,
-            activebackground=C_DANGER,
-            activeforeground="#ffffff",
-            relief=tk.FLAT,
-            cursor="hand2",
-            command=self.revoke_token,
-        )
-        revoke_btn.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(4, 0))
+        if confirm:
+            delete_device(dev_id)
+            self.log_event(f"🗑️ Perangkat '{dev_name}' dihapus dari daftar.")
+            self.refresh_devices_ui()
 
     def _build_session_card(self, parent):
         card = tk.Frame(parent, bg=C_CARD, highlightthickness=1, highlightbackground=C_BORDER)
@@ -574,7 +591,6 @@ class GravityDeskGUI:
     def update_qr(self):
         pair_url = f"http://{self.ip}:{self.port}/?token={self.token}"
         self.url_var.set(pair_url)
-        self.token_display_var.set(self.token)
 
         qr = qrcode.QRCode(
             version=1,

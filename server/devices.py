@@ -198,3 +198,66 @@ def touch_device(device_id: Optional[str], ip: Optional[str] = None, filepath: s
 
         if updated:
             _save_devices_locked(devices, filepath)
+
+
+def rename_device(
+    device_id: str,
+    new_name: str,
+    filepath: str = DEVICES_FILE,
+) -> Optional[Dict[str, Any]]:
+    """Renames a registered device."""
+    clean_id = device_id.strip()
+    clean_name = new_name.strip()
+    if not clean_name:
+        return None
+
+    target_device: Optional[Dict[str, Any]] = None
+
+    with _lock:
+        if not os.path.exists(filepath):
+            return None
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                devices = json.load(f)
+        except Exception:
+            return None
+
+        for d in devices:
+            if d.get("id") == clean_id:
+                d["name"] = clean_name
+                target_device = d
+                break
+
+        if target_device:
+            _save_devices_locked(devices, filepath)
+
+    if target_device:
+        _notify_listeners("renamed", target_device)
+
+    return target_device
+
+
+def delete_device(device_id: str, filepath: str = DEVICES_FILE) -> bool:
+    """Permanently removes a device from the paired devices list."""
+    clean_id = device_id.strip()
+    removed = False
+
+    with _lock:
+        if not os.path.exists(filepath):
+            return False
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                devices = json.load(f)
+        except Exception:
+            return False
+
+        original_len = len(devices)
+        devices = [d for d in devices if d.get("id") != clean_id]
+        if len(devices) < original_len:
+            removed = True
+            _save_devices_locked(devices, filepath)
+
+    if removed:
+        _notify_listeners("deleted", {"id": clean_id})
+
+    return removed

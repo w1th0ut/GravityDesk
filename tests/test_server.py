@@ -216,6 +216,25 @@ def test_device_pairing_and_revocation():
         )
         assert ok_res.status_code == 200
 
+        # 9. Rename device
+        rename_res = client.post(
+            f"/api/devices/rename?token={token}",
+            json={"device_id": test_device_id, "name": "HP Utama"},
+        )
+        assert rename_res.status_code == 200
+        assert rename_res.json()["device"]["name"] == "HP Utama"
+
+        # 10. Delete device
+        delete_res = client.post(
+            f"/api/devices/delete?token={token}",
+            json={"device_id": test_device_id},
+        )
+        assert delete_res.status_code == 200
+        assert delete_res.json()["status"] == "deleted"
+
+        list_after = client.get(f"/api/devices?token={token}")
+        assert not any(d["id"] == test_device_id for d in list_after.json())
+
 
 if __name__ == "__main__":
     print("Running Hardened Architecture & Security Test Suite...")

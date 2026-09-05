@@ -13,7 +13,15 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from server.conversations import list_conversations
-from server.devices import get_devices, is_device_authorized, pair_device, revoke_device, touch_device
+from server.devices import (
+    delete_device,
+    get_devices,
+    is_device_authorized,
+    pair_device,
+    rename_device,
+    revoke_device,
+    touch_device,
+)
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, print_ascii_qr, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import TerminalSession, hub
@@ -24,6 +32,12 @@ server_token: str = ""
 server_ip: str = ""
 active_device_sockets: Dict[str, Set[WebSocket]] = collections.defaultdict(set)
 sockets_lock = threading.Lock()
+
+
+def get_online_device_ids() -> Set[str]:
+    """Returns the set of device IDs with currently connected streaming WebSockets."""
+    with sockets_lock:
+        return {d_id for d_id, sockets in active_device_sockets.items() if len(sockets) > 0}
 
 
 def kick_device_sockets(device_id: str) -> None:
@@ -196,6 +210,42 @@ async def revoke_device_endpoint(req: RevokeDeviceRequest, _: str = Depends(veri
     kick_device_sockets(req.device_id)
     hub.notify_event(f"Akses perangkat dicabut: {device['name']}")
     return {"status": "revoked", "device": device}
+
+
+class RenameDeviceRequest(BaseModel):
+    device_id: str
+    name: str
+
+
+@app.post("/api/devices/rename")
+async def rename_device_endpoint(req: RenameDeviceRequest, _: str = Depends(verify_token)):
+    """Renames a registered device."""
+    device = rename_device(req.device_id, req.name)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Perangkat tidak ditemukan",
+        )
+    hub.notify_event(f"Nama perangkat diubah: {device['name']}")
+    return {"status": "renamed", "device": device}
+
+
+class DeleteDeviceRequest(BaseModel):
+    device_id: str
+
+
+@app.post("/api/devices/delete")
+async def delete_device_endpoint(req: DeleteDeviceRequest, _: str = Depends(verify_token)):
+    """Deletes a device from the paired devices registry."""
+    kick_device_sockets(req.device_id)
+    success = delete_device(req.device_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Perangkat tidak ditemukan",
+        )
+    hub.notify_event(f"Perangkat dihapus: {req.device_id[:8]}")
+    return {"status": "deleted", "device_id": req.device_id}
 
 
 class SessionStartRequest(BaseModel):
