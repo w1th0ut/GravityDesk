@@ -493,7 +493,7 @@
     <div class="home-container">
       <div class="home-header">
         <div class="home-title">GravityDesk Control</div>
-        <div class="home-sub">Connection & Tailscale Pairing Status</div>
+        <div class="home-sub">Connection Status & Device Management</div>
       </div>
 
       <!-- Main Status Card -->
@@ -508,7 +508,7 @@
 
         <div class="telemetry-grid">
           <div class="telemetry-box">
-            <div class="telemetry-lbl">Laptop Battery</div>
+            <div class="telemetry-lbl">Host Battery</div>
             <div class="telemetry-val" id="home-v-bat">-</div>
           </div>
           <div class="telemetry-box">
@@ -528,7 +528,7 @@
 
       <!-- Device Identity & Pairing Card -->
       <div class="dash-card">
-        <div class="dash-card-title">This Device Identity</div>
+        <div class="dash-card-title">Device Identity</div>
         <div style="display:flex;align-items:center;background:#0d1117;padding:10px 12px;border-radius:8px;border:1px solid #21262d;margin:8px 0;gap:10px;">
           <div style="flex:1;">
             <div id="web-dev-name" style="font-size:13px;font-weight:700;color:#ffffff;">Web Browser</div>
@@ -541,6 +541,9 @@
 
         <button class="key-btn" style="width:100%;padding:12px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--success);color:#ffffff;" onclick="triggerQrScan()">
           Scan Pairing QR Code
+        </button>
+        <button id="web-clear-btn" class="key-btn" style="display:none;width:100%;margin-top:6px;padding:8px;font-size:12px;color:var(--danger);background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);" onclick="clearWebPairing()">
+          Disconnect / Reset Device Pairing
         </button>
         <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleQrImage(event)" />
       </div>
@@ -588,6 +591,7 @@
 
       <!-- Quick Shortcut Keys -->
       <div class="quick-bar">
+        <button id="session-btn" class="key-btn" style="border-color:var(--accent);color:#ffffff;" onclick="toggleSession()">Start agy</button>
         <button class="key-btn btn-ctrlc" onclick="sendSignal('SIGINT')">Ctrl+C</button>
         <button class="key-btn" onclick="clearTerminal()">Clear</button>
         <button class="key-btn" onclick="scrollToBottom()">Bottom</button>
@@ -738,9 +742,63 @@
             devStatusEl.innerText = "REGISTERED";
             devStatusEl.style.color = "var(--success)";
           }
+          const clearBtn = document.getElementById("web-clear-btn");
+          if (clearBtn) clearBtn.style.display = "block";
         }
       } catch (e) {
         console.warn("Device registration error:", e);
+      }
+    }
+
+    function clearWebPairing() {
+      localStorage.removeItem("gravitydesk_web_device_id");
+      token = "";
+      const devStatusEl = document.getElementById("web-dev-status");
+      if (devStatusEl) {
+        devStatusEl.innerText = "READY TO PAIR";
+        devStatusEl.style.color = "var(--warning)";
+      }
+      const clearBtn = document.getElementById("web-clear-btn");
+      if (clearBtn) clearBtn.style.display = "none";
+      if (ws) ws.close();
+      fetchVitals();
+    }
+
+    let isSessionRunning = false;
+    async function toggleSession() {
+      const btn = document.getElementById("session-btn");
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        if (isSessionRunning) {
+          await fetch(`/api/session/stop?token=${token}`, { method: "POST" });
+        } else {
+          await fetch(`/api/session/start?token=${token}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cwd: activePath || undefined })
+          });
+        }
+        await fetchVitals();
+      } catch (err) {
+        console.warn("Session toggle error:", err);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function updateSessionBtnState(running) {
+      isSessionRunning = running;
+      const btn = document.getElementById("session-btn");
+      if (!btn) return;
+      if (running) {
+        btn.innerText = "Stop agy";
+        btn.style.color = "var(--danger)";
+        btn.style.borderColor = "rgba(248, 81, 73, 0.4)";
+      } else {
+        btn.innerText = "Start agy";
+        btn.style.color = "#ffffff";
+        btn.style.borderColor = "var(--accent)";
       }
     }
 
@@ -889,6 +947,9 @@
             devStatusEl.style.color = "var(--danger)";
           }
           return;
+        }
+        if (msg.type === "status") {
+          updateSessionBtnState(msg.state === "RUNNING");
         }
         if (msg.type === "output") {
           const sendBtn = document.getElementById("send-btn");
@@ -1097,6 +1158,14 @@
           if (homeStatusSub) homeStatusSub.innerText = `Host: ${d.tailscale_ip || window.location.host}`;
           const homeDot = document.getElementById("home-status-dot");
           if (homeDot) homeDot.className = "status-dot online";
+
+          if (d.active_session) {
+            updateSessionBtnState(d.active_session.is_alive === true);
+          }
+          const clearBtn = document.getElementById("web-clear-btn");
+          if (clearBtn && d.status === "online") {
+            clearBtn.style.display = "block";
+          }
 
           if (d.active_session && d.active_session.cwd && !activePath) {
             activePath = d.active_session.cwd;
