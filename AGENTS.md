@@ -1,17 +1,126 @@
-# GravityDesk
+# GravityDesk — Agent Operational Manual & Architecture Guide
 
-Remote Control system for Anti-Gravity (agy) CLI from Android to Laptop over Tailscale.
+Remote Control & Telemetry System for Google Antigravity (`agy`) CLI from Android to Windows Host over Tailscale WireGuard Mesh.
 
-## Agent skills
+---
 
-### Issue tracker
+## 1. System Overview & Bounded Contexts
 
-Issues are tracked as local Markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+GravityDesk is organized as a multi-context monorepo engineered to strict Clean Architecture paradigms. The project bridges mobile devices to a Windows developer workstation, streaming bidirectional terminal I/O and telemetry with sub-50ms latency.
 
-### Triage labels
+Consult [`CONTEXT-MAP.md`](file:///C:/Users/bagas/Downloads/GravityDesk/CONTEXT-MAP.md) before reading or modifying code across boundaries.
 
-Canonical 5-role triage vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+```
+┌──────────────────────────────────────────────────────────┐
+│                   Mobile Client (Android)                │
+│   • Expo / React Native App (`mobile/`)                  │
+│   • Web PWA Terminal (`server/static/index.html`)        │
+│   • Native Voice-to-Text & Quick Action Bar              │
+└────────────────────────────┬─────────────────────────────┘
+                             │  Tailscale Mesh (WireGuard)
+                             │  HTTP + WebSocket (Port 8000)
+┌────────────────────────────▼─────────────────────────────┐
+│              GravityDesk Daemon (`server/`)               │
+│   • FastAPI REST Endpoints & WebSocket `/ws/terminal`     │
+│   • Windows ConPTY Runner (`server/terminal.py`)         │
+│   • SQLite / JSON Chat Resume (`conversations.py`)       │
+│   • Windows Sleep Inhibit & Vitals (`system.py`)         │
+└────────────────────────────┬─────────────────────────────┘
+                             │  Local Subprocess / IPC
+┌────────────────────────────▼─────────────────────────────┐
+│          Google Antigravity CLI (`agy.exe`) / CMD        │
+│   • Headless CLI with `--dangerously-skip-permissions`    │
+│   • Active Workspace Directory                           │
+└──────────────────────────────────────────────────────────┘
+```
 
-### Domain docs
+### Bounded Context Directory Layout
 
-Multi-context monorepo layout with `CONTEXT-MAP.md` pointing to `server/CONTEXT.md` and `mobile/CONTEXT.md`. See `docs/agents/domain.md`.
+| Subsystem | Root Path | Primary Responsibilities | Domain Reference |
+|---|---|---|---|
+| **Backend Daemon** | [`server/`](file:///C:/Users/bagas/Downloads/GravityDesk/server) | FastAPI REST/WebSocket endpoints, ConPTY runner, Tailscale resolver, process supervisor, system vitals, sleep inhibitor. | [`server/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/server/CONTEXT.md) |
+| **Desktop Control Center** | [`gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/gui.py), [`server/gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/server/gui.py) | Modern Tkinter desktop dashboard, dynamic QR Code pairing, 1-click token copy, workspace directory picker, Instant Access Revocation. | [`server/gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/server/gui.py) |
+| **Mobile Client** | [`mobile/`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile) | React Native (Expo) TypeScript application, Android native voice dictation, virtualized ANSI terminal renderer. | [`mobile/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile/CONTEXT.md) |
+| **PWA Web Terminal** | [`server/static/index.html`](file:///C:/Users/bagas/Downloads/GravityDesk/server/static/index.html) | Zero-install web client, WhatsApp-style multiline input, ASCII AGY welcome banner, ANSI terminal rendering, auto-reconnect. | [`server/static/index.html`](file:///C:/Users/bagas/Downloads/GravityDesk/server/static/index.html) |
+| **Integration Tests** | [`tests/`](file:///C:/Users/bagas/Downloads/GravityDesk/tests) | End-to-end security, token entropy, ConPTY lifecycle, and endpoint contracts. | [`tests/test_server.py`](file:///C:/Users/bagas/Downloads/GravityDesk/tests/test_server.py) |
+| **Agent Docs & Specs** | [`docs/agents/`](file:///C:/Users/bagas/Downloads/GravityDesk/docs/agents), [`.scratch/`](file:///C:/Users/bagas/Downloads/GravityDesk/.scratch) | Issue tracking, triage state machine, system specs, and Architecture Decision Records (ADRs). | [`docs/agents/`](file:///C:/Users/bagas/Downloads/GravityDesk/docs/agents) |
+
+---
+
+## 2. Operational Invariants for AI Agents
+
+When operating within this codebase, all autonomous agents **MUST** comply with the following non-negotiable operational rules:
+
+1. **NEVER RUN `python -m server.main` AUTONOMOUSLY**:
+   - The user or the Desktop GUI runs the live server daemon. Do not launch background instances of `server.main` as it binds port 8000 and interferes with the user's active session.
+2. **LAUNCHING THE DESKTOP GUI**:
+   - Use `python gui.py` or execute [`run_gui.bat`](file:///C:/Users/bagas/Downloads/GravityDesk/run_gui.bat).
+3. **RUNNING VERIFICATION & TESTS**:
+   - Execute tests using `python -m tests.test_server` or `python -m pytest`.
+   - Never consider a feature or refactor complete without verifying that all tests pass with exit code 0.
+4. **NO UNCONTROLLED PROCESS SPAWNING**:
+   - ConPTY handles (`pywinpty`) allocate unmanaged Windows pseudo-consoles. Any test or utility initializing terminal sessions must invoke `session.stop()` or utilize context-managed execution to guarantee no orphan handles.
+5. **DETERMINISTIC CLEAN ARCHITECTURE**:
+   - Do not leak presentation state into business domain models. Terminal ANSI parsing, session sequence buffering, and filesystem traversal logic must remain decoupled in their respective modules.
+
+---
+
+## 3. Security Invariants & Defense-in-Depth
+
+GravityDesk provides remote terminal execution into the host workstation. The following security controls are strictly enforced:
+
+### Cryptographic Authentication
+- **Entropy**: Minimum 256-bit cryptographic entropy generated via `secrets.token_hex(32)`.
+- **Timing Attacks**: Token verification must use `hmac.compare_digest` to eliminate timing-channel vulnerability.
+- **Persistence**: Tokens are stored in `.env` (excluded by [`.gitignore`](file:///C:/Users/bagas/Downloads/GravityDesk/.gitignore)).
+- **Instant Revocation**: Triggered via Desktop GUI (`server/network.py:revoke_and_create_token()`). Overwrites `.env` with a newly generated 256-bit token and resets the runtime cache immediately.
+
+### Remote Code Execution (RCE) Allowlist
+- Arbitrary binary spawning is blocked with `400 Bad Request`.
+- Only explicitly whitelisted binaries are allowed:
+  - `cmd.exe`
+  - `powershell.exe`
+  - `agy.exe` (or `agy`)
+
+### Path Traversal Mitigation
+- All folder browsing and workspace selection endpoints validate paths via `os.path.realpath`.
+- Input paths must resolve to an existing directory and validate against detected drive roots (`C:\`, `D:\`, etc.). Unsanitized paths are rejected with `400 Bad Request`.
+
+---
+
+## 4. Issue Tracking & Autonomous Triage
+
+Issues and task specifications are tracked locally as Markdown files:
+
+### Storage & Conventions
+- **Feature Directory**: `.scratch/<feature-name>/` (e.g. [`.scratch/gravitydesk-core/`](file:///C:/Users/bagas/Downloads/GravityDesk/.scratch/gravitydesk-core)).
+- **Spec File**: `spec.md` defines context, technical requirements, acceptance criteria, and status.
+- **Map File**: `map.md` outlines implementation roadmaps and dependency graphs.
+
+### Canonical Triage State Machine
+Agents must respect the 5-role triage vocabulary:
+
+| Status Label | Role / Intent | Execution Rule |
+|---|---|---|
+| `needs-triage` | Newly submitted feature or bug | Needs architectural assessment. |
+| `needs-info` | Blocked on clarification | Ask user for required specifications. |
+| `ready-for-agent` | Specification finalized | Ready for autonomous test-driven execution. |
+| `ready-for-human` | Requires physical device or credentials | Blocked on human action (e.g., physical Android camera scan). |
+| `wontfix` | Out of scope or obsolete | Discarded; do not implement. |
+
+See [`docs/agents/triage-labels.md`](file:///C:/Users/bagas/Downloads/GravityDesk/docs/agents/triage-labels.md) for detailed reference.
+
+---
+
+## 5. Development & Contribution Standards
+
+- **Language Support**: Python 3.12+ (Backend & Desktop GUI), TypeScript / React Native Expo (Mobile Client).
+- **Type Safety**:
+  - Python: Explicit type annotations on all function signatures (`typing.List`, `typing.Optional`, `typing.Dict`).
+  - TypeScript: Strict type mode enabled in `mobile/tsconfig.json`.
+- **Git Commit Protocol**: Strict Conventional Commits standard:
+  - `feat(<subsystem>): <description>`
+  - `fix(<subsystem>): <description>`
+  - `refactor(<subsystem>): <description>`
+  - `docs(<subsystem>): <description>`
+  - `test(<subsystem>): <description>`
