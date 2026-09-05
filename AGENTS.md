@@ -17,8 +17,8 @@ GravityDesk is organized as a multi-context monorepo engineered to strict Clean 
                              │  Tailscale Mesh (WireGuard)
                              │  HTTP + WebSocket (Port 8000)
 ┌────────────────────────────▼─────────────────────────────┐
-│              GravityDesk Daemon (`server/`)               │
-│   • FastAPI REST Endpoints & WebSocket `/ws/terminal`     │
+│              GravityDesk Daemon (`server/`)              │
+│   • FastAPI REST Endpoints & WebSocket `/ws/terminal`    │
 │   • Windows ConPTY Runner (`server/terminal.py`)         │
 │   • SQLite / JSON Chat Resume (`conversations.py`)       │
 │   • Windows Sleep Inhibit & Vitals (`system.py`)         │
@@ -26,7 +26,7 @@ GravityDesk is organized as a multi-context monorepo engineered to strict Clean 
                              │  Local Subprocess / IPC
 ┌────────────────────────────▼─────────────────────────────┐
 │          Google Antigravity CLI (`agy.exe`) / CMD        │
-│   • Headless CLI with `--dangerously-skip-permissions`    │
+│   • Headless CLI with `--dangerously-skip-permissions`   │
 │   • Active Workspace Directory                           │
 └──────────────────────────────────────────────────────────┘
 ```

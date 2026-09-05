@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚀 GravityDesk
+# GravityDesk
 
 ### **Self-Hosted Remote Control System for Google Antigravity (`agy`) CLI & Windows Workstations over Tailscale**
 
@@ -55,7 +55,7 @@
 Clone the repository and install the verified dependencies:
 
 ```bash
-git clone https://github.com/your-username/GravityDesk.git
+git clone https://github.com/w1th0ut/GravityDesk.git
 cd GravityDesk
 pip install -r requirements.txt
 ```
@@ -66,7 +66,8 @@ Start the Desktop GUI Control Center using the batch launcher or Python:
 
 ```bash
 # Option A: One-click launcher
-run_gui.bat
+run_gui.bat # Windows
+run_gui.sh # Linux / MacOS
 
 # Option B: Direct Python invocation
 python gui.py
