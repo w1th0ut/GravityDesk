@@ -14,6 +14,6 @@ echo to log in or create a free Expo account (takes ~30 seconds).
 echo Once started, Expo Cloud will build your standalone .apk!
 echo.
 
-call npx eas-cli build -p android --profile preview
+call eas build -p android --profile preview
 
 pause
