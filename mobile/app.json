@@ -3,6 +3,7 @@
     "name": "GravityDesk",
     "slug": "gravitydesk",
     "version": "1.0.0",
+    "newArchEnabled": true,
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "splash": {
