@@ -60,12 +60,12 @@ const TerminalNavIcon: React.FC<{ color: string; size?: number }> = ({ color, si
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<TabKey>("home");
-  const [revocationCount, setRevocationCount] = useState<number>(0);
+  const [revocationNotice, setRevocationNotice] = useState<string | null>(null);
 
   const handleRevocation = useCallback(async () => {
     await clearCredentials();
     setCurrentTab("home");
-    setRevocationCount((c) => c + 1);
+    setRevocationNotice("Device access has been revoked by the host. Please scan the pairing QR code to reconnect.");
   }, []);
 
   const { health, isConnected, isChecking, refresh } = useLaptopVitals(3000, handleRevocation);
@@ -80,6 +80,7 @@ export default function App() {
   } = useTerminalSocket(50, handleRevocation);
 
   const handleConnectionChanged = () => {
+    setRevocationNotice(null);
     refresh();
     reconnect();
   };
@@ -99,7 +100,8 @@ export default function App() {
               onRefresh={refresh}
               onNavigateToTerminal={() => setCurrentTab("terminal")}
               onConnectionChanged={handleConnectionChanged}
-              revocationCount={revocationCount}
+              revocationNotice={revocationNotice}
+              onDismissNotice={() => setRevocationNotice(null)}
             />
           ) : (
             <TerminalScreen

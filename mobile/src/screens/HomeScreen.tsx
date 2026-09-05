@@ -24,7 +24,8 @@ interface Props {
   onRefresh: () => Promise<void>;
   onNavigateToTerminal: () => void;
   onConnectionChanged: () => void;
-  revocationCount?: number;
+  revocationNotice?: string | null;
+  onDismissNotice?: () => void;
 }
 
 export const HomeScreen: React.FC<Props> = ({
@@ -34,7 +35,8 @@ export const HomeScreen: React.FC<Props> = ({
   onRefresh,
   onNavigateToTerminal,
   onConnectionChanged,
-  revocationCount,
+  revocationNotice,
+  onDismissNotice,
 }) => {
   const [hostUrl, setHostUrl] = useState("");
   const [token, setToken] = useState("");
@@ -65,18 +67,23 @@ export const HomeScreen: React.FC<Props> = ({
 
   useEffect(() => {
     syncCredentials();
-  }, [isConnected, syncCredentials]);
+    if (isConnected) {
+      // Dismiss any revocation error once host is actively connected
+      setStatusMsg(null);
+      onDismissNotice?.();
+    }
+  }, [isConnected, syncCredentials, onDismissNotice]);
 
   useEffect(() => {
-    if (revocationCount && revocationCount > 0) {
+    if (revocationNotice) {
       setHostUrl("");
       setToken("");
       setStatusMsg({
         type: "error",
-        text: "Device access has been revoked by the host. Please scan the pairing QR code to reconnect.",
+        text: revocationNotice,
       });
     }
-  }, [revocationCount]);
+  }, [revocationNotice]);
 
 
   const handleQRSuccess = async (scannedHost: string, scannedToken: string) => {
@@ -100,10 +107,8 @@ export const HomeScreen: React.FC<Props> = ({
 
       setHostUrl(scannedHost);
       setToken(scannedToken);
-      setStatusMsg({
-        type: "success",
-        text: `Device '${currentDevName}' registered & connected!`,
-      });
+      setStatusMsg(null);
+      onDismissNotice?.();
 
       await onRefresh();
       onConnectionChanged();
@@ -218,7 +223,7 @@ export const HomeScreen: React.FC<Props> = ({
         )}
 
         {statusMsg && (
-          <View
+          <TouchableOpacity
             style={[
               styles.feedbackBox,
               statusMsg.type === "success"
@@ -227,20 +232,29 @@ export const HomeScreen: React.FC<Props> = ({
                 ? styles.feedbackError
                 : styles.feedbackInfo,
             ]}
+            onPress={() => {
+              setStatusMsg(null);
+              onDismissNotice?.();
+            }}
+            activeOpacity={0.8}
           >
-            <Text
-              style={[
-                styles.feedbackText,
-                statusMsg.type === "success"
-                  ? styles.textSuccess
-                  : statusMsg.type === "error"
-                  ? styles.textError
-                  : styles.textInfo,
-              ]}
-            >
-              {statusMsg.text}
-            </Text>
-          </View>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text
+                style={[
+                  styles.feedbackText,
+                  statusMsg.type === "success"
+                    ? styles.textSuccess
+                    : statusMsg.type === "error"
+                    ? styles.textError
+                    : styles.textInfo,
+                  { flex: 1, paddingRight: 8 },
+                ]}
+              >
+                {statusMsg.text}
+              </Text>
+              <Text style={{ fontSize: 13, color: "#8b949e", fontWeight: "700" }}>✕</Text>
+            </View>
+          </TouchableOpacity>
         )}
       </View>
 

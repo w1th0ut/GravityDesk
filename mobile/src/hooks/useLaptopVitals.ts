@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchHealth } from "../api/health";
 import { HealthResponse } from "../types";
+import { loadCredentials } from "../storage/credentials";
 
 export function useLaptopVitals(pollIntervalMs: number = 3000, onRevoked?: () => void) {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -9,8 +10,16 @@ export function useLaptopVitals(pollIntervalMs: number = 3000, onRevoked?: () =>
   const [error, setError] = useState<string | null>(null);
 
   const checkHealth = useCallback(async () => {
+    const creds = await loadCredentials();
+    if (!creds?.hostUrl || !creds?.token) {
+      setIsConnected(false);
+      setHealth(null);
+      setIsChecking(false);
+      return;
+    }
+
     try {
-      const data = await fetchHealth();
+      const data = await fetchHealth(creds.hostUrl, creds.token);
       setHealth(data);
       setIsConnected(true);
       setError(null);
