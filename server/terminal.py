@@ -186,7 +186,7 @@ class SessionHub:
         self._seed_initial_banner()
 
     def _seed_initial_banner(self) -> None:
-        initial_msg = "\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m "
+        initial_msg = "\x1b[32mprompt>\x1b[0m "
         self.current_seq += 1
         self.ring_buffer.append(
             {
@@ -270,13 +270,13 @@ class SessionHub:
             self.active_session.stop()
             self.active_session = None
 
-        self.broadcast_chunk(f"\r\n\x1b[33m[*] Workspace: {clean_dir}\x1b[0m\r\n\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m ")
+        self.broadcast_chunk(f"\r\n\x1b[33m[*] Workspace: {clean_dir}\x1b[0m\r\n\x1b[32mprompt>\x1b[0m ")
 
     def resume_conversation(self, conv_id: str, title: str = "") -> None:
         """Switches active conversation target for subsequent prompts."""
         self.active_conversation_id = conv_id if conv_id != "new" else None
         label = title or (f"Chat {conv_id[:8]}" if conv_id != "new" else "New Chat")
-        self.broadcast_chunk(f"\r\n\x1b[33m[*] Resumed chat: {label}\x1b[0m\r\n\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m ")
+        self.broadcast_chunk(f"\r\n\x1b[33m[*] Resumed chat: {label}\x1b[0m\r\n\x1b[32mprompt>\x1b[0m ")
 
     def send_input(self, data: str) -> None:
         """Processes user input, routing prompts to agy and shell commands to cmd."""
@@ -306,7 +306,7 @@ class SessionHub:
             return
 
         if cmd_lower == "cls" or cmd_lower == "clear":
-            self.broadcast_chunk("\x1b[2J\x1b[H\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m ")
+            self.broadcast_chunk("\x1b[2J\x1b[H\x1b[32mprompt>\x1b[0m ")
             return
 
         if cmd_lower.startswith(SHELL_CMDS):
