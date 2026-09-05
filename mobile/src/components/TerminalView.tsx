@@ -137,7 +137,7 @@ export const TerminalView = forwardRef<TerminalViewRef, Props>(
 
     const renderItem = ({ item }: { item: { id: string; spans: StyledSpan[] } }) => (
       <View style={styles.lineWrapper}>
-        <Text selectable>
+        <Text>
           {item.spans.map((span, sIdx) => (
             <Text
               key={sIdx}
@@ -163,10 +163,10 @@ export const TerminalView = forwardRef<TerminalViewRef, Props>(
           keyExtractor={(item) => item.id}
           style={styles.terminalScreen}
           contentContainerStyle={styles.terminalContent}
-          initialNumToRender={30}
-          maxToRenderPerBatch={30}
-          windowSize={9}
-          removeClippedSubviews={true}
+          initialNumToRender={50}
+          maxToRenderPerBatch={50}
+          windowSize={11}
+          removeClippedSubviews={false}
           onContentSizeChange={() => {
             if (autoScroll) {
               flatListRef.current?.scrollToEnd({ animated: false });

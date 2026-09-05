@@ -23,6 +23,49 @@ export const AGY_BANNER =
   "\x1b[90mReady for prompts & commands.\x1b[0m\r\n\r\n" +
   "\x1b[32mprompt>\x1b[0m ";
 
+export function cleanChunk(chunk: string): string {
+  return chunk
+    .replace(/(\x1B\]|\x9D)[0-9;]*[^\x07\x1B\r\n]*(\x07|\x1B\\)?/g, "")
+    .replace(/\x1B\[[0-9;?]*[A-LN-Za-ln-z]/g, "")
+    .replace(/\[[0-9;?]*[A-LN-Za-ln-z]/g, "")
+    .replace(/Microsoft Windows \[Version[^\]]+\]/gi, "")
+    .replace(/\(c\) Microsoft Corporation[^\r\n]*/gi, "")
+    .replace(/All rights reserved[^\r\n]*/gi, "");
+}
+
+export function processChunksIntoLines(
+  chunks: string[],
+  currentLines: string[],
+  maxLines: number = 2000
+): string[] {
+  const lines = currentLines.length === 0 ? [""] : [...currentLines];
+
+  for (const chunk of chunks) {
+    const cleaned = cleanChunk(chunk);
+    for (let i = 0; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (lines.length === 0) lines.push("");
+
+      if (ch === "\r") {
+        if (i + 1 < cleaned.length && cleaned[i + 1] === "\n") {
+          continue;
+        }
+        // Standalone carriage return (\r): Overwrite the current active line in-place
+        lines[lines.length - 1] = "";
+      } else if (ch === "\n") {
+        lines.push("");
+        if (lines.length > maxLines) {
+          lines.shift();
+        }
+      } else {
+        lines[lines.length - 1] += ch;
+      }
+    }
+  }
+
+  return lines;
+}
+
 export function useTerminalSocket(
   batchIntervalMs: number = 50,
   onRevoked?: () => void
@@ -34,19 +77,18 @@ export function useTerminalSocket(
   const wsRef = useRef<WebSocket | null>(null);
   const currentSeqRef = useRef<number>(0);
   const bufferRef = useRef<string[]>([]);
+  const linesRef = useRef<string[]>([]);
   const flushTimerRef = useRef<any>(null);
   const reconnectTimeoutRef = useRef<any>(null);
 
-  // Throttled batch flusher to protect React Native JS thread from log flooding
+  // Throttled batch flusher assembling raw chunks into coherent terminal lines
   const flushBuffer = useCallback(() => {
     if (bufferRef.current.length > 0) {
       const incoming = bufferRef.current;
       bufferRef.current = [];
-      setLogs((prev) => {
-        // Keep maximum 2,000 lines in mobile memory for butter-smooth scrolling
-        const combined = [...prev, ...incoming];
-        return combined.length > 2000 ? combined.slice(combined.length - 2000) : combined;
-      });
+      const updated = processChunksIntoLines(incoming, linesRef.current, 2000);
+      linesRef.current = updated;
+      setLogs(updated);
     }
   }, []);
 
@@ -95,6 +137,12 @@ export function useTerminalSocket(
               currentSeqRef.current = msg.seq;
             }
             bufferRef.current.push(msg.data);
+            if (!flushTimerRef.current) {
+              flushTimerRef.current = setTimeout(() => {
+                flushTimerRef.current = null;
+                flushBuffer();
+              }, batchIntervalMs);
+            }
           } else if (msg.type === "status") {
             setIsSessionRunning(msg.state === "RUNNING");
             if (msg.seq && msg.seq > currentSeqRef.current) {
@@ -104,12 +152,21 @@ export function useTerminalSocket(
         } catch {
           // Fallback if payload is raw string
           bufferRef.current.push(event.data);
-        } finally {
-          flushBuffer();
+          if (!flushTimerRef.current) {
+            flushTimerRef.current = setTimeout(() => {
+              flushTimerRef.current = null;
+              flushBuffer();
+            }, batchIntervalMs);
+          }
         }
       };
 
       socket.onclose = (event: any) => {
+        if (flushTimerRef.current) {
+          clearTimeout(flushTimerRef.current);
+          flushTimerRef.current = null;
+        }
+        flushBuffer();
         setIsWsConnected(false);
         wsRef.current = null;
         if (event && (event.code === 4001 || event.code === 1008)) {
@@ -159,8 +216,14 @@ export function useTerminalSocket(
   }, []);
 
   const clearLogs = useCallback(() => {
-    setLogs([AGY_BANNER]);
     bufferRef.current = [];
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+    const initialLines = processChunksIntoLines([AGY_BANNER], []);
+    linesRef.current = initialLines;
+    setLogs(initialLines);
   }, []);
 
   return {
