@@ -95,6 +95,16 @@ def test_session_lifecycle():
         assert res_stop.json()["status"] == "stopped"
 
 
+def test_workspaces_select():
+    token = get_or_create_token()
+    with TestClient(app) as client:
+        test_dir = os.path.realpath(os.getcwd())
+        res = client.post(f"/api/workspaces/select?path={test_dir}&token={token}")
+        assert res.status_code == 200
+        assert res.json()["status"] == "changed"
+        assert res.json()["cwd"] == test_dir
+
+
 if __name__ == "__main__":
     print("Running Hardened Architecture & Security Test Suite...")
     test_token_entropy()
@@ -105,6 +115,8 @@ if __name__ == "__main__":
     print("[PASS] test_health_authorized_via_query_and_bearer (Bearer and query auth)")
     test_workspaces_navigation()
     print("[PASS] test_workspaces_navigation (Safe directory navigation)")
+    test_workspaces_select()
+    print("[PASS] test_workspaces_select (Workspace selection and directory change)")
     test_favorites_toggle()
     print("[PASS] test_favorites_toggle (Favorites persistence)")
     test_command_allowlist_enforcement()

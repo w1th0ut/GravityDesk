@@ -12,11 +12,10 @@ from pydantic import BaseModel
 
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, print_ascii_qr
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
-from server.terminal import TerminalSession
+from server.terminal import TerminalSession, hub
 from server.workspaces import get_favorites, list_directory, toggle_favorite
 
 # Global State
-active_session: Optional[TerminalSession] = None
 server_token: str = ""
 server_ip: str = ""
 
@@ -47,8 +46,17 @@ async def lifespan(app: FastAPI):
     server_ip = get_tailscale_or_lan_ip()
     port = int(os.environ.get("PORT", 8000))
 
+    loop = asyncio.get_running_loop()
+    hub.set_loop(loop)
+
     # Inhibit Windows Sleep while daemon is active
     enable_sleep_inhibit()
+
+    # Start initial terminal session in cwd (cmd.exe)
+    try:
+        hub.start_session(cwd=os.getcwd())
+    except Exception as e:
+        print(f"[Terminal] Initial session error: {e}")
 
     # Terminal Startup Banner & QR
     display_startup_banner(server_ip, port, server_token)
@@ -58,8 +66,7 @@ async def lifespan(app: FastAPI):
     # Teardown
     print("[Server] Shutting down GravityDesk...")
     disable_sleep_inhibit()
-    if active_session:
-        active_session.stop()
+    hub.stop_session()
 
 
 app = FastAPI(title="GravityDesk Daemon", lifespan=lifespan)
@@ -103,7 +110,7 @@ class SessionStartRequest(BaseModel):
 async def health(_: str = Depends(verify_token)):
     """Returns laptop telemetry, network state, and session status."""
     vitals = get_system_vitals()
-    session_info = active_session.to_dict() if active_session else None
+    session_info = hub.to_dict()
 
     return {
         "status": "online",
@@ -131,34 +138,35 @@ async def toggle_fav(path: str = Query(...), _: str = Depends(verify_token)):
     return toggle_favorite(path)
 
 
+@app.post("/api/workspaces/select")
+async def select_workspace(path: str = Query(...), _: str = Depends(verify_token)):
+    """Switches active workspace directory and launches prompt."""
+    if not os.path.isdir(path):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Directory does not exist")
+    hub.change_directory(path)
+    return {"status": "changed", "cwd": hub.current_cwd}
+
+
 @app.post("/api/session/start")
 async def start_session(req: SessionStartRequest, _: str = Depends(verify_token)):
-    """Spawns an interactive agy CLI session inside Windows PTY."""
-    global active_session
-    loop = asyncio.get_running_loop()
-
-    if active_session and active_session.is_alive:
-        active_session.stop()
-
-    target_cwd = req.cwd or os.getcwd()
+    """Spawns an interactive CLI session inside Windows PTY."""
+    target_cwd = req.cwd or hub.current_cwd or os.getcwd()
     try:
-        active_session = TerminalSession(cwd=target_cwd, command=req.command)
-        active_session.start(loop)
+        session = hub.start_session(cwd=target_cwd, command=req.command)
     except ValueError as val_err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
 
     return {
         "status": "started",
-        **active_session.to_dict(),
+        **session.to_dict(),
     }
 
 
 @app.post("/api/session/stop")
 async def stop_session(_: str = Depends(verify_token)):
     """Stops the running terminal session."""
-    global active_session
-    if active_session:
-        active_session.stop()
+    if hub.active_session and hub.active_session.is_alive:
+        hub.stop_session()
         return {"status": "stopped"}
     return {"status": "no_active_session"}
 
@@ -173,24 +181,26 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
     await websocket.accept()
     client_queue: asyncio.Queue = asyncio.Queue()
 
-    # Ensure a session is active
-    global active_session
     loop = asyncio.get_running_loop()
-    if not active_session:
-        active_session = TerminalSession(cwd=os.getcwd())
-        active_session.start(loop)
+    if not hub.loop:
+        hub.set_loop(loop)
 
-    active_session.add_listener(client_queue)
+    hub.add_listener(client_queue)
 
     # Initial status notification
     await websocket.send_json(
         {
             "type": "status",
-            "state": "RUNNING" if active_session.is_alive else "STOPPED",
-            "cwd": active_session.cwd,
-            "seq": active_session.current_seq,
+            "state": "RUNNING" if (hub.active_session and hub.active_session.is_alive) else "STOPPED",
+            "cwd": hub.current_cwd,
+            "seq": hub.current_seq,
         }
     )
+
+    # Immediately replay recent backlog chunks so client gets the clean terminal prompt
+    backlog = hub.get_backlog_since(0)
+    for chunk in backlog:
+        await websocket.send_json(chunk)
 
     async def sender():
         """Forwards output chunks from queue to WebSocket."""
@@ -209,25 +219,25 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
             mtype = msg.get("type")
 
             if mtype == "subscribe":
-                # Replay missed backlog chunks since last_seq
                 last_seq = msg.get("last_seq", 0)
-                backlog = active_session.get_backlog_since(last_seq)
-                for chunk in backlog:
+                missed = hub.get_backlog_since(last_seq)
+                for chunk in missed:
                     await websocket.send_json(chunk)
 
             elif mtype == "stdin":
                 data = msg.get("data", "")
-                active_session.write(data)
+                hub.send_input(data)
 
             elif mtype == "signal":
                 sig = msg.get("signal")
-                if sig == "SIGINT":
-                    active_session.send_ctrl_c()
+                if sig:
+                    hub.send_signal(sig)
 
             elif mtype == "resize":
                 cols = msg.get("cols", 100)
                 rows = msg.get("rows", 30)
-                active_session.resize(cols, rows)
+                if hub.active_session and hub.active_session.is_alive:
+                    hub.active_session.resize(cols, rows)
 
     except WebSocketDisconnect:
         pass
@@ -235,8 +245,7 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
         print(f"[WebSocket] Error: {e}")
     finally:
         sender_task.cancel()
-        if active_session:
-            active_session.remove_listener(client_queue)
+        hub.remove_listener(client_queue)
 
 
 # Mount static directory for mobile web view

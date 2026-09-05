@@ -276,7 +276,7 @@
   <header>
     <div class="brand-row">
       <span class="status-dot" id="status-dot"></span>
-      <span class="brand">⚡ GravityDesk</span>
+      <span class="brand">GravityDesk</span>
       <div class="folder-chip" id="folder-chip" onclick="openFolderModal()">
         📁 <span id="folder-name">Select Folder</span>
       </div>
@@ -303,7 +303,7 @@
   <div class="input-dock">
     <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleVoice()">🎙️</button>
     <span class="input-prefix">&gt;</span>
-    <input type="text" id="term-input" class="term-input" placeholder="Prompt agy..." autocomplete="off" />
+    <input type="text" id="term-input" class="term-input" placeholder="Type command or prompt..." autocomplete="off" />
     <button class="send-btn" onclick="sendPrompt()">Send</button>
   </div>
 
@@ -619,12 +619,9 @@
     }
 
     async function switchSessionDir(p) {
-      await fetch(`/api/session/start?token=${token}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cwd: p }),
+      await fetch(`/api/workspaces/select?path=${encodeURIComponent(p)}&token=${token}`, {
+        method: "POST"
       });
-      clearTerminal();
     }
 
     function chooseCurrentFolder() {
