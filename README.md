@@ -66,8 +66,7 @@ Start the Desktop GUI Control Center using the batch launcher or Python:
 
 ```bash
 # Option A: One-click launcher
-run_gui.bat # Windows
-run_gui.sh # Linux / MacOS
+run_gui.bat
 
 # Option B: Direct Python invocation
 python gui.py
@@ -82,7 +81,7 @@ The GravityDesk Control Center will launch:
 ### 4. Pairing from Mobile
 
 1. Open your Android device camera or mobile browser.
-2. Scan the QR code shown on your laptop desktop screen (or tap **Copy URL** in the desktop app and send it to your phone).
+2. Scan the QR code shown on your laptop desktop screen.
 3. The GravityDesk Web Terminal will launch instantly:
    - Displays real-time **CPU, RAM, and Battery** vitals.
    - Greets you with the **ASCII AGY** welcome terminal.
@@ -163,6 +162,7 @@ GravityDesk/
 - [x] AGY conversation history sync from SQLite
 - [x] Mobile WhatsApp-style multiline prompt bar & Voice STT
 - [ ] Standalone Android APK build (`expo prebuild` / Android Studio)
+- [ ] Support Linux and MacOS for multi OS
 - [ ] Push notification alerts on AGY prompt completion or error
 - [ ] Biometric fingerprint authentication on mobile app
 
