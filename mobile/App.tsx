@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { StyleSheet, Text, View, SafeAreaView, StatusBar, ScrollView } from "react-native";
 import { useLaptopVitals } from "./src/hooks/useLaptopVitals";
 import { ConnectionCard } from "./src/components/ConnectionCard";
+import { PairingModal } from "./src/components/PairingModal";
 
 export default function App() {
-  const { health, isConnected, isChecking } = useLaptopVitals(3000);
+  const { health, isConnected, isChecking, refresh } = useLaptopVitals(3000);
   const [showPairingModal, setShowPairingModal] = useState(false);
 
   return (
@@ -24,6 +25,12 @@ export default function App() {
           onPressSettings={() => setShowPairingModal(true)}
         />
       </ScrollView>
+
+      <PairingModal
+        visible={showPairingModal}
+        onClose={() => setShowPairingModal(false)}
+        onPaired={() => refresh()}
+      />
     </SafeAreaView>
   );
 }
