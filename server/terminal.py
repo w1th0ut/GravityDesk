@@ -1,6 +1,7 @@
 import asyncio
 import collections
 import os
+import re
 import shutil
 import threading
 import time
@@ -11,6 +12,21 @@ DEFAULT_AGY_PATH = r"C:\Users\bagas\AppData\Local\agy\bin\agy.exe"
 
 # Whitelist of executables permitted to be spawned
 PERMITTED_COMMANDS = {"agy", "powershell.exe", "cmd.exe"}
+
+ANSI_CONTROL_RE = re.compile(r"\x1b\[[0-9;?]*[A-LN-Za-ln-z]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)")
+WINDOWS_BOILERPLATE_RE = re.compile(
+    r"(Microsoft Windows \[Version[^\]]+\]|\(c\) Microsoft Corporation[^\r\n]*|All rights reserved[^\r\n]*)",
+    re.IGNORECASE,
+)
+WINDOWS_PROMPT_RE = re.compile(r"^[A-Za-z]:\\[^>\r\n]*>", re.MULTILINE)
+
+
+def clean_output_chunk(chunk: str) -> str:
+    """Strips terminal control codes, [0K, and Windows cmd boot noise."""
+    cleaned = ANSI_CONTROL_RE.sub("", chunk)
+    cleaned = WINDOWS_BOILERPLATE_RE.sub("", cleaned)
+    cleaned = WINDOWS_PROMPT_RE.sub("", cleaned)
+    return cleaned
 
 
 class TerminalSession:
@@ -90,7 +106,7 @@ class TerminalSession:
         print(f"[Terminal] Started {self.command} (PID: {self.pid}) in {self.cwd}")
 
     def _reader_loop(self) -> None:
-        """Continuously reads stdout from PTY and dispatches to Hub."""
+        """Continuously reads stdout from PTY, cleans noise, and dispatches to Hub."""
         while self.is_alive and self.pty:
             try:
                 chunk = self.pty.read(blocking=True)
@@ -98,8 +114,9 @@ class TerminalSession:
                     time.sleep(0.01)
                     continue
 
-                if self.hub:
-                    self.hub.broadcast_chunk(chunk)
+                cleaned = clean_output_chunk(chunk)
+                if cleaned and self.hub:
+                    self.hub.broadcast_chunk(cleaned)
 
             except Exception as e:
                 print(f"[Terminal] Process output stream ended: {e}")
@@ -163,6 +180,19 @@ class SessionHub:
         self.ring_buffer = collections.deque(maxlen=capacity)
         self.current_seq = 0
         self.lock = threading.Lock()
+        self._seed_initial_banner()
+
+    def _seed_initial_banner(self) -> None:
+        initial_msg = "\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m "
+        self.current_seq += 1
+        self.ring_buffer.append(
+            {
+                "type": "output",
+                "seq": self.current_seq,
+                "data": initial_msg,
+                "ts": time.time(),
+            }
+        )
 
     def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self.loop = loop
@@ -234,16 +264,21 @@ class SessionHub:
         self.current_cwd = clean_dir
 
         # Print clean notification into terminal feed
-        self.broadcast_chunk(f"\r\n\x1b[36m[*] Workspace switched to: {clean_dir}\x1b[0m\r\n")
+        self.broadcast_chunk(f"\r\n\x1b[33m[*] Workspace: {clean_dir}\x1b[0m\r\n\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m ")
 
         # Start shell session in the new workspace directory
         self.start_session(cwd=clean_dir)
 
     def send_input(self, data: str) -> None:
-        """Sends input, auto-starting session if idle."""
+        """Sends input, auto-starting session if idle, formatting clean prompt & AGY tags."""
+        clean_prompt = data.strip()
+        if clean_prompt:
+            self.broadcast_chunk(f"\r\n\x1b[32mprompt>\x1b[0m {clean_prompt}\r\n\x1b[36mAGY>\x1b[0m\r\n")
+
         if not self.active_session or not self.active_session.is_alive:
             self.start_session(cwd=self.current_cwd)
-            time.sleep(0.1)
+            time.sleep(0.05)
+
         self.active_session.write(data)
 
     def send_signal(self, signal: str) -> None:

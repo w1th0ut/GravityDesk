@@ -302,8 +302,8 @@
   <!-- Input Dock -->
   <div class="input-dock">
     <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleVoice()">🎙️</button>
-    <span class="input-prefix">&gt;</span>
-    <input type="text" id="term-input" class="term-input" placeholder="Type command or prompt..." autocomplete="off" />
+    <span class="input-prefix" style="color:var(--success);font-weight:700;font-size:12px;">prompt&gt;</span>
+    <input type="text" id="term-input" class="term-input" placeholder="Type message or command..." autocomplete="off" />
     <button class="send-btn" onclick="sendPrompt()">Send</button>
   </div>
 
@@ -395,18 +395,34 @@
     }
 
     function renderActiveLines() {
-      // Fast DOM update: render all buffered lines
-      terminalScreen.innerHTML = lines
+      // Fast DOM update: filter out boilerplate / noise lines
+      const validLines = lines.filter((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed && i === 0) return false;
+        const lower = trimmed.toLowerCase();
+        if (lower.includes("microsoft windows [version")) return false;
+        if (lower.includes("(c) microsoft corporation")) return false;
+        if (lower.includes("all rights reserved")) return false;
+        return true;
+      });
+
+      terminalScreen.innerHTML = validLines
         .map(line => `<div class="term-line">${ansiToHtml(line)}</div>`)
         .join("");
       scrollToBottom();
     }
 
     function processIncomingData(chunk) {
-      // Strip OSC Window Title sequences (\x1B]0;...\x07)
+      // 1. Strip OSC Window Title sequences (\x1B]0;...\x07)
       chunk = chunk.replace(/(\x1B\]|\x9D)[0-9;]*[^\x07\x1B\r\n]*(\x07|\x1B\\)?/g, "");
-      // Strip cursor hide/show/restore codes
-      chunk = chunk.replace(/\x1B\[\?[0-9]+[a-zA-Z]/g, "");
+      // 2. Strip all ANSI control sequences (cursor pos, erase line, etc.) except SGR color (m)
+      chunk = chunk.replace(/\x1B\[[0-9;?]*[A-LN-Za-ln-z]/g, "");
+      // 3. Strip stray literal bracket control codes if \x1B was dropped (e.g. [0K, [2K, [?25h)
+      chunk = chunk.replace(/\[[0-9;?]*[A-LN-Za-ln-z]/g, "");
+      // 4. Strip Windows OS copyright and version strings
+      chunk = chunk.replace(/Microsoft Windows \[Version[^\]]+\]/gi, "");
+      chunk = chunk.replace(/\(c\) Microsoft Corporation[^\r\n]*/gi, "");
+      chunk = chunk.replace(/All rights reserved[^\r\n]*/gi, "");
 
       let lineUpdated = false;
 
@@ -487,8 +503,8 @@
     }
 
     function clearTerminal() {
-      lines = [""];
-      terminalScreen.innerHTML = "";
+      lines = ["\x1b[36mAGY>\x1b[0m Ready.", "\x1b[32mprompt>\x1b[0m "];
+      renderActiveLines();
     }
 
     function scrollToBottom() {
