@@ -66,54 +66,46 @@ export default function App() {
         )}
       </View>
 
-      {/* Bottom Navigation Bar */}
-      <View style={styles.bottomNav}>
-        {/* Tab 1: Home */}
-        <TouchableOpacity
-          style={[styles.navTab, currentTab === "home" && styles.navTabActive]}
-          onPress={() => setCurrentTab("home")}
-          activeOpacity={0.7}
-        >
-          <View style={styles.tabIconBox}>
-            <Text style={styles.tabIcon}>🏠</Text>
-            <View
-              style={[
-                styles.navBadgeDot,
-                isConnected ? styles.dotOnline : styles.dotOffline,
-              ]}
-            />
-          </View>
-          <Text
-            style={[
-              styles.navLabel,
-              currentTab === "home" && styles.navLabelActive,
-            ]}
+      {/* Floating Capsule Bottom Navigation Bar (Matching Reference Image) */}
+      <View style={styles.floatingNavContainer} pointerEvents="box-none">
+        <View style={styles.capsuleNav}>
+          {/* Tab 1: Home */}
+          <TouchableOpacity
+            style={[styles.capsuleItem, currentTab === "home" && styles.capsuleItemActive]}
+            onPress={() => setCurrentTab("home")}
+            activeOpacity={0.8}
           >
-            Home
-          </Text>
-        </TouchableOpacity>
-
-        {/* Tab 2: Terminal */}
-        <TouchableOpacity
-          style={[styles.navTab, currentTab === "terminal" && styles.navTabActive]}
-          onPress={() => setCurrentTab("terminal")}
-          activeOpacity={0.7}
-        >
-          <View style={styles.tabIconBox}>
-            <Text style={styles.tabIcon}>💻</Text>
-            {isSessionRunning && (
-              <View style={[styles.navBadgeDot, styles.dotRunning]} />
+            <View style={styles.tabIconBox}>
+              <Text style={[styles.capsuleIcon, currentTab === "home" && styles.capsuleIconActive]}>🏠</Text>
+              <View
+                style={[
+                  styles.navBadgeDot,
+                  isConnected ? styles.dotOnline : styles.dotOffline,
+                ]}
+              />
+            </View>
+            {currentTab === "home" && (
+              <Text style={styles.capsuleLabel}>Home</Text>
             )}
-          </View>
-          <Text
-            style={[
-              styles.navLabel,
-              currentTab === "terminal" && styles.navLabelActive,
-            ]}
+          </TouchableOpacity>
+
+          {/* Tab 2: Terminal */}
+          <TouchableOpacity
+            style={[styles.capsuleItem, currentTab === "terminal" && styles.capsuleItemActive]}
+            onPress={() => setCurrentTab("terminal")}
+            activeOpacity={0.8}
           >
-            Terminal
-          </Text>
-        </TouchableOpacity>
+            <View style={styles.tabIconBox}>
+              <Text style={[styles.capsuleIcon, currentTab === "terminal" && styles.capsuleIconActive]}>💻</Text>
+              {isSessionRunning && (
+                <View style={[styles.navBadgeDot, styles.dotRunning]} />
+              )}
+            </View>
+            {currentTab === "terminal" && (
+              <Text style={styles.capsuleLabel}>Terminal</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -127,30 +119,58 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
   },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "#141414",
-    borderTopWidth: 1,
-    borderTopColor: "#262626",
-    paddingTop: 5,
-    paddingBottom: 6,
-  },
-  navTab: {
-    flex: 1,
+  floatingNavContainer: {
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginHorizontal: 12,
+    zIndex: 50,
   },
-  navTabActive: {
-    backgroundColor: "#1e1e1e",
+  capsuleNav: {
+    flexDirection: "row",
+    backgroundColor: "#111111",
+    borderWidth: 1,
+    borderColor: "#262626",
+    borderRadius: 40,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    alignItems: "center",
+    gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.7,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  capsuleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 30,
+    backgroundColor: "transparent",
+  },
+  capsuleItemActive: {
+    backgroundColor: "#252528",
+    paddingHorizontal: 18,
+    gap: 8,
+  },
+  capsuleIcon: {
+    fontSize: 16,
+    opacity: 0.6,
+  },
+  capsuleIconActive: {
+    opacity: 1,
+  },
+  capsuleLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#ffffff",
   },
   tabIconBox: {
     position: "relative",
-  },
-  tabIcon: {
-    fontSize: 18,
   },
   navBadgeDot: {
     position: "absolute",
@@ -168,16 +188,5 @@ const styles = StyleSheet.create({
   },
   dotRunning: {
     backgroundColor: "#58a6ff",
-  },
-  navLabel: {
-    fontSize: 10,
-    color: "#737373",
-    fontWeight: "600",
-    marginTop: 2,
-    fontFamily: "monospace",
-  },
-  navLabelActive: {
-    color: "#58a6ff",
-    fontWeight: "700",
   },
 });

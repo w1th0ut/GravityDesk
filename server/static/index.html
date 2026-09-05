@@ -185,12 +185,186 @@
     .input-dock {
       background: var(--card);
       border-top: 1px solid var(--border);
-      padding: 8px 10px;
+      padding: 8px 10px 56px 10px;
       display: flex;
       gap: 6px;
       align-items: flex-end;
       flex-shrink: 0;
     }
+
+    /* Multi-View App Layout (Home & Terminal) */
+    .app-view {
+      display: none;
+      flex-direction: column;
+      height: 100dvh;
+      width: 100%;
+      overflow: hidden;
+    }
+    .app-view.active {
+      display: flex;
+    }
+
+    /* Home Dashboard Screen */
+    .home-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 14px 76px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .home-header {
+      margin-bottom: 2px;
+    }
+    .home-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+    }
+    .home-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .dash-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .dash-status-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .dash-status-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .dash-status-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-family: "Cascadia Code", Consolas, monospace;
+    }
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .telemetry-box {
+      background: #1e1e1e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .telemetry-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .telemetry-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 4px;
+      font-family: "Cascadia Code", Consolas, monospace;
+    }
+    .cta-jump-btn {
+      background: #1f6feb;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .dash-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .dash-card-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .input-lbl {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    /* Floating Capsule Navbar (Matching User Reference Image) */
+    .capsule-nav {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111111;
+      border: 1px solid #262626;
+      border-radius: 9999px;
+      padding: 5px 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 45;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75), 0 0 1px rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .capsule-item {
+      background: transparent;
+      border: none;
+      color: #737373;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
+    }
+    .capsule-item .nav-label {
+      display: none;
+      color: #ffffff;
+      white-space: nowrap;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .capsule-item .nav-icon {
+      color: #888888;
+      transition: color 0.2s;
+    }
+    .capsule-item.active {
+      background: #252528;
+      color: #ffffff;
+      padding: 8px 18px;
+      gap: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    }
+    .capsule-item.active .nav-label {
+      display: inline-block;
+    }
+    .capsule-item.active .nav-icon {
+      color: #ffffff;
+    }
+
 
     .mic-btn {
       width: 32px;
@@ -316,48 +490,133 @@
 </head>
 <body>
 
-  <!-- Top Bar -->
-  <header>
-    <div class="header-top">
-      <div class="brand-row">
-        <span class="status-dot" id="status-dot"></span>
-        <span class="brand">GravityDesk</span>
+  <!-- Screen 1: Home Dashboard View -->
+  <div id="home-view" class="app-view">
+    <div class="home-container">
+      <div class="home-header">
+        <div class="home-title">⚡ GravityDesk Control</div>
+        <div class="home-sub">Status Koneksi & Pairing Tailscale</div>
       </div>
-      <div class="vitals-text">
-        Bat: <span id="v-bat">-</span> | CPU: <span id="v-cpu">-</span> | RAM: <span id="v-ram">-</span>
+
+      <!-- Main Status Card -->
+      <div class="dash-card">
+        <div class="dash-status-head">
+          <span class="status-dot online" id="home-status-dot"></span>
+          <div>
+            <div class="dash-status-title" id="home-status-title">Terhubung ke Laptop (Tailscale Online)</div>
+            <div class="dash-status-sub" id="home-status-sub">Host: Tailscale Mesh</div>
+          </div>
+        </div>
+
+        <div class="telemetry-grid">
+          <div class="telemetry-box">
+            <div class="telemetry-lbl">Baterai Laptop</div>
+            <div class="telemetry-val" id="home-v-bat">-</div>
+          </div>
+          <div class="telemetry-box">
+            <div class="telemetry-lbl">CPU Load</div>
+            <div class="telemetry-val" id="home-v-cpu">-</div>
+          </div>
+          <div class="telemetry-box">
+            <div class="telemetry-lbl">Memory (RAM)</div>
+            <div class="telemetry-val" id="home-v-ram">-</div>
+          </div>
+          <div class="telemetry-box">
+            <div class="telemetry-lbl">Sleep Inhibit</div>
+            <div class="telemetry-val" style="color:var(--success);" id="home-v-sleep">🛡️ Aktif</div>
+          </div>
+        </div>
+
+        <button class="cta-jump-btn" onclick="switchTab('terminal')">
+          💻 Buka Terminal Sesi
+        </button>
+      </div>
+
+      <!-- Pairing & Config Card -->
+      <div class="dash-card">
+        <div class="dash-card-title">📱 Info Pairing Host</div>
+        <div class="dash-card-desc">Kredensial aktif sesi konsol saat ini:</div>
+
+        <div>
+          <div class="input-lbl">Laptop Host URL:</div>
+          <input type="text" id="home-host-input" class="term-input" readonly style="width:100%;cursor:default;margin-bottom:8px;" />
+        </div>
+
+        <div>
+          <div class="input-lbl">Auth Token (256-bit):</div>
+          <input type="text" id="home-token-input" class="term-input" readonly style="width:100%;cursor:default;margin-bottom:8px;" />
+        </div>
+
+        <button class="key-btn" style="width:100%;padding:8px;font-size:11px;" onclick="copyToken()">
+          📋 Salin Token Autentikasi
+        </button>
       </div>
     </div>
-    <div class="chips-row">
-      <div class="folder-chip" id="folder-chip" onclick="openFolderModal()">
-        📁 <span id="folder-name">Folder</span>
-      </div>
-      <div class="folder-chip" id="chat-chip" onclick="openChatModal()">
-        💬 <span id="chat-name">Resume Chat</span>
-      </div>
-    </div>
-  </header>
-
-  <!-- Edge-to-Edge Clean Terminal Screen -->
-  <div id="terminal-screen"></div>
-
-  <!-- Quick Shortcut Keys -->
-  <div class="quick-bar">
-    <button class="key-btn btn-ctrlc" onclick="sendSignal('SIGINT')">Ctrl+C</button>
-    <button class="key-btn" onclick="clearTerminal()">Clear</button>
-    <button class="key-btn" onclick="scrollToBottom()">Bottom ↓</button>
   </div>
 
-  <!-- Input Dock -->
-  <div class="input-dock">
-    <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleVoice()">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+  <!-- Screen 2: Pure Terminal View -->
+  <div id="terminal-view" class="app-view active">
+    <!-- Top Bar -->
+    <header>
+      <div class="header-top">
+        <div class="brand-row">
+          <span class="status-dot" id="status-dot"></span>
+          <span class="brand">GravityDesk</span>
+        </div>
+        <div class="vitals-text">
+          Bat: <span id="v-bat">-</span> | CPU: <span id="v-cpu">-</span> | RAM: <span id="v-ram">-</span>
+        </div>
+      </div>
+      <div class="chips-row">
+        <div class="folder-chip" id="folder-chip" onclick="openFolderModal()">
+          📁 <span id="folder-name">Folder</span>
+        </div>
+        <div class="folder-chip" id="chat-chip" onclick="openChatModal()">
+          💬 <span id="chat-name">Resume Chat</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Edge-to-Edge Clean Terminal Screen -->
+    <div id="terminal-screen"></div>
+
+    <!-- Quick Shortcut Keys -->
+    <div class="quick-bar">
+      <button class="key-btn btn-ctrlc" onclick="sendSignal('SIGINT')">Ctrl+C</button>
+      <button class="key-btn" onclick="clearTerminal()">Clear</button>
+      <button class="key-btn" onclick="scrollToBottom()">Bottom ↓</button>
+    </div>
+
+    <!-- Input Dock -->
+    <div class="input-dock">
+      <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleVoice()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+      </button>
+      <textarea id="term-input" class="term-input" placeholder="Type message or command..." rows="1" autocomplete="off"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendPrompt()">Send</button>
+    </div>
+  </div>
+
+  <!-- Floating Capsule Navbar matching User Reference Image -->
+  <nav class="capsule-nav">
+    <button id="nav-btn-home" class="capsule-item" onclick="switchTab('home')" title="Home">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
       </svg>
+      <span class="nav-label">Home</span>
     </button>
-    <textarea id="term-input" class="term-input" placeholder="Type message or command..." rows="1" autocomplete="off"></textarea>
-    <button class="send-btn" id="send-btn" onclick="sendPrompt()">Send</button>
-  </div>
+    <button id="nav-btn-terminal" class="capsule-item active" onclick="switchTab('terminal')" title="Terminal">
+      <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="4 17 10 11 4 5"></polyline>
+        <line x1="12" y1="19" x2="20" y2="19"></line>
+      </svg>
+      <span class="nav-label">Terminal</span>
+    </button>
+  </nav>
 
   <!-- Minimal Chat Resume Modal -->
   <div id="chat-modal" class="modal">
@@ -612,26 +871,90 @@
       }
     });
 
+    // Multi-View Navigation (Matching Floating Capsule Navbar)
+    let currentTab = "terminal";
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const homeView = document.getElementById("home-view");
+      const termView = document.getElementById("terminal-view");
+      const homeBtn = document.getElementById("nav-btn-home");
+      const termBtn = document.getElementById("nav-btn-terminal");
+
+      if (tab === "home") {
+        homeView.classList.add("active");
+        termView.classList.remove("active");
+        homeBtn.classList.add("active");
+        termBtn.classList.remove("active");
+      } else {
+        termView.classList.add("active");
+        homeView.classList.remove("active");
+        termBtn.classList.add("active");
+        homeBtn.classList.remove("active");
+        setTimeout(scrollToBottom, 50);
+      }
+    }
+
+    function copyToken() {
+      if (token) {
+        navigator.clipboard?.writeText(token).then(() => {
+          alert("Token autentikasi berhasil disalin ke clipboard!");
+        }).catch(() => {
+          prompt("Salin token ini:", token);
+        });
+      }
+    }
+
     // Telemetry Polling
     async function fetchVitals() {
       try {
         const res = await fetch(`/api/health?token=${token}`);
         if (res.ok) {
           const d = await res.json();
+          // Terminal bar vitals
           document.getElementById("v-cpu").innerText = `${d.cpu_percent}%`;
           if (d.memory_percent !== undefined) {
             document.getElementById("v-ram").innerText = `${d.memory_percent}%`;
           }
+          let bolt = "";
+          let batStr = "-";
           if (d.battery) {
-            const bolt = d.battery.is_charging ? "⚡" : "";
-            document.getElementById("v-bat").innerText = `${bolt}${d.battery.percent}%`;
+            bolt = d.battery.is_charging ? "⚡" : "";
+            batStr = `${bolt}${d.battery.percent}%`;
+            document.getElementById("v-bat").innerText = batStr;
           }
+
+          // Home Dashboard vitals
+          const homeBat = document.getElementById("home-v-bat");
+          if (homeBat) homeBat.innerText = d.battery ? `${bolt ? "⚡ " : "🔋 "}${d.battery.percent}%` : "--";
+          const homeCpu = document.getElementById("home-v-cpu");
+          if (homeCpu) homeCpu.innerText = `${d.cpu_percent}%`;
+          const homeRam = document.getElementById("home-v-ram");
+          if (homeRam) homeRam.innerText = d.memory_percent !== undefined ? `${d.memory_percent}%` : "--";
+          const homeSleep = document.getElementById("home-v-sleep");
+          if (homeSleep) homeSleep.innerText = d.sleep_inhibit_active ? "🛡️ Aktif" : "Nonaktif";
+          const homeStatusTitle = document.getElementById("home-status-title");
+          if (homeStatusTitle) homeStatusTitle.innerText = "Terhubung ke Laptop (Tailscale Online)";
+          const homeStatusSub = document.getElementById("home-status-sub");
+          if (homeStatusSub) homeStatusSub.innerText = `Host: ${d.tailscale_ip || window.location.host}`;
+          const homeDot = document.getElementById("home-status-dot");
+          if (homeDot) homeDot.className = "status-dot online";
+          const homeHostInput = document.getElementById("home-host-input");
+          if (homeHostInput) homeHostInput.value = `${window.location.protocol}//${window.location.host}`;
+          const homeTokenInput = document.getElementById("home-token-input");
+          if (homeTokenInput) homeTokenInput.value = token;
+
           if (d.active_session && d.active_session.cwd && !activePath) {
             activePath = d.active_session.cwd;
             updateFolderLabel(activePath);
           }
         }
-      } catch (err) {}
+      } catch (err) {
+        const homeDot = document.getElementById("home-status-dot");
+        if (homeDot) homeDot.className = "status-dot";
+        const homeStatusTitle = document.getElementById("home-status-title");
+        if (homeStatusTitle) homeStatusTitle.innerText = "Laptop Disconnected / Checking...";
+      }
     }
 
     function updateFolderLabel(p) {

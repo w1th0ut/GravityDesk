@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingTop: 4,
-    paddingBottom: 8,
+    paddingBottom: 56,
     backgroundColor: "#141414",
     borderTopWidth: 1,
     borderTopColor: "#262626",
