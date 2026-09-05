@@ -508,6 +508,8 @@
       for (let i = 0; i < chunk.length; i++) {
         const ch = chunk[i];
 
+        if (lines.length === 0) lines.push("");
+
         if (ch === "\r") {
           // If followed by \n, let \n create the new line
           if (i + 1 < chunk.length && chunk[i + 1] === "\n") {
@@ -602,7 +604,7 @@
     }
 
     function clearTerminal() {
-      lines = [];
+      lines = ["\x1b[32mprompt>\x1b[0m "];
       renderActiveLines();
     }
 

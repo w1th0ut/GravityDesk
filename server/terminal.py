@@ -186,7 +186,26 @@ class SessionHub:
         self._seed_initial_banner()
 
     def _seed_initial_banner(self) -> None:
-        pass
+        banner = (
+            "\x1b[36m  █████   ██████  ██    ██\x1b[0m\r\n"
+            "\x1b[36m ██   ██ ██        ██  ██ \x1b[0m\r\n"
+            "\x1b[36m ███████ ██  ███    ████  \x1b[0m\r\n"
+            "\x1b[36m ██   ██ ██    ██    ██   \x1b[0m\r\n"
+            "\x1b[36m ██   ██  ██████     ██   \x1b[0m\r\n"
+            "\x1b[90m──────────────────────────────\x1b[0m\r\n"
+            "\x1b[36mAnti-Gravity\x1b[0m \x1b[37m(AGY) Remote CLI\x1b[0m\r\n"
+            "\x1b[90mReady for prompts & commands.\x1b[0m\r\n\r\n"
+            "\x1b[32mprompt>\x1b[0m "
+        )
+        self.current_seq += 1
+        self.ring_buffer.append(
+            {
+                "type": "output",
+                "seq": self.current_seq,
+                "data": banner,
+                "ts": time.time(),
+            }
+        )
 
     def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self.loop = loop
@@ -272,13 +291,13 @@ class SessionHub:
             self.active_session.stop()
             self.active_session = None
 
-        self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Workspace: {clean_dir}\r\n")
+        self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Workspace: {clean_dir}\r\n\x1b[32mprompt>\x1b[0m ")
 
     def resume_conversation(self, conv_id: str, title: str = "") -> None:
         """Switches active conversation target for subsequent prompts."""
         self.active_conversation_id = conv_id if conv_id != "new" else None
         label = title or (f"Chat {conv_id[:8]}" if conv_id != "new" else "New Chat")
-        self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Resumed chat: {label}\r\n")
+        self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Resumed chat: {label}\r\n\x1b[32mprompt>\x1b[0m ")
 
     def send_input(self, data: str) -> None:
         """Processes user input, routing prompts to agy and shell commands to cmd."""
@@ -286,8 +305,8 @@ class SessionHub:
         if not clean_text:
             return
 
-        # 1. Echo prompt to terminal stream with Thinking indicator
-        self.broadcast_chunk(f"\r\n\x1b[32mprompt>\x1b[0m {clean_text}\r\n\x1b[36mAGY>\x1b[0m \x1b[33mThinking...\x1b[0m\r\n")
+        # 1. Echo prompt to terminal stream with Thinking indicator (overwriting idle prompt>)
+        self.broadcast_chunk(f"\r\x1b[32mprompt>\x1b[0m {clean_text}\r\n\x1b[36mAGY>\x1b[0m \x1b[33mThinking...\x1b[0m\r\n")
 
         # 2. If an interactive session is actively running (e.g. spawned via /api/session/start), forward stdin
         if self.active_session and self.active_session.is_alive:
@@ -304,11 +323,11 @@ class SessionHub:
             if os.path.isdir(new_path):
                 self.change_directory(new_path)
             else:
-                self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Directory not found: {new_path}\r\n")
+                self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Directory not found: {new_path}\r\n\x1b[32mprompt>\x1b[0m ")
             return
 
         if cmd_lower == "cls" or cmd_lower == "clear":
-            self.broadcast_chunk("\x1b[2J\x1b[H")
+            self.broadcast_chunk("\x1b[2J\x1b[H\x1b[32mprompt>\x1b[0m ")
             return
 
         if cmd_lower.startswith(SHELL_CMDS):
@@ -376,7 +395,7 @@ class SessionHub:
             self.broadcast_chunk(f"\r\n[Error running agy: {e}]\r\n")
         finally:
             self.running_subprocess = None
-            self.broadcast_chunk("\r\n")
+            self.broadcast_chunk("\r\n\x1b[32mprompt>\x1b[0m ")
 
     def _run_shell_cmd(self, cmd_text: str, cwd: str) -> None:
         """Executes standard shell command and streams stdout."""
@@ -401,7 +420,7 @@ class SessionHub:
             self.broadcast_chunk(f"\r\n[Error: {e}]\r\n")
         finally:
             self.running_subprocess = None
-            self.broadcast_chunk("\r\n")
+            self.broadcast_chunk("\r\n\x1b[32mprompt>\x1b[0m ")
 
     def send_signal(self, signal: str) -> None:
         if signal == "SIGINT":
@@ -410,7 +429,7 @@ class SessionHub:
                     self.running_subprocess.terminate()
                 except Exception:
                     pass
-                self.broadcast_chunk("\r\n\x1b[31m[Interrupted]\x1b[0m\r\n")
+                self.broadcast_chunk("\r\n\x1b[31m[Interrupted]\x1b[0m\r\n\x1b[32mprompt>\x1b[0m ")
             elif self.active_session and self.active_session.is_alive:
                 self.active_session.send_ctrl_c()
 
