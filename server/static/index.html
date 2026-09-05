@@ -37,18 +37,24 @@
     header {
       background: var(--card);
       border-bottom: 1px solid var(--border);
-      padding: 8px 12px;
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .header-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      flex-shrink: 0;
+      width: 100%;
     }
 
     .brand-row {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .brand {
@@ -58,6 +64,7 @@
       display: flex;
       align-items: center;
       gap: 5px;
+      letter-spacing: 0.2px;
     }
 
     .status-dot {
@@ -71,25 +78,42 @@
       box-shadow: 0 0 6px rgba(63, 185, 80, 0.6);
     }
 
+    .chips-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+
     .folder-chip {
       background: #1e1e1e;
       border: 1px solid var(--border);
-      padding: 3px 8px;
+      padding: 4px 8px;
       border-radius: 6px;
       font-size: 11px;
       color: var(--accent);
       font-family: "Cascadia Code", Consolas, monospace;
-      max-width: 140px;
+      flex: 1;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .folder-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .vitals-text {
       font-size: 11px;
       color: var(--text-muted);
       font-family: "Cascadia Code", Consolas, monospace;
+      white-space: nowrap;
     }
     .vitals-text span { color: #e5e5e5; }
 
@@ -294,18 +318,22 @@
 
   <!-- Top Bar -->
   <header>
-    <div class="brand-row">
-      <span class="status-dot" id="status-dot"></span>
-      <span class="brand">GravityDesk</span>
+    <div class="header-top">
+      <div class="brand-row">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="brand">GravityDesk</span>
+      </div>
+      <div class="vitals-text">
+        Bat: <span id="v-bat">-</span> | CPU: <span id="v-cpu">-</span> | RAM: <span id="v-ram">-</span>
+      </div>
+    </div>
+    <div class="chips-row">
       <div class="folder-chip" id="folder-chip" onclick="openFolderModal()">
         📁 <span id="folder-name">Folder</span>
       </div>
-      <div class="folder-chip" id="chat-chip" onclick="openChatModal()" style="max-width:125px;">
+      <div class="folder-chip" id="chat-chip" onclick="openChatModal()">
         💬 <span id="chat-name">Resume Chat</span>
       </div>
-    </div>
-    <div class="vitals-text">
-      Bat: <span id="v-bat">-</span> | CPU: <span id="v-cpu">-</span>
     </div>
   </header>
 
@@ -330,7 +358,6 @@
         <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
       </svg>
     </button>
-    <span class="input-prefix">prompt&gt;</span>
     <textarea id="term-input" class="term-input" placeholder="Type message or command..." rows="1" autocomplete="off"></textarea>
     <button class="send-btn" id="send-btn" onclick="sendPrompt()">Send</button>
   </div>
@@ -597,6 +624,9 @@
         if (res.ok) {
           const d = await res.json();
           document.getElementById("v-cpu").innerText = `${d.cpu_percent}%`;
+          if (d.memory_percent !== undefined) {
+            document.getElementById("v-ram").innerText = `${d.memory_percent}%`;
+          }
           if (d.battery) {
             const bolt = d.battery.is_charging ? "⚡" : "";
             document.getElementById("v-bat").innerText = `${bolt}${d.battery.percent}%`;
