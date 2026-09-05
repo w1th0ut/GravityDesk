@@ -186,16 +186,7 @@ class SessionHub:
         self._seed_initial_banner()
 
     def _seed_initial_banner(self) -> None:
-        initial_msg = "\x1b[32mprompt>\x1b[0m "
-        self.current_seq += 1
-        self.ring_buffer.append(
-            {
-                "type": "output",
-                "seq": self.current_seq,
-                "data": initial_msg,
-                "ts": time.time(),
-            }
-        )
+        pass
 
     def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self.loop = loop
@@ -218,45 +209,56 @@ class SessionHub:
             }
             self.ring_buffer.append(payload)
 
-        if self.loop and not self.loop.is_closed():
-            for listener_queue in list(self.listeners):
-                self.loop.call_soon_threadsafe(listener_queue.put_nowait, payload)
+        # Broadcast via loop to queue listeners
+        if self.loop and self.loop.is_running():
+            for listener in list(self.listeners):
+                try:
+                    self.loop.call_soon_threadsafe(listener.put_nowait, payload)
+                except Exception:
+                    pass
 
     def broadcast_status(self, state: str) -> None:
-        """Broadcasts process state change."""
+        """Sends session status changes (RUNNING, STOPPED) to listeners."""
         payload = {
             "type": "status",
             "state": state,
             "cwd": self.current_cwd,
             "seq": self.current_seq,
         }
-        if self.loop and not self.loop.is_closed():
-            for listener_queue in list(self.listeners):
-                self.loop.call_soon_threadsafe(listener_queue.put_nowait, payload)
+        if self.loop and self.loop.is_running():
+            for listener in list(self.listeners):
+                try:
+                    self.loop.call_soon_threadsafe(listener.put_nowait, payload)
+                except Exception:
+                    pass
 
-    def get_backlog_since(self, last_seq: int) -> List[dict]:
+    def get_backlog_since(self, last_seq: int) -> list:
+        """Returns missed chunks since last received sequence ID for resync."""
         with self.lock:
             return [chunk for chunk in self.ring_buffer if chunk["seq"] > last_seq]
 
     def start_session(
         self, cwd: Optional[str] = None, command: Optional[str] = None
     ) -> TerminalSession:
-        """Starts a session in the specified workspace."""
+        """Launches a new interactive session inside Windows PTY."""
+        session_cwd = cwd or self.current_cwd
+        self.current_cwd = session_cwd
+
         if self.active_session and self.active_session.is_alive:
             self.active_session.stop()
 
-        target_cwd = cwd or self.current_cwd
-        self.current_cwd = target_cwd
         self.active_session = TerminalSession(
-            cwd=target_cwd, command=command, hub=self
+            hub=self,
+            cwd=session_cwd,
+            command=command,
         )
         self.active_session.start()
         self.broadcast_status("RUNNING")
         return self.active_session
 
     def stop_session(self) -> None:
-        """Stops active session without clearing WebSocket listeners."""
-        if self.active_session:
+        """Terminates running PTY session."""
+        if self.active_session and self.active_session.is_alive:
             self.active_session.stop()
             self.active_session = None
         self.broadcast_status("STOPPED")
@@ -270,13 +272,13 @@ class SessionHub:
             self.active_session.stop()
             self.active_session = None
 
-        self.broadcast_chunk(f"\r\n\x1b[33m[*] Workspace: {clean_dir}\x1b[0m\r\n\x1b[32mprompt>\x1b[0m ")
+        self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Workspace: {clean_dir}\r\n")
 
     def resume_conversation(self, conv_id: str, title: str = "") -> None:
         """Switches active conversation target for subsequent prompts."""
         self.active_conversation_id = conv_id if conv_id != "new" else None
         label = title or (f"Chat {conv_id[:8]}" if conv_id != "new" else "New Chat")
-        self.broadcast_chunk(f"\r\n\x1b[33m[*] Resumed chat: {label}\x1b[0m\r\n\x1b[32mprompt>\x1b[0m ")
+        self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Resumed chat: {label}\r\n")
 
     def send_input(self, data: str) -> None:
         """Processes user input, routing prompts to agy and shell commands to cmd."""
@@ -302,11 +304,11 @@ class SessionHub:
             if os.path.isdir(new_path):
                 self.change_directory(new_path)
             else:
-                self.broadcast_chunk(f"Directory not found: {new_path}\r\n\r\n\x1b[32mprompt>\x1b[0m ")
+                self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Directory not found: {new_path}\r\n")
             return
 
         if cmd_lower == "cls" or cmd_lower == "clear":
-            self.broadcast_chunk("\x1b[2J\x1b[H\x1b[32mprompt>\x1b[0m ")
+            self.broadcast_chunk("\x1b[2J\x1b[H")
             return
 
         if cmd_lower.startswith(SHELL_CMDS):
@@ -374,7 +376,7 @@ class SessionHub:
             self.broadcast_chunk(f"\r\n[Error running agy: {e}]\r\n")
         finally:
             self.running_subprocess = None
-            self.broadcast_chunk("\r\n\x1b[32mprompt>\x1b[0m ")
+            self.broadcast_chunk("\r\n")
 
     def _run_shell_cmd(self, cmd_text: str, cwd: str) -> None:
         """Executes standard shell command and streams stdout."""
@@ -399,7 +401,7 @@ class SessionHub:
             self.broadcast_chunk(f"\r\n[Error: {e}]\r\n")
         finally:
             self.running_subprocess = None
-            self.broadcast_chunk("\r\n\x1b[32mprompt>\x1b[0m ")
+            self.broadcast_chunk("\r\n")
 
     def send_signal(self, signal: str) -> None:
         if signal == "SIGINT":
@@ -408,7 +410,7 @@ class SessionHub:
                     self.running_subprocess.terminate()
                 except Exception:
                     pass
-                self.broadcast_chunk("\r\n\x1b[31m[Interrupted]\x1b[0m\r\n\x1b[32mprompt>\x1b[0m ")
+                self.broadcast_chunk("\r\n\x1b[31m[Interrupted]\x1b[0m\r\n")
             elif self.active_session and self.active_session.is_alive:
                 self.active_session.send_ctrl_c()
 
