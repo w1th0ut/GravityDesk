@@ -2,6 +2,7 @@ import io
 import os
 import secrets
 import sys
+from typing import List, Tuple
 import psutil
 import qrcode
 
@@ -15,58 +16,59 @@ if hasattr(sys.stdout, "reconfigure"):
 
 def get_tailscale_or_lan_ip() -> str:
     """
-    Detects the best IP address for remote access:
+    Detects the best IP address for remote access in a single clean pass:
+    Priority:
     1. Tailscale adapter or CGNAT 100.x.y.z IP
     2. Active Wi-Fi / Ethernet LAN IP
-    3. Loopback 127.0.0.1 fallback
+    3. Any valid non-loopback, non-APIPA IPv4
+    4. 127.0.0.1 fallback
     """
-    addrs = psutil.net_if_addrs()
+    interfaces = psutil.net_if_addrs()
 
-    # Pass 1: Look for interface named 'tailscale' with valid IPv4
-    for iface_name, iface_addrs in addrs.items():
-        if "tailscale" in iface_name.lower():
-            for addr in iface_addrs:
-                if addr.family.name == "AF_INET":
-                    ip = addr.address
-                    if ip.startswith("100."):
-                        return ip
+    # Collect all valid IPv4 candidates
+    tailscale_candidates: List[str] = []
+    lan_candidates: List[str] = []
+    other_candidates: List[str] = []
 
-    # Pass 2: Look for any interface with 100.x.y.z IP (Tailscale CGNAT range)
-    for iface_name, iface_addrs in addrs.items():
-        for addr in iface_addrs:
-            if addr.family.name == "AF_INET" and addr.address.startswith("100."):
-                return addr.address
-
-    # Pass 3: Look for Wi-Fi or Ethernet LAN IP (192.168.x.x or 10.x.x.x)
-    for iface_name, iface_addrs in addrs.items():
+    for iface_name, addresses in interfaces.items():
         lname = iface_name.lower()
-        if "wi-fi" in lname or "ethernet" in lname or "wlan" in lname:
-            for addr in iface_addrs:
-                if addr.family.name == "AF_INET" and not addr.address.startswith("169.254."):
-                    return addr.address
+        for addr in addresses:
+            if addr.family.name != "AF_INET":
+                continue
+            ip = addr.address
+            if ip.startswith("127.") or ip.startswith("169.254."):
+                continue
 
-    # Pass 4: Any non-loopback, non-APIPA IPv4
-    for iface_name, iface_addrs in addrs.items():
-        for addr in iface_addrs:
-            if addr.family.name == "AF_INET" and not addr.address.startswith("127.") and not addr.address.startswith("169.254."):
-                return addr.address
+            if "tailscale" in lname or ip.startswith("100."):
+                tailscale_candidates.append(ip)
+            elif any(net in lname for net in ("wi-fi", "ethernet", "wlan")):
+                lan_candidates.append(ip)
+            else:
+                other_candidates.append(ip)
+
+    if tailscale_candidates:
+        return tailscale_candidates[0]
+    if lan_candidates:
+        return lan_candidates[0]
+    if other_candidates:
+        return other_candidates[0]
 
     return "127.0.0.1"
 
 
 def get_or_create_token(env_path: str = ".env") -> str:
-    """Reads or generates a 256-bit pairing secret token in .env."""
+    """Reads or generates a true 256-bit pairing secret token in .env (32 bytes / 64 hex chars)."""
     token_key = "GRAVITYDESK_TOKEN"
     if os.path.exists(env_path):
         with open(env_path, "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip().startswith(f"{token_key}="):
                     token = line.strip().split("=", 1)[1].strip()
-                    if token:
+                    if token and len(token) >= 32:
                         return token
 
-    # Generate new token
-    token = secrets.token_hex(16)
+    # Generate 256-bit cryptographic token (32 bytes = 64 hex characters)
+    token = secrets.token_hex(32)
     with open(env_path, "a", encoding="utf-8") as f:
         f.write(f"\n{token_key}={token}\n")
     return token
@@ -78,7 +80,7 @@ def print_ascii_qr(payload: str) -> None:
     qr.add_data(payload)
     qr.make(fit=True)
 
-    f = io.StringIO()
-    qr.print_ascii(out=f, invert=True)
-    f.seek(0)
-    print(f.read())
+    buffer = io.StringIO()
+    qr.print_ascii(out=buffer, invert=True)
+    buffer.seek(0)
+    print(buffer.read())

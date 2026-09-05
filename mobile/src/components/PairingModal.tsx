@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { loadCredentials, saveCredentials, clearCredentials } from "../storage/credentials";
 import { fetchHealth } from "../api/health";
@@ -23,6 +22,7 @@ export const PairingModal: React.FC<Props> = ({ visible, onClose, onPaired }) =>
   const [token, setToken] = useState("");
   const [isTesting, setIsTesting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -35,23 +35,43 @@ export const PairingModal: React.FC<Props> = ({ visible, onClose, onPaired }) =>
     }
   }, [visible]);
 
-  const handleTestAndSave = async () => {
-    if (!hostUrl.trim() || !token.trim()) {
-      setStatusMsg("Please enter both Host URL and Token.");
-      return;
-    }
-
-    setIsTesting(true);
-    setStatusMsg(null);
-
+  const handleBarcodeScanned = (scannedData: string) => {
+    setShowCamera(false);
     try {
-      // Test credentials against remote host
-      const res = await fetchHealth(hostUrl.trim(), token.trim());
+      if (scannedData.startsWith("gravitydesk://pair")) {
+        const urlObj = new URL(scannedData);
+        const hostParam = urlObj.searchParams.get("host");
+        const tokenParam = urlObj.searchParams.get("token");
+        if (hostParam && tokenParam) {
+          const proto = hostParam.startsWith("http") ? "" : "http://";
+          setHostUrl(`${proto}${hostParam}`);
+          setToken(tokenParam);
+          setStatusMsg("QR Code scanned! Testing connection...");
+          autoConnect(`${proto}${hostParam}`, tokenParam);
+        }
+      } else if (scannedData.includes("token=")) {
+        const urlObj = new URL(scannedData);
+        const tokenParam = urlObj.searchParams.get("token");
+        if (tokenParam) {
+          setHostUrl(urlObj.origin);
+          setToken(tokenParam);
+          setStatusMsg("QR Code scanned! Testing connection...");
+          autoConnect(urlObj.origin, tokenParam);
+        }
+      } else {
+        setStatusMsg("Unrecognized QR code payload format.");
+      }
+    } catch (e) {
+      setStatusMsg("Error parsing scanned QR code.");
+    }
+  };
+
+  const autoConnect = async (host: string, secret: string) => {
+    setIsTesting(true);
+    try {
+      const res = await fetchHealth(host, secret);
       if (res.status === "online") {
-        await saveCredentials({
-          hostUrl: hostUrl.trim(),
-          token: token.trim(),
-        });
+        await saveCredentials({ hostUrl: host, token: secret });
         setStatusMsg("Connected successfully! Credentials saved.");
         setTimeout(() => {
           onPaired();
@@ -59,10 +79,18 @@ export const PairingModal: React.FC<Props> = ({ visible, onClose, onPaired }) =>
         }, 800);
       }
     } catch (err: any) {
-      setStatusMsg(`Connection failed: ${err.message || "Invalid host or token"}`);
+      setStatusMsg(`Connection failed: ${err.message}`);
     } finally {
       setIsTesting(false);
     }
+  };
+
+  const handleTestAndSave = async () => {
+    if (!hostUrl.trim() || !token.trim()) {
+      setStatusMsg("Please enter both Host URL and Token.");
+      return;
+    }
+    await autoConnect(hostUrl.trim(), token.trim());
   };
 
   const handleClear = async () => {
@@ -84,8 +112,19 @@ export const PairingModal: React.FC<Props> = ({ visible, onClose, onPaired }) =>
 
           <View style={styles.body}>
             <Text style={styles.subtitle}>
-              Enter your Laptop's Tailscale IP & Pairing Token (shown in your laptop terminal startup):
+              Scan the ASCII QR Code on your laptop terminal or enter IP & Token manually:
             </Text>
+
+            <TouchableOpacity
+              style={styles.scanBtn}
+              onPress={() => {
+                // Prompt or simulate camera scan fallback
+                setStatusMsg("Camera QR scanning active. Point camera at laptop screen.");
+                setShowCamera(true);
+              }}
+            >
+              <Text style={styles.scanBtnText}>📷 Scan Terminal QR Code</Text>
+            </TouchableOpacity>
 
             <Text style={styles.label}>Laptop Host URL:</Text>
             <TextInput
@@ -103,7 +142,7 @@ export const PairingModal: React.FC<Props> = ({ visible, onClose, onPaired }) =>
               style={styles.input}
               value={token}
               onChangeText={setToken}
-              placeholder="Paste 32-character token"
+              placeholder="Paste 64-character 256-bit token"
               placeholderTextColor="#8b949e"
               autoCapitalize="none"
               autoCorrect={false}
@@ -191,6 +230,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8b949e",
     marginBottom: 4,
+  },
+  scanBtn: {
+    backgroundColor: "#21262d",
+    borderWidth: 1,
+    borderColor: "#58a6ff",
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  scanBtnText: {
+    fontSize: 13,
+    color: "#58a6ff",
+    fontWeight: "700",
   },
   label: {
     fontSize: 13,

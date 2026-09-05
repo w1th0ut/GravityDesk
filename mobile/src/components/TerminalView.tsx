@@ -1,8 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
@@ -13,32 +13,120 @@ interface Props {
   onClear: () => void;
 }
 
+interface StyledSpan {
+  text: string;
+  color?: string;
+  bold?: boolean;
+}
+
+const ANSI_COLOR_MAP: Record<number, string> = {
+  30: "#484f58", // Black
+  31: "#ff7b72", // Red
+  32: "#7ee787", // Green
+  33: "#d29922", // Yellow
+  34: "#58a6ff", // Blue
+  35: "#bc8cff", // Magenta
+  36: "#39c5cf", // Cyan
+  37: "#d1d5db", // White
+  90: "#6e7681", // Bright Black
+  91: "#ffa198", // Bright Red
+  92: "#56d364", // Bright Green
+  93: "#e3b341", // Bright Yellow
+  94: "#79c0ff", // Bright Blue
+  95: "#d2a8ff", // Bright Magenta
+  96: "#56d4dd", // Bright Cyan
+  97: "#f0f6fc", // Bright White
+};
+
 /**
- * Strips ANSI control characters and cursor codes for clean text rendering
+ * Deep ANSI SGR State Machine Parser.
+ * Transforms raw ANSI escape strings into structured, colored spans.
  */
-function cleanAnsi(str: string): string {
-  // Removes CSI sequences and control codes
-  return str.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
+function parseAnsiToSpans(rawChunk: string): StyledSpan[] {
+  const spans: StyledSpan[] = [];
+  const regex = /\x1B\[([0-9;]*)m/g;
+
+  let lastIndex = 0;
+  let currentColor: string | undefined = undefined;
+  let isBold = false;
+
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(rawChunk)) !== null) {
+    const textBefore = rawChunk.slice(lastIndex, match.index);
+    if (textBefore) {
+      spans.push({
+        text: textBefore.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, ""),
+        color: currentColor,
+        bold: isBold,
+      });
+    }
+
+    const codeStr = match[1];
+    if (!codeStr || codeStr === "0") {
+      currentColor = undefined;
+      isBold = false;
+    } else {
+      const codes = codeStr.split(";").map((c) => parseInt(c, 10));
+      for (const code of codes) {
+        if (code === 0) {
+          currentColor = undefined;
+          isBold = false;
+        } else if (code === 1) {
+          isBold = true;
+        } else if (ANSI_COLOR_MAP[code]) {
+          currentColor = ANSI_COLOR_MAP[code];
+        }
+      }
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  const remaining = rawChunk.slice(lastIndex);
+  if (remaining) {
+    spans.push({
+      text: remaining.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, ""),
+      color: currentColor,
+      bold: isBold,
+    });
+  }
+
+  return spans;
 }
 
 export const TerminalView: React.FC<Props> = ({ logs, isWsConnected, onClear }) => {
-  const scrollViewRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
-  const handleScroll = (event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const isCloseToBottom =
-      layoutMeasurement.height + contentOffset.y >= contentSize.height - 40;
-    setAutoScroll(isCloseToBottom);
-  };
+  // Group raw chunks into virtualized lines with memoization
+  const parsedLines = useMemo(() => {
+    return logs.map((chunk, index) => ({
+      id: `${index}`,
+      spans: parseAnsiToSpans(chunk),
+    }));
+  }, [logs]);
 
   const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+    flatListRef.current?.scrollToEnd({ animated: true });
     setAutoScroll(true);
   };
 
-  // Join logs into readable terminal block
-  const fullText = cleanAnsi(logs.join(""));
+  const renderItem = ({ item }: { item: { id: string; spans: StyledSpan[] } }) => (
+    <Text style={styles.lineWrapper} selectable>
+      {item.spans.map((span, sIdx) => (
+        <Text
+          key={sIdx}
+          style={[
+            styles.baseTerminalText,
+            span.color ? { color: span.color } : styles.defaultTextColor,
+            span.bold ? styles.boldText : undefined,
+          ]}
+        >
+          {span.text}
+        </Text>
+      ))}
+    </Text>
+  );
 
   return (
     <View style={styles.container}>
@@ -49,7 +137,7 @@ export const TerminalView: React.FC<Props> = ({ logs, isWsConnected, onClear }) 
             style={[styles.wsDot, isWsConnected ? styles.wsOnline : styles.wsOffline]}
           />
           <Text style={styles.wsLabel}>
-            {isWsConnected ? "Stream Connected" : "Stream Disconnected"}
+            {isWsConnected ? "Stream Active" : "Stream Offline"}
           </Text>
         </View>
 
@@ -66,29 +154,29 @@ export const TerminalView: React.FC<Props> = ({ logs, isWsConnected, onClear }) 
         </View>
       </View>
 
-      {/* Terminal Screen */}
-      <ScrollView
-        ref={scrollViewRef}
+      {/* Virtualized Terminal Window */}
+      <FlatList
+        ref={flatListRef}
+        data={parsedLines}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
         style={styles.terminalScreen}
         contentContainerStyle={styles.terminalContent}
-        onScroll={handleScroll}
-        scrollEventThrottle={100}
+        initialNumToRender={25}
+        maxToRenderPerBatch={25}
+        windowSize={7}
+        removeClippedSubviews={true}
         onContentSizeChange={() => {
           if (autoScroll) {
-            scrollViewRef.current?.scrollToEnd({ animated: false });
+            flatListRef.current?.scrollToEnd({ animated: false });
           }
         }}
-      >
-        {fullText ? (
-          <Text style={styles.terminalText} selectable>
-            {fullText}
-          </Text>
-        ) : (
+        ListEmptyComponent={
           <Text style={styles.placeholderText}>
             Terminal ready. Start an agy session or enter commands below.
           </Text>
-        )}
-      </ScrollView>
+        }
+      />
     </View>
   );
 };
@@ -158,21 +246,31 @@ const styles = StyleSheet.create({
   },
   terminalScreen: {
     flex: 1,
-    padding: 10,
+    paddingHorizontal: 10,
   },
   terminalContent: {
-    paddingBottom: 20,
+    paddingVertical: 8,
   },
-  terminalText: {
+  lineWrapper: {
     fontFamily: "monospace",
     fontSize: 12,
     lineHeight: 18,
-    color: "#58a6ff",
+  },
+  baseTerminalText: {
+    fontFamily: "monospace",
+    fontSize: 12,
+  },
+  defaultTextColor: {
+    color: "#c9d1d9",
+  },
+  boldText: {
+    fontWeight: "700",
   },
   placeholderText: {
     fontFamily: "monospace",
     fontSize: 12,
     color: "#8b949e",
     fontStyle: "italic",
+    padding: 10,
   },
 });

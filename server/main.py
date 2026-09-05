@@ -1,10 +1,12 @@
+import argparse
 import asyncio
 from contextlib import asynccontextmanager
 import os
+import secrets
+import sys
 from typing import Optional
-from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -19,6 +21,25 @@ server_token: str = ""
 server_ip: str = ""
 
 
+def display_startup_banner(ip: str, port: int, token: str) -> None:
+    """Prints the connection URLs and terminal ASCII QR code."""
+    pair_url = f"http://{ip}:{port}/?token={token}"
+    pair_qr_payload = f"gravitydesk://pair?host={ip}:{port}&token={token}"
+
+    print("\n" + "=" * 60)
+    print("[*] GRAVITYDESK SERVER READY")
+    print("=" * 60)
+    print(f"[*] Access URL:   {pair_url}")
+    print(f"[*] Tailscale IP: {ip}")
+    print(f"[*] Auth Token:   {token}")
+    print("\nScan this QR Code from Android to pair:")
+    try:
+        print_ascii_qr(pair_qr_payload)
+    except Exception as e:
+        print(f"[Warning] Could not print ASCII QR: {e}")
+    print("=" * 60 + "\n")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global server_token, server_ip
@@ -26,25 +47,11 @@ async def lifespan(app: FastAPI):
     server_ip = get_tailscale_or_lan_ip()
     port = int(os.environ.get("PORT", 8000))
 
-    # Inhibit Windows Sleep
+    # Inhibit Windows Sleep while daemon is active
     enable_sleep_inhibit()
 
     # Terminal Startup Banner & QR
-    pair_url = f"http://{server_ip}:{port}/?token={server_token}"
-    pair_qr_payload = f"gravitydesk://pair?host={server_ip}:{port}&token={server_token}"
-
-    print("\n" + "=" * 60)
-    print("[*] GRAVITYDESK SERVER READY")
-    print("=" * 60)
-    print(f"[*] Access URL:   {pair_url}")
-    print(f"[*] Tailscale IP: {server_ip}")
-    print(f"[*] Auth Token:   {server_token}")
-    print("\nScan this QR Code from Android to pair:")
-    try:
-        print_ascii_qr(pair_qr_payload)
-    except Exception as e:
-        print(f"[Warning] Could not print ASCII QR: {e}")
-    print("=" * 60 + "\n")
+    display_startup_banner(server_ip, port, server_token)
 
     yield
 
@@ -57,7 +64,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="GravityDesk Daemon", lifespan=lifespan)
 
-# Allow CORS for mobile web and Expo
+# Allow CORS for mobile app and web clients
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -67,14 +74,24 @@ app.add_middleware(
 )
 
 
-def verify_token(token: Optional[str] = Query(None)):
-    """Validates authentication token from query string."""
-    if not token or token != server_token:
+def verify_token(
+    token: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+) -> str:
+    """
+    Timing-attack-safe authentication token validator.
+    Supports either Bearer token in Authorization header or query parameter.
+    """
+    client_token = token
+    if authorization and authorization.startswith("Bearer "):
+        client_token = authorization.split("Bearer ", 1)[1].strip()
+
+    if not client_token or not secrets.compare_digest(client_token, server_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing pairing token",
         )
-    return token
+    return client_token
 
 
 class SessionStartRequest(BaseModel):
@@ -83,18 +100,10 @@ class SessionStartRequest(BaseModel):
 
 
 @app.get("/api/health")
-async def health(token: str = Depends(verify_token)):
+async def health(_: str = Depends(verify_token)):
     """Returns laptop telemetry, network state, and session status."""
     vitals = get_system_vitals()
-    session_info = None
-    if active_session:
-        session_info = {
-            "is_alive": active_session.is_alive,
-            "cwd": active_session.cwd,
-            "command": active_session.command,
-            "pid": active_session.pid,
-            "current_seq": active_session.current_seq,
-        }
+    session_info = active_session.to_dict() if active_session else None
 
     return {
         "status": "online",
@@ -105,25 +114,25 @@ async def health(token: str = Depends(verify_token)):
 
 
 @app.get("/api/workspaces")
-async def get_workspaces(path: Optional[str] = Query(None), token: str = Depends(verify_token)):
-    """Lists laptop directories, drives, and breadcrumbs."""
+async def get_workspaces(path: Optional[str] = Query(None), _: str = Depends(verify_token)):
+    """Lists laptop directories, drives, and breadcrumbs with boundary checks."""
     return list_directory(path)
 
 
 @app.get("/api/favorites")
-async def get_favs(token: str = Depends(verify_token)):
+async def get_favs(_: str = Depends(verify_token)):
     """Returns pinned favorite folders."""
     return get_favorites()
 
 
 @app.post("/api/favorites/toggle")
-async def toggle_fav(path: str = Query(...), token: str = Depends(verify_token)):
+async def toggle_fav(path: str = Query(...), _: str = Depends(verify_token)):
     """Toggles folder pin in favorites."""
     return toggle_favorite(path)
 
 
 @app.post("/api/session/start")
-async def start_session(req: SessionStartRequest, token: str = Depends(verify_token)):
+async def start_session(req: SessionStartRequest, _: str = Depends(verify_token)):
     """Spawns an interactive agy CLI session inside Windows PTY."""
     global active_session
     loop = asyncio.get_running_loop()
@@ -132,19 +141,20 @@ async def start_session(req: SessionStartRequest, token: str = Depends(verify_to
         active_session.stop()
 
     target_cwd = req.cwd or os.getcwd()
-    active_session = TerminalSession(cwd=target_cwd, command=req.command)
-    active_session.start(loop)
+    try:
+        active_session = TerminalSession(cwd=target_cwd, command=req.command)
+        active_session.start(loop)
+    except ValueError as val_err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
 
     return {
         "status": "started",
-        "cwd": active_session.cwd,
-        "command": active_session.command,
-        "pid": active_session.pid,
+        **active_session.to_dict(),
     }
 
 
 @app.post("/api/session/stop")
-async def stop_session(token: str = Depends(verify_token)):
+async def stop_session(_: str = Depends(verify_token)):
     """Stops the running terminal session."""
     global active_session
     if active_session:
@@ -156,7 +166,7 @@ async def stop_session(token: str = Depends(verify_token)):
 @app.websocket("/ws/terminal")
 async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(None)):
     """Bidirectional streaming terminal WebSocket with reconnect catch-up."""
-    if not token or token != server_token:
+    if not token or not secrets.compare_digest(token, server_token):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
@@ -206,7 +216,6 @@ async def terminal_websocket(websocket: WebSocket, token: Optional[str] = Query(
                     await websocket.send_json(chunk)
 
             elif mtype == "stdin":
-                # Write user characters into terminal stdin
                 data = msg.get("data", "")
                 active_session.write(data)
 
@@ -236,7 +245,23 @@ if os.path.isdir(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 
-if __name__ == "__main__":
-    import uvicorn
+def run_cli():
+    """CLI runner supporting --show-qr and standard uvicorn execution."""
+    parser = argparse.ArgumentParser(description="GravityDesk Remote agy Host Daemon")
+    parser.add_argument("--show-qr", action="store_true", help="Display pairing QR code and exit")
+    parser.add_argument("--port", type=int, default=8000, help="Port to bind daemon (default: 8000)")
+    args = parser.parse_args()
 
-    uvicorn.run("server.main:app", host="0.0.0.0", port=8000, reload=False)
+    token = get_or_create_token()
+    ip = get_tailscale_or_lan_ip()
+
+    if args.show_qr:
+        display_startup_banner(ip, args.port, token)
+        sys.exit(0)
+
+    import uvicorn
+    uvicorn.run("server.main:app", host="0.0.0.0", port=args.port, reload=False)
+
+
+if __name__ == "__main__":
+    run_cli()

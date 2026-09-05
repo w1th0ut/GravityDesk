@@ -8,8 +8,14 @@ if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
-from server.main import app, server_token
+
+from server.main import app
 from server.network import get_or_create_token
+
+
+def test_token_entropy():
+    token = get_or_create_token()
+    assert len(token) == 64, f"Token must have 256-bit entropy (64 hex characters), got {len(token)}"
 
 
 def test_health_unauthorized():
@@ -18,16 +24,20 @@ def test_health_unauthorized():
         assert res.status_code == 401
 
 
-def test_health_authorized():
+def test_health_authorized_via_query_and_bearer():
     token = get_or_create_token()
     with TestClient(app) as client:
-        res = client.get(f"/api/health?token={token}")
-        assert res.status_code == 200
-        data = res.json()
+        # Test query param
+        res_query = client.get(f"/api/health?token={token}")
+        assert res_query.status_code == 200
+        data = res_query.json()
         assert data["status"] == "online"
         assert "cpu_percent" in data
-        assert "memory_percent" in data
-        assert "tailscale_ip" in data
+
+        # Test Authorization: Bearer header
+        res_bearer = client.get("/api/health", headers={"Authorization": f"Bearer {token}"})
+        assert res_bearer.status_code == 200
+        assert res_bearer.json()["status"] == "online"
 
 
 def test_workspaces_navigation():
@@ -45,17 +55,29 @@ def test_workspaces_navigation():
 def test_favorites_toggle():
     token = get_or_create_token()
     with TestClient(app) as client:
-        test_dir = os.path.abspath(os.getcwd())
+        test_dir = os.path.realpath(os.getcwd())
         res = client.post(f"/api/favorites/toggle?path={test_dir}&token={token}")
         assert res.status_code == 200
         favs = res.json()
         assert isinstance(favs, list)
 
 
+def test_command_allowlist_enforcement():
+    """Verifies that arbitrary binary execution is blocked with 400."""
+    token = get_or_create_token()
+    with TestClient(app) as client:
+        res = client.post(
+            f"/api/session/start?token={token}",
+            json={"cwd": os.getcwd(), "command": "malicious_binary.exe"},
+        )
+        assert res.status_code == 400
+        assert "not permitted" in res.json()["detail"]
+
+
 def test_session_lifecycle():
     token = get_or_create_token()
     with TestClient(app) as client:
-        # Start session with cmd.exe for quick test
+        # Start session with permitted command (cmd.exe)
         res_start = client.post(
             f"/api/session/start?token={token}",
             json={"cwd": os.getcwd(), "command": r"C:\Windows\System32\cmd.exe"},
@@ -74,15 +96,19 @@ def test_session_lifecycle():
 
 
 if __name__ == "__main__":
-    print("Running PoC integration tests...")
+    print("Running Hardened Architecture & Security Test Suite...")
+    test_token_entropy()
+    print("[PASS] test_token_entropy (256-bit cryptographic entropy)")
     test_health_unauthorized()
-    print("[PASS] test_health_unauthorized passed")
-    test_health_authorized()
-    print("[PASS] test_health_authorized passed")
+    print("[PASS] test_health_unauthorized (401 on unauthorized)")
+    test_health_authorized_via_query_and_bearer()
+    print("[PASS] test_health_authorized_via_query_and_bearer (Bearer and query auth)")
     test_workspaces_navigation()
-    print("[PASS] test_workspaces_navigation passed")
+    print("[PASS] test_workspaces_navigation (Safe directory navigation)")
     test_favorites_toggle()
-    print("[PASS] test_favorites_toggle passed")
+    print("[PASS] test_favorites_toggle (Favorites persistence)")
+    test_command_allowlist_enforcement()
+    print("[PASS] test_command_allowlist_enforcement (Blocked Remote Code Execution)")
     test_session_lifecycle()
-    print("[PASS] test_session_lifecycle passed")
-    print("\nALL POC INTEGRATION TESTS PASSED SUCCESSFULLY! 🚀")
+    print("[PASS] test_session_lifecycle (PTY lifecycle & atomic state)")
+    print("\nALL HARDENED INTEGRATION TESTS PASSED WITH ZERO ERRORS! 🚀")

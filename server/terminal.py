@@ -4,10 +4,13 @@ import os
 import shutil
 import threading
 import time
-from typing import Callable, List, Optional, Tuple
+from typing import Dict, List, Optional
 import winpty
 
 DEFAULT_AGY_PATH = r"C:\Users\bagas\AppData\Local\agy\bin\agy.exe"
+
+# Whitelist of executables permitted to be spawned
+PERMITTED_COMMANDS = {"agy", "powershell.exe", "cmd.exe"}
 
 
 class LogChunk:
@@ -28,6 +31,7 @@ class LogChunk:
 class TerminalSession:
     """
     Manages an interactive Windows PTY session with thread-safe asyncio integration.
+    Enforces command execution allowlisting and monotonic sequence buffering.
     """
 
     def __init__(
@@ -41,7 +45,7 @@ class TerminalSession:
         self.cwd = os.path.abspath(cwd) if os.path.isdir(cwd) else os.getcwd()
         self.cols = cols
         self.rows = rows
-        self.command = command or self._find_default_command()
+        self.command = self._resolve_and_validate_command(command)
 
         self.pty: Optional[winpty.PTY] = None
         self.is_alive = False
@@ -58,20 +62,29 @@ class TerminalSession:
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._listeners: List[asyncio.Queue] = []
 
-    def _find_default_command(self) -> str:
-        """Finds agy.exe or falls back to PowerShell/CMD."""
-        if os.path.exists(DEFAULT_AGY_PATH):
-            return DEFAULT_AGY_PATH
+    def _resolve_and_validate_command(self, requested_command: Optional[str]) -> str:
+        """
+        Resolves command using AGY_BIN_PATH and enforces strict allowlisting
+        to prevent Arbitrary Command Execution.
+        """
+        # Check environment variable override
+        env_agy_path = os.environ.get("AGY_BIN_PATH")
+        if env_agy_path and os.path.exists(env_agy_path):
+            default_cmd = env_agy_path
+        elif os.path.exists(DEFAULT_AGY_PATH):
+            default_cmd = DEFAULT_AGY_PATH
+        else:
+            default_cmd = shutil.which("agy") or shutil.which("powershell.exe") or r"C:\Windows\System32\cmd.exe"
 
-        which_agy = shutil.which("agy")
-        if which_agy:
-            return which_agy
+        if not requested_command:
+            return default_cmd
 
-        which_powershell = shutil.which("powershell.exe")
-        if which_powershell:
-            return which_powershell
+        # Validate against permitted binaries
+        cmd_base = os.path.basename(requested_command).lower()
+        if cmd_base not in PERMITTED_COMMANDS and requested_command != default_cmd:
+            raise ValueError(f"Command execution of '{requested_command}' is not permitted.")
 
-        return r"C:\Windows\System32\cmd.exe"
+        return requested_command
 
     def start(self, loop: asyncio.AbstractEventLoop) -> None:
         """Spawns the PTY and starts the background reader thread."""
@@ -85,7 +98,7 @@ class TerminalSession:
             self.pty = winpty.PTY(self.cols, self.rows, backend=winpty.Backend.WinPTY)
             self.pty.spawn(self.command, cwd=self.cwd)
         except Exception as e:
-            # Fallback to ConPTY backend if WinPTY fails
+            # Fallback to ConPTY backend
             print(f"[Terminal] WinPTY spawn fallback to ConPTY due to: {e}")
             self.pty = winpty.PTY(self.cols, self.rows, backend=winpty.Backend.ConPTY)
             self.pty.spawn(self.command, cwd=self.cwd)
@@ -117,8 +130,8 @@ class TerminalSession:
                 # Broadcast to connected WebSocket queues in asyncio loop
                 if self._loop and not self._loop.is_closed():
                     payload = log_item.to_dict()
-                    for q in list(self._listeners):
-                        self._loop.call_soon_threadsafe(q.put_nowait, payload)
+                    for listener_queue in list(self._listeners):
+                        self._loop.call_soon_threadsafe(listener_queue.put_nowait, payload)
 
             except Exception as e:
                 print(f"[Terminal] Reader thread ended: {e}")
@@ -128,8 +141,8 @@ class TerminalSession:
         # Broadcast termination status
         if self._loop and not self._loop.is_closed():
             exit_msg = {"type": "status", "state": "TERMINATED", "seq": self.current_seq}
-            for q in list(self._listeners):
-                self._loop.call_soon_threadsafe(q.put_nowait, exit_msg)
+            for listener_queue in list(self._listeners):
+                self._loop.call_soon_threadsafe(listener_queue.put_nowait, exit_msg)
 
     def write(self, data: str) -> None:
         """Writes input characters / prompt into the terminal stdin."""
@@ -165,13 +178,23 @@ class TerminalSession:
         with self.lock:
             return [chunk.to_dict() for chunk in self.ring_buffer if chunk.seq > last_seq]
 
+    def to_dict(self) -> Dict:
+        """Atomic serialization eliminating Feature Envy."""
+        return {
+            "is_alive": self.is_alive,
+            "cwd": self.cwd,
+            "command": self.command,
+            "pid": self.pid,
+            "current_seq": self.current_seq,
+        }
+
     def stop(self) -> None:
         """Gracefully interrupts and closes the PTY session."""
         self.is_alive = False
         if self.pty:
             try:
                 self.send_ctrl_c()
-                time.sleep(0.1)
+                time.sleep(0.05)
                 self.pty.write("exit\r\n")
             except Exception:
                 pass
