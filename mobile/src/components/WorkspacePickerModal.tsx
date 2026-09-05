@@ -8,8 +8,21 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { fetchWorkspaces, selectWorkspaceApi } from "../api/workspaces";
 import { WorkspacesResponse } from "../types";
+
+const FolderEntryIcon: React.FC<{ color?: string; size?: number }> = ({ color = "#58a6ff", size = 14 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 interface Props {
   visible: boolean;
@@ -28,15 +41,21 @@ export const WorkspacePickerModal: React.FC<Props> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [selecting, setSelecting] = useState<boolean>(false);
   const [currentNavPath, setCurrentNavPath] = useState<string>(activePath);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadData = async (path?: string) => {
     setLoading(true);
+    setErrorMessage(null);
     try {
-      const workspaceRes = await fetchWorkspaces(path || currentNavPath);
+      const target = path !== undefined ? path : currentNavPath;
+      const workspaceRes = await fetchWorkspaces(target || undefined);
       setData(workspaceRes);
-      setCurrentNavPath(workspaceRes.current_path);
-    } catch (err) {
+      if (workspaceRes.current_path) {
+        setCurrentNavPath(workspaceRes.current_path);
+      }
+    } catch (err: any) {
       console.warn("Failed to load workspace data:", err);
+      setErrorMessage(err?.message || "Failed to load directory");
     } finally {
       setLoading(false);
     }
@@ -138,6 +157,13 @@ export const WorkspacePickerModal: React.FC<Props> = ({
                   <ActivityIndicator size="small" color="#58a6ff" />
                   <Text style={styles.loadingText}>Loading folders...</Text>
                 </View>
+              ) : errorMessage ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={() => loadData()}>
+                    <Text style={styles.retryBtnText}>Retry</Text>
+                  </TouchableOpacity>
+                </View>
               ) : data?.entries && data.entries.length > 0 ? (
                 data.entries.map((entry, idx) => (
                   <TouchableOpacity
@@ -146,6 +172,7 @@ export const WorkspacePickerModal: React.FC<Props> = ({
                     onPress={() => loadData(entry.path)}
                     activeOpacity={0.7}
                   >
+                    <FolderEntryIcon color="#58a6ff" size={14} />
                     <Text style={styles.folderName} numberOfLines={1}>
                       {entry.name}
                     </Text>
@@ -187,9 +214,10 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   card: {
-    width: "100%",
+    width: "92%",
     maxWidth: 440,
-    maxHeight: "80%",
+    height: "75%",
+    maxHeight: "85%",
     backgroundColor: "#141414",
     borderRadius: 8,
     borderWidth: 1,
@@ -306,6 +334,31 @@ const styles = StyleSheet.create({
     color: "#737373",
     fontFamily: "monospace",
     paddingVertical: 8,
+  },
+  errorBox: {
+    paddingVertical: 12,
+    alignItems: "center",
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 11,
+    color: "#f85149",
+    fontFamily: "monospace",
+    textAlign: "center",
+  },
+  retryBtn: {
+    backgroundColor: "#21262d",
+    borderWidth: 1,
+    borderColor: "#30363d",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  retryBtnText: {
+    fontSize: 11,
+    color: "#58a6ff",
+    fontFamily: "monospace",
+    fontWeight: "600",
   },
   footer: {
     padding: 10,

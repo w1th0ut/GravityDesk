@@ -176,6 +176,28 @@ def is_device_authorized(device_id: Optional[str], filepath: str = DEVICES_FILE)
     return False
 
 
+def is_device_revoked(device_id: Optional[str], filepath: str = DEVICES_FILE) -> bool:
+    """Checks if a device exists and specifically has 'revoked' status."""
+    if not device_id:
+        return False
+
+    clean_id = device_id.strip()
+    with _lock:
+        if not os.path.exists(filepath):
+            return False
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                devices = json.load(f)
+        except Exception:
+            return False
+
+        for d in devices:
+            if d.get("id") == clean_id:
+                return d.get("status") == "revoked"
+
+    return False
+
+
 def touch_device(device_id: Optional[str], ip: Optional[str] = None, filepath: str = DEVICES_FILE) -> None:
     """Updates device's last_seen timestamp and IP in background."""
     if not device_id:

@@ -9,8 +9,21 @@ import {
   ActivityIndicator,
   TextInput,
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { fetchConversations, selectConversationApi } from "../api/conversations";
 import { ConversationItem } from "../types";
+
+const ChatEntryIcon: React.FC<{ color?: string; size?: number }> = ({ color = "#58a6ff", size = 13 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 interface Props {
   visible: boolean;
@@ -28,12 +41,14 @@ export const ConversationPickerModal: React.FC<Props> = ({
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [currentActiveId, setCurrentActiveId] = useState<string | null>(activeId);
   const [loading, setLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterScope, setFilterScope] = useState<"all" | "repo">("all");
   const [currentRepoName, setCurrentRepoName] = useState<string>("");
 
   const loadConversations = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const res = await fetchConversations();
       setConversations(res.conversations || []);
@@ -41,8 +56,9 @@ export const ConversationPickerModal: React.FC<Props> = ({
       if (res.current_repo) {
         setCurrentRepoName(res.current_repo);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Failed to load conversations:", err);
+      setErrorMessage(err?.message || "Failed to load conversations");
     } finally {
       setLoading(false);
     }
@@ -75,8 +91,10 @@ export const ConversationPickerModal: React.FC<Props> = ({
         return false;
       }
       if (q) {
-        const matchTitle = (c.summary || "").toLowerCase().includes(q);
-        const matchWs = (c.workspace || "").toLowerCase().includes(q);
+        const title = c.title || c.summary || c.preview || "";
+        const ws = c.workspace_name || c.workspace_path || c.workspace || "";
+        const matchTitle = title.toLowerCase().includes(q);
+        const matchWs = ws.toLowerCase().includes(q);
         const matchId = (c.id || "").toLowerCase().includes(q);
         return matchTitle || matchWs || matchId;
       }
@@ -149,6 +167,13 @@ export const ConversationPickerModal: React.FC<Props> = ({
                 <ActivityIndicator size="small" color="#58a6ff" />
                 <Text style={styles.loadingText}>Loading conversations...</Text>
               </View>
+            ) : errorMessage ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+                <TouchableOpacity style={styles.retryBtn} onPress={loadConversations}>
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <ScrollView style={styles.chatList} showsVerticalScrollIndicator={false}>
                 {filteredConversations.length === 0 ? (
@@ -158,21 +183,28 @@ export const ConversationPickerModal: React.FC<Props> = ({
                 ) : (
                   filteredConversations.map((item) => {
                     const isActive = currentActiveId === item.id;
-                    const wsName = item.workspace
-                      ? item.workspace.split(/[\\/]/).filter(Boolean).pop()
-                      : "";
+                    const itemTitle = item.title || item.summary || item.preview || `Chat ${item.id.slice(0, 8)}`;
+                    const wsName =
+                      item.workspace_name ||
+                      (item.workspace_path ? item.workspace_path.split(/[\\/]/).filter(Boolean).pop() : "") ||
+                      item.workspace ||
+                      "";
+                    const relativeTime = item.time_str || item.relative_time || "";
 
                     return (
                       <TouchableOpacity
                         key={item.id}
                         style={[styles.itemCard, isActive && styles.itemCardActive]}
-                        onPress={() => handleSelect(item.id, item.summary)}
+                        onPress={() => handleSelect(item.id, itemTitle)}
                         activeOpacity={0.7}
                       >
                         <View style={styles.itemHeadRow}>
-                          <Text style={styles.itemTitle} numberOfLines={1}>
-                            {item.summary || `Chat ${item.id.slice(0, 8)}`}
-                          </Text>
+                          <View style={styles.titleIconRow}>
+                            <ChatEntryIcon color={isActive ? "#3fb950" : "#58a6ff"} size={13} />
+                            <Text style={styles.itemTitle} numberOfLines={1}>
+                              {itemTitle}
+                            </Text>
+                          </View>
                           {isActive && (
                             <View style={styles.activeBadge}>
                               <Text style={styles.activeBadgeText}>ACTIVE</Text>
@@ -187,8 +219,12 @@ export const ConversationPickerModal: React.FC<Props> = ({
                             </View>
                           ) : null}
                           <Text style={styles.metaText}>{item.steps || 1} steps</Text>
-                          <Text style={styles.metaText}>•</Text>
-                          <Text style={styles.metaText}>{item.relative_time || ""}</Text>
+                          {relativeTime ? (
+                            <>
+                              <Text style={styles.metaText}>•</Text>
+                              <Text style={styles.metaText}>{relativeTime}</Text>
+                            </>
+                          ) : null}
                         </View>
                       </TouchableOpacity>
                     );
@@ -212,9 +248,10 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   modalBox: {
-    width: "100%",
+    width: "92%",
     maxWidth: 440,
-    maxHeight: "80%",
+    height: "75%",
+    maxHeight: "85%",
     backgroundColor: "#141414",
     borderRadius: 8,
     borderWidth: 1,
@@ -369,6 +406,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "monospace",
   },
+  titleIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+  },
   emptyBox: {
     padding: 16,
     alignItems: "center",
@@ -377,6 +420,31 @@ const styles = StyleSheet.create({
     color: "#737373",
     fontSize: 11,
     fontFamily: "monospace",
+  },
+  errorBox: {
+    paddingVertical: 16,
+    alignItems: "center",
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 11,
+    color: "#f85149",
+    fontFamily: "monospace",
+    textAlign: "center",
+  },
+  retryBtn: {
+    backgroundColor: "#21262d",
+    borderWidth: 1,
+    borderColor: "#30363d",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  retryBtnText: {
+    fontSize: 11,
+    color: "#58a6ff",
+    fontFamily: "monospace",
+    fontWeight: "600",
   },
 });
 

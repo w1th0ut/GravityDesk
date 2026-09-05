@@ -19,6 +19,7 @@ from server.devices import (
     delete_device,
     get_devices,
     is_device_authorized,
+    is_device_revoked,
     notify_device_event,
     pair_device,
     rename_device,
@@ -141,27 +142,38 @@ def verify_token(
     """
     Timing-attack-safe authentication validator.
     1. Paired devices: Authenticated directly via registered device ID.
-    2. Revoked devices: Blocked with 403 Forbidden.
-    3. Admin/Initial pairing: Authenticated via Bearer token or query parameter.
+    2. Master Token: Authenticated via Bearer token or query parameter. Auto-registers active device if provided.
+    3. Revoked devices: Blocked with 403 Forbidden.
     """
     active_id = x_device_id or device_id
 
-    # If device ID is specified:
-    if active_id:
-        if not is_device_authorized(active_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Akses perangkat telah dicabut atau belum terdaftar",
-            )
-        touch_device(active_id)
-        return "device-authorized"
-
-    # Admin / Direct Master Token Authentication (when no device ID is provided)
+    # Extract client token if present
     client_token = token
     if authorization and authorization.startswith("Bearer "):
         client_token = authorization.split("Bearer ", 1)[1].strip()
 
-    if client_token and secrets.compare_digest(client_token, server_token):
+    has_valid_master = bool(client_token and secrets.compare_digest(client_token, server_token))
+
+    if active_id:
+        if is_device_revoked(active_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Akses perangkat telah dicabut",
+            )
+        if is_device_authorized(active_id):
+            touch_device(active_id)
+            return "device-authorized"
+        if has_valid_master:
+            pair_device(active_id, "Android Device", "android", "remote")
+            touch_device(active_id)
+            return "master-and-device-authorized"
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akses perangkat telah dicabut atau belum terdaftar",
+        )
+
+    # Master Token Authentication (when no device ID is provided)
+    if has_valid_master:
         return client_token
 
     raise HTTPException(
@@ -371,14 +383,22 @@ async def terminal_websocket(
     device_id: Optional[str] = Query(None),
 ):
     """Bidirectional streaming terminal WebSocket with reconnect catch-up."""
-    if device_id and not is_device_authorized(device_id):
-        await websocket.close(code=4001, reason="Device Revoked")
-        return
+    has_valid_master = bool(token and secrets.compare_digest(token, server_token))
 
     authorized = False
-    if device_id and is_device_authorized(device_id):
-        authorized = True
-    elif token and secrets.compare_digest(token, server_token):
+    if device_id:
+        if is_device_revoked(device_id):
+            await websocket.close(code=4001, reason="Device Revoked")
+            return
+        if is_device_authorized(device_id):
+            authorized = True
+        elif has_valid_master:
+            pair_device(device_id, "Android Device", "android", "remote")
+            authorized = True
+        else:
+            await websocket.close(code=4001, reason="Device Revoked")
+            return
+    elif has_valid_master:
         authorized = True
 
     if not authorized:

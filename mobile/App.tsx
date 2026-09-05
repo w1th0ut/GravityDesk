@@ -80,7 +80,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0c0c0c" />
+      <StatusBar barStyle="light-content" backgroundColor="#141414" />
 
       {/* Screen Content */}
       <View style={styles.mainContent}>
@@ -143,7 +143,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0c0c0c",
+    backgroundColor: "#141414",
   },
   mainContent: {
     flex: 1,

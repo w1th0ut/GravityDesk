@@ -11,7 +11,6 @@ import { ConversationPickerModal } from "../components/ConversationPickerModal";
 import { TerminalView, TerminalViewRef } from "../components/TerminalView";
 import { PromptBar } from "../components/PromptBar";
 import Svg, { Path } from "react-native-svg";
-import { startSessionApi, stopSessionApi } from "../api/session";
 
 const FolderIcon = ({ color = "#58a6ff", size = 13 }: { color?: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
@@ -65,33 +64,13 @@ export const TerminalScreen: React.FC<Props> = ({
   const [activeWorkspace, setActiveWorkspace] = useState<string>("");
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
   const [activeConvoName, setActiveConvoName] = useState<string>("Resume Chat");
-  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(false);
   const terminalRef = useRef<TerminalViewRef>(null);
-
-  const isSessionRunning =
-    wsSessionRunning || (health?.active_session?.is_alive ?? false);
 
   useEffect(() => {
     if (health?.active_session?.cwd && !activeWorkspace) {
       setActiveWorkspace(health.active_session.cwd);
     }
   }, [health, activeWorkspace]);
-
-  const handleToggleSession = useCallback(async () => {
-    setIsSessionLoading(true);
-    try {
-      if (isSessionRunning) {
-        await stopSessionApi();
-      } else {
-        await startSessionApi(activeWorkspace || undefined);
-      }
-      await refreshVitals();
-    } catch (err) {
-      console.warn("Session toggle error:", err);
-    } finally {
-      setIsSessionLoading(false);
-    }
-  }, [isSessionRunning, activeWorkspace, refreshVitals]);
 
   if (!isConnected) {
     return (
@@ -157,9 +136,6 @@ export const TerminalScreen: React.FC<Props> = ({
         onSendSignal={sendSignal}
         onClearLogs={clearLogs}
         onScrollToBottom={() => terminalRef.current?.scrollToBottom()}
-        isSessionRunning={isSessionRunning}
-        onToggleSession={handleToggleSession}
-        isSessionLoading={isSessionLoading}
       />
 
       {/* Modals */}

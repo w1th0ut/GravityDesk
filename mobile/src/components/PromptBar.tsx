@@ -14,9 +14,6 @@ interface Props {
   onSendSignal: (signal: string) => void;
   onClearLogs?: () => void;
   onScrollToBottom?: () => void;
-  isSessionRunning: boolean;
-  onToggleSession: () => void;
-  isSessionLoading?: boolean;
 }
 
 export const PromptBar: React.FC<Props> = ({
@@ -24,9 +21,6 @@ export const PromptBar: React.FC<Props> = ({
   onSendSignal,
   onClearLogs,
   onScrollToBottom,
-  isSessionRunning,
-  onToggleSession,
-  isSessionLoading = false,
 }) => {
   const [promptText, setPromptText] = useState("");
   const [inputHeight, setInputHeight] = useState(36);
@@ -65,19 +59,6 @@ export const PromptBar: React.FC<Props> = ({
     <View style={styles.container}>
       {/* Quick Action Bar (.quick-bar matching index.html) */}
       <View style={styles.quickBar}>
-        <TouchableOpacity
-          style={[styles.keyBtn, isSessionRunning ? styles.sessionBtnStop : styles.sessionBtnStart]}
-          onPress={onToggleSession}
-          disabled={isSessionLoading}
-        >
-          {isSessionLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={[styles.keyBtnText, isSessionRunning && styles.sessionStopText]}>
-              {isSessionRunning ? "Stop agy" : "Start agy"}
-            </Text>
-          )}
-        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.keyBtn, styles.btnCtrlC]}
@@ -180,15 +161,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#e5e5e5",
     fontWeight: "600",
-  },
-  sessionBtnStart: {
-    borderColor: "#58a6ff",
-  },
-  sessionBtnStop: {
-    borderColor: "rgba(248, 81, 73, 0.4)",
-  },
-  sessionStopText: {
-    color: "#f85149",
   },
   btnCtrlC: {
     borderColor: "rgba(248, 81, 73, 0.4)",

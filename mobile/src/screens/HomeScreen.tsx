@@ -11,11 +11,10 @@ import { HealthResponse } from "../types";
 import {
   loadCredentials,
   saveCredentials,
-  clearCredentials,
   getOrCreateDeviceId,
   getDeviceName,
 } from "../storage/credentials";
-import { fetchHealth, pairDeviceApi } from "../api/health";
+import { pairDeviceApi } from "../api/health";
 import { QRScannerModal } from "../components/QRScannerModal";
 
 interface Props {
@@ -57,14 +56,6 @@ export const HomeScreen: React.FC<Props> = ({
     });
   }, []);
 
-  const handleClear = async () => {
-    await clearCredentials();
-    setHostUrl("");
-    setToken("");
-    setStatusMsg({ type: "info", text: "Device pairing disconnected." });
-    await onRefresh();
-    onConnectionChanged();
-  };
 
   const handleQRSuccess = async (scannedHost: string, scannedToken: string) => {
     setIsPairing(true);
@@ -104,6 +95,8 @@ export const HomeScreen: React.FC<Props> = ({
     }
   };
 
+  const isPaired = isConnected || !!token;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header Banner */}
@@ -112,8 +105,8 @@ export const HomeScreen: React.FC<Props> = ({
         <Text style={styles.headerSubtitle}>Connection Status & Device Management</Text>
       </View>
 
-      {/* Main Connection Status Card */}
-      <View style={styles.card}>
+      {/* Main Connection Status Section (Seamless) */}
+      <View style={styles.section}>
         <View style={styles.statusHeader}>
           <View style={[styles.statusDot, isConnected ? styles.dotOnline : styles.dotOffline]} />
           <View style={styles.statusTitleBox}>
@@ -161,11 +154,11 @@ export const HomeScreen: React.FC<Props> = ({
         )}
       </View>
 
-      {/* Device Identity & Zero-Input QR Pairing Card */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Device Identity</Text>
+      {/* Device Identity Section (Seamless) */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Device Identity</Text>
 
-        <View style={styles.deviceIdentityBox}>
+        <View style={styles.deviceIdentityRow}>
           <View style={styles.deviceInfoText}>
             <Text style={styles.deviceNameText}>{deviceName || "Android Device"}</Text>
             <Text style={styles.deviceIdText}>
@@ -173,22 +166,27 @@ export const HomeScreen: React.FC<Props> = ({
             </Text>
           </View>
           <View style={styles.deviceBadge}>
-            <Text style={styles.deviceBadgeText}>{isConnected ? "REGISTERED" : "READY TO PAIR"}</Text>
+            <Text style={styles.deviceBadgeText}>
+              {isConnected ? "REGISTERED" : token ? "PAIRED" : "READY TO PAIR"}
+            </Text>
           </View>
         </View>
 
-        {/* Big Scan Button */}
-        <TouchableOpacity
-          style={styles.scanBtn}
-          onPress={() => setShowScanner(true)}
-          disabled={isPairing}
-        >
-          {isPairing ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.scanBtnText}>Scan Pairing QR Code</Text>
-          )}
-        </TouchableOpacity>
+        {/* Scan Button: Hidden once device is registered/paired */}
+        {!isPaired && (
+          <TouchableOpacity
+            style={styles.scanBtn}
+            onPress={() => setShowScanner(true)}
+            disabled={isPairing}
+            activeOpacity={0.8}
+          >
+            {isPairing ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.scanBtnText}>Scan Pairing QR Code</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {statusMsg && (
           <View
@@ -215,12 +213,6 @@ export const HomeScreen: React.FC<Props> = ({
             </Text>
           </View>
         )}
-
-        {isConnected && (
-          <TouchableOpacity style={styles.clearBtn} onPress={handleClear}>
-            <Text style={styles.clearBtnText}>Disconnect / Reset Device Pairing</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* QR Scanner Modal */}
@@ -236,15 +228,18 @@ export const HomeScreen: React.FC<Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0d1117",
+    backgroundColor: "#141414",
   },
   content: {
-    padding: 14,
-    paddingBottom: 28,
-    gap: 14,
+    padding: 16,
+    paddingBottom: 40,
+    gap: 16,
   },
   header: {
     paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#262626",
+    paddingBottom: 14,
   },
   headerTitle: {
     fontSize: 20,
@@ -257,23 +252,17 @@ const styles = StyleSheet.create({
     color: "#8b949e",
     marginTop: 2,
   },
-  card: {
-    backgroundColor: "#161b22",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#30363d",
-    padding: 16,
+  section: {
     gap: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#262626",
   },
-  cardTitle: {
-    fontSize: 15,
+  sectionTitle: {
+    fontSize: 14,
     fontWeight: "700",
     color: "#f0f6fc",
-  },
-  cardDesc: {
-    fontSize: 12,
-    color: "#8b949e",
-    lineHeight: 18,
+    letterSpacing: 0.2,
   },
   statusHeader: {
     flexDirection: "row",
@@ -281,9 +270,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   dotOnline: {
     backgroundColor: "#3fb950",
@@ -308,19 +297,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: "#21262d",
-    paddingTop: 12,
+    marginTop: 4,
   },
   telemetryItem: {
     flex: 1,
     minWidth: "45%",
-    backgroundColor: "#0d1117",
+    backgroundColor: "#1e1e1e",
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#21262d",
+    borderColor: "#262626",
   },
   telemetryLabel: {
     fontSize: 10,
@@ -334,14 +320,14 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     marginTop: 2,
   },
-  deviceIdentityBox: {
+  deviceIdentityRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0d1117",
+    backgroundColor: "#1e1e1e",
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#21262d",
+    borderColor: "#262626",
     gap: 12,
   },
   deviceInfoText: {
@@ -359,12 +345,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   deviceBadge: {
-    backgroundColor: "#21262d",
+    backgroundColor: "#262626",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#30363d",
+    borderColor: "#333333",
   },
   deviceBadgeText: {
     fontSize: 10,
@@ -373,30 +359,15 @@ const styles = StyleSheet.create({
   },
   scanBtn: {
     backgroundColor: "#238636",
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 8,
+    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   scanBtnText: {
     color: "#ffffff",
     fontWeight: "700",
-    fontSize: 14,
-  },
-  clearBtn: {
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(248, 81, 73, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(248, 81, 73, 0.4)",
-    marginTop: 4,
-  },
-  clearBtnText: {
-    color: "#f85149",
-    fontWeight: "600",
-    fontSize: 12,
+    fontSize: 13,
   },
   feedbackBox: {
     padding: 10,

@@ -17,11 +17,15 @@ export async function apiFetch<T>(
   customToken?: string
 ): Promise<T> {
   const creds = await loadCredentials();
-  const baseUrl = customHost || creds?.hostUrl || "http://127.0.0.1:8000";
+  const rawBase = customHost || creds?.hostUrl || "http://127.0.0.1:8000";
   const token = customToken || creds?.token || "";
 
-  // Normalize URL
-  const cleanBase = baseUrl.replace(/\/+$/, "");
+  // Normalize URL with valid protocol
+  let normalizedBase = rawBase.trim();
+  if (!normalizedBase.startsWith("http://") && !normalizedBase.startsWith("https://")) {
+    normalizedBase = `http://${normalizedBase}`;
+  }
+  const cleanBase = normalizedBase.replace(/\/+$/, "");
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const urlObj = new URL(`${cleanBase}${cleanEndpoint}`);
 
@@ -39,7 +43,7 @@ export async function apiFetch<T>(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(urlObj.toString(), {
