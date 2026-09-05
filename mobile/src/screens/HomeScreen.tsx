@@ -154,8 +154,8 @@ export const HomeScreen: React.FC<Props> = ({
         )}
       </View>
 
-      {/* Device Identity Section (Seamless) */}
-      <View style={styles.section}>
+      {/* Device Identity Section (Seamless, Last Section - No Bottom Divider) */}
+      <View style={[styles.section, styles.sectionLast]}>
         <Text style={styles.sectionTitle}>Device Identity</Text>
 
         <View style={styles.deviceIdentityRow}>
@@ -259,6 +259,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#262626",
+  },
+  sectionLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 0,
   },
   sectionTitle: {
     fontSize: 14,

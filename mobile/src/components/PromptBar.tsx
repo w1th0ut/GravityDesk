@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   TextInput,
   TouchableOpacity,
   Text,
   StyleSheet,
-  ActivityIndicator,
+  Alert,
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { useVoiceRecognition } from "../hooks/useVoiceRecognition";
 
 interface Props {
@@ -24,6 +25,7 @@ export const PromptBar: React.FC<Props> = ({
 }) => {
   const [promptText, setPromptText] = useState("");
   const [inputHeight, setInputHeight] = useState(36);
+  const inputRef = useRef<TextInput>(null);
   const { isRecording, transcript, isAvailable, startRecording, stopRecording, resetTranscript } =
     useVoiceRecognition("en-US");
 
@@ -43,15 +45,19 @@ export const PromptBar: React.FC<Props> = ({
     resetTranscript();
   };
 
-  const handleInsertNewline = () => {
-    setPromptText((prev) => prev + "\n");
-  };
-
   const handleMicToggle = () => {
-    if (isRecording) {
-      stopRecording();
+    if (isAvailable) {
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
     } else {
-      startRecording();
+      inputRef.current?.focus();
+      Alert.alert(
+        "Voice Input",
+        "Tap the microphone icon on your keyboard (e.g. Gboard) for instant voice typing."
+      );
     }
   };
 
@@ -59,19 +65,11 @@ export const PromptBar: React.FC<Props> = ({
     <View style={styles.container}>
       {/* Quick Action Bar (.quick-bar matching index.html) */}
       <View style={styles.quickBar}>
-
         <TouchableOpacity
           style={[styles.keyBtn, styles.btnCtrlC]}
           onPress={() => onSendSignal("SIGINT")}
         >
           <Text style={styles.btnCtrlCText}>Ctrl+C</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.keyBtn}
-          onPress={handleInsertNewline}
-        >
-          <Text style={styles.keyBtnText}>Enter</Text>
         </TouchableOpacity>
 
         {onClearLogs && (
@@ -95,18 +93,19 @@ export const PromptBar: React.FC<Props> = ({
 
       {/* Input Dock (.input-dock matching index.html) */}
       <View style={styles.inputDock}>
-        {isAvailable && (
-          <TouchableOpacity
-            style={[styles.micBtn, isRecording && styles.micBtnRecording]}
-            onPress={handleMicToggle}
-          >
-            <Text style={[styles.micText, isRecording && styles.micTextRecording]}>
-              {isRecording ? "REC" : "MIC"}
-            </Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={[styles.micBtn, isRecording && styles.micBtnRecording]}
+          onPress={handleMicToggle}
+          activeOpacity={0.7}
+        >
+          <Svg viewBox="0 0 24 24" width={20} height={20} fill={isRecording ? "#f85149" : "#8b949e"}>
+            <Path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+            <Path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+          </Svg>
+        </TouchableOpacity>
 
         <TextInput
+          ref={inputRef}
           style={[styles.termInput, { height: Math.min(Math.max(36, inputHeight), 130) }]}
           value={promptText}
           onChangeText={setPromptText}
@@ -183,8 +182,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   micBtn: {
+    width: 36,
     height: 36,
-    paddingHorizontal: 8,
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
@@ -192,15 +191,6 @@ const styles = StyleSheet.create({
   micBtnRecording: {
     backgroundColor: "rgba(248, 81, 73, 0.15)",
     borderRadius: 6,
-  },
-  micText: {
-    fontFamily: "monospace",
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#8b949e",
-  },
-  micTextRecording: {
-    color: "#f85149",
   },
   termInput: {
     flex: 1,
