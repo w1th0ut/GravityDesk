@@ -4,7 +4,7 @@ import os
 import re
 import sqlite3
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 
@@ -31,14 +31,31 @@ def _parse_workspace_uri(uris_json: Optional[str]) -> tuple[str, str]:
     return "", ""
 
 
-def _format_time(iso_str: str) -> str:
-    """Formats ISO datetime string into human readable 'DD Mon HH:MM' in local timezone."""
+def _format_relative_time(iso_str: str) -> str:
+    """Formats ISO datetime string into human readable relative time like '8m ago', '2h ago', '1d ago', 'Sep 1'."""
+    if not iso_str:
+        return ""
     try:
         dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-        local_dt = dt.astimezone()
-        return local_dt.strftime("%d %b %H:%M")
+        now = datetime.now(timezone.utc)
+        diff = now - dt
+        seconds = int(diff.total_seconds())
+
+        if seconds < 60:
+            return "just now"
+        elif seconds < 3600:
+            minutes = max(1, seconds // 60)
+            return f"{minutes}m ago"
+        elif seconds < 86400:
+            hours = seconds // 3600
+            return f"{hours}h ago"
+        elif seconds < 86400 * 7:
+            days = seconds // 86400
+            return f"{days}d ago"
+        else:
+            return dt.strftime("%b %d").replace(" 0", " ")
     except Exception:
-        return iso_str[:16] if iso_str else ""
+        return iso_str[:16]
 
 
 def list_conversations(current_cwd: Optional[str] = None, limit: int = 50) -> List[Dict]:
@@ -46,18 +63,20 @@ def list_conversations(current_cwd: Optional[str] = None, limit: int = 50) -> Li
     Returns the authoritative list of past conversations matching desktop agy /resume:
     1. Queries ~/.gemini/antigravity-cli/conversation_summaries.db (desktop agy database).
     2. Filters out subagents (nesting_depth > 0, parent_conversation_id != '').
-    3. Filters out trivial empty/exit sessions.
-    4. Extracts clean titles, step count, local modification time, and workspace association.
-    5. Falls back to scanning brain/ if database is unavailable.
+    3. Extracts clean titles, step count, relative time, and workspace association.
     """
     db_path = os.path.expanduser("~/.gemini/antigravity-cli/conversation_summaries.db")
     normalized_cwd = os.path.realpath(current_cwd).lower() if current_cwd else None
 
     if os.path.isfile(db_path):
         try:
-            # Use read-only URI connection to prevent locking conflicts with running agy instances
-            uri_path = f"file:{urllib.parse.quote(os.path.abspath(db_path))}?mode=ro"
-            conn = sqlite3.connect(uri_path, uri=True, timeout=3.0)
+            # Try read-only URI first, fall back to standard connect
+            try:
+                uri = f"file:///{os.path.abspath(db_path).replace(os.sep, '/')}?mode=ro"
+                conn = sqlite3.connect(uri, uri=True, timeout=5.0)
+            except Exception:
+                conn = sqlite3.connect(db_path, timeout=5.0)
+
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
@@ -72,8 +91,6 @@ def list_conversations(current_cwd: Optional[str] = None, limit: int = 50) -> Li
                 FROM conversation_summaries
                 WHERE nesting_depth = 0
                   AND (parent_conversation_id IS NULL OR parent_conversation_id = '')
-                  AND step_count > 0
-                  AND NOT (title = '' AND preview IN ('exit', 'quit', ''))
                 ORDER BY last_modified_time DESC
                 LIMIT ?
             """
@@ -89,12 +106,12 @@ def list_conversations(current_cwd: Optional[str] = None, limit: int = 50) -> Li
                 if raw_title:
                     title = raw_title
                 elif preview:
-                    title = (preview[:60] + "...") if len(preview) > 60 else preview
+                    title = preview
                 else:
                     title = f"Chat {cid[:8]}"
 
                 ws_name, ws_path = _parse_workspace_uri(r["workspace_uris"])
-                time_str = _format_time(r["last_modified_time"])
+                time_str = _format_relative_time(r["last_modified_time"])
 
                 is_current = False
                 if normalized_cwd and ws_path:
