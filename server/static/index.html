@@ -276,20 +276,15 @@
       margin-top: 4px;
       font-family: "Cascadia Code", Consolas, monospace;
     }
-    .cta-jump-btn {
-      background: #1f6feb;
-      color: #ffffff;
-      border: none;
-      border-radius: 6px;
-      padding: 10px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
+    .terminal-inactive-view {
+      flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      margin-top: 4px;
+      padding: 32px 20px;
+      text-align: center;
+      background: var(--bg);
     }
     .dash-card-title {
       font-size: 13px;
@@ -526,77 +521,86 @@
             <div class="telemetry-val" style="color:var(--success);" id="home-v-sleep">🛡️ Aktif</div>
           </div>
         </div>
-
-        <button class="cta-jump-btn" onclick="switchTab('terminal')">
-          💻 Buka Terminal Sesi
-        </button>
       </div>
 
       <!-- Pairing & Config Card -->
       <div class="dash-card">
         <div class="dash-card-title">📱 Info Pairing Host</div>
-        <div class="dash-card-desc">Kredensial aktif sesi konsol saat ini:</div>
+        <div class="dash-card-desc">Scan QR Code desktop atau masukkan URL dan Token untuk menghubungkan konsol:</div>
 
         <div>
           <div class="input-lbl">Laptop Host URL:</div>
-          <input type="text" id="home-host-input" class="term-input" readonly style="width:100%;cursor:default;margin-bottom:8px;" />
+          <input type="text" id="home-host-input" class="term-input" style="width:100%;margin-bottom:8px;" />
         </div>
 
         <div>
           <div class="input-lbl">Auth Token (256-bit):</div>
-          <input type="text" id="home-token-input" class="term-input" readonly style="width:100%;cursor:default;margin-bottom:8px;" />
+          <input type="text" id="home-token-input" class="term-input" style="width:100%;margin-bottom:8px;" />
         </div>
 
-        <button class="key-btn" style="width:100%;padding:8px;font-size:11px;" onclick="copyToken()">
-          📋 Salin Token Autentikasi
+        <button class="key-btn" style="width:100%;padding:10px;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="triggerQrScan()">
+          📷 Scan QR Code Pairing
         </button>
+        <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleQrImage(event)" />
       </div>
     </div>
   </div>
 
   <!-- Screen 2: Pure Terminal View -->
   <div id="terminal-view" class="app-view active">
-    <!-- Top Bar -->
-    <header>
-      <div class="header-top">
-        <div class="brand-row">
-          <span class="status-dot" id="status-dot"></span>
-          <span class="brand">GravityDesk</span>
-        </div>
-        <div class="vitals-text">
-          Bat: <span id="v-bat">-</span> | CPU: <span id="v-cpu">-</span> | RAM: <span id="v-ram">-</span>
-        </div>
+    <!-- Inactive State (When Tailscale or Laptop is not active) -->
+    <div id="terminal-inactive" class="terminal-inactive-view" style="display:none;">
+      <div style="font-size:32px;margin-bottom:12px;opacity:0.6;">⚡</div>
+      <div style="font-size:17px;font-weight:700;color:#ffffff;font-family:monospace;">Sesi belum aktif.</div>
+      <div style="font-size:11.5px;color:var(--text-muted);font-family:monospace;margin-top:8px;max-width:280px;line-height:1.5;text-align:center;">
+        Pastikan Tailscale di HP & Laptop terhubung dan aplikasi GravityDesk desktop sedang berjalan.
       </div>
-      <div class="chips-row">
-        <div class="folder-chip" id="folder-chip" onclick="openFolderModal()">
-          📁 <span id="folder-name">Folder</span>
-        </div>
-        <div class="folder-chip" id="chat-chip" onclick="openChatModal()">
-          💬 <span id="chat-name">Resume Chat</span>
-        </div>
-      </div>
-    </header>
-
-    <!-- Edge-to-Edge Clean Terminal Screen -->
-    <div id="terminal-screen"></div>
-
-    <!-- Quick Shortcut Keys -->
-    <div class="quick-bar">
-      <button class="key-btn btn-ctrlc" onclick="sendSignal('SIGINT')">Ctrl+C</button>
-      <button class="key-btn" onclick="clearTerminal()">Clear</button>
-      <button class="key-btn" onclick="scrollToBottom()">Bottom ↓</button>
     </div>
 
-    <!-- Input Dock -->
-    <div class="input-dock">
-      <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleVoice()">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-        </svg>
-      </button>
-      <textarea id="term-input" class="term-input" placeholder="Type message or command..." rows="1" autocomplete="off"></textarea>
-      <button class="send-btn" id="send-btn" onclick="sendPrompt()">Send</button>
+    <!-- Active Terminal Components -->
+    <div id="terminal-active-content" style="display:flex;flex-direction:column;height:100%;">
+      <!-- Top Bar -->
+      <header>
+        <div class="header-top">
+          <div class="brand-row">
+            <span class="status-dot" id="status-dot"></span>
+            <span class="brand">GravityDesk</span>
+          </div>
+          <div class="vitals-text">
+            Bat: <span id="v-bat">-</span> | CPU: <span id="v-cpu">-</span> | RAM: <span id="v-ram">-</span>
+          </div>
+        </div>
+        <div class="chips-row">
+          <div class="folder-chip" id="folder-chip" onclick="openFolderModal()">
+            📁 <span id="folder-name">Folder</span>
+          </div>
+          <div class="folder-chip" id="chat-chip" onclick="openChatModal()">
+            💬 <span id="chat-name">Resume Chat</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Edge-to-Edge Clean Terminal Screen -->
+      <div id="terminal-screen"></div>
+
+      <!-- Quick Shortcut Keys -->
+      <div class="quick-bar">
+        <button class="key-btn btn-ctrlc" onclick="sendSignal('SIGINT')">Ctrl+C</button>
+        <button class="key-btn" onclick="clearTerminal()">Clear</button>
+        <button class="key-btn" onclick="scrollToBottom()">Bottom ↓</button>
+      </div>
+
+      <!-- Input Dock -->
+      <div class="input-dock">
+        <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleVoice()">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+          </svg>
+        </button>
+        <textarea id="term-input" class="term-input" placeholder="Type message or command..." rows="1" autocomplete="off"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendPrompt()">Send</button>
+      </div>
     </div>
   </div>
 
@@ -795,6 +799,7 @@
 
       ws.onopen = () => {
         statusDot.className = "status-dot online";
+        setTerminalActiveState(true);
         ws.send(JSON.stringify({ type: "subscribe", last_seq: currentSeq }));
       };
 
@@ -814,10 +819,14 @@
 
       ws.onclose = () => {
         statusDot.className = "status-dot";
+        setTerminalActiveState(false);
         setTimeout(connectWS, 2000);
       };
 
-      ws.onerror = () => ws.close();
+      ws.onerror = () => {
+        setTerminalActiveState(false);
+        ws.close();
+      };
     }
 
     function autoResizeInput() {
@@ -895,13 +904,48 @@
       }
     }
 
-    function copyToken() {
-      if (token) {
-        navigator.clipboard?.writeText(token).then(() => {
-          alert("Token autentikasi berhasil disalin ke clipboard!");
-        }).catch(() => {
-          prompt("Salin token ini:", token);
-        });
+    // Toggle Terminal Empty State ("Sesi belum aktif.")
+    function setTerminalActiveState(isOnline) {
+      const inactiveEl = document.getElementById("terminal-inactive");
+      const activeContent = document.getElementById("terminal-active-content");
+      if (!inactiveEl || !activeContent) return;
+      if (isOnline) {
+        inactiveEl.style.display = "none";
+        activeContent.style.display = "flex";
+      } else {
+        inactiveEl.style.display = "flex";
+        activeContent.style.display = "none";
+      }
+    }
+
+    // QR Code Scanning on Web
+    function triggerQrScan() {
+      const fileInput = document.getElementById("qr-file-input");
+      if (fileInput) fileInput.click();
+    }
+
+    async function handleQrImage(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if ('BarcodeDetector' in window) {
+        try {
+          const detector = new BarcodeDetector({ formats: ['qr_code'] });
+          const img = await createImageBitmap(file);
+          const barcodes = await detector.detect(img);
+          if (barcodes.length > 0) {
+            const rawUrl = barcodes[0].rawValue;
+            if (rawUrl) {
+              window.location.href = rawUrl;
+              return;
+            }
+          } else {
+            alert("QR Code tidak terdeteksi. Silakan coba foto kembali lebih jelas.");
+          }
+        } catch (e) {
+          alert("Gagal memproses QR Code: " + e.message);
+        }
+      } else {
+        alert("Browser belum mendukung pemrosesan QR otomatis. Gunakan kamera langsung pada aplikasi Android GravityDesk atau buka URL langsung.");
       }
     }
 
@@ -911,6 +955,8 @@
         const res = await fetch(`/api/health?token=${token}`);
         if (res.ok) {
           const d = await res.json();
+          setTerminalActiveState(d.status === "online");
+
           // Terminal bar vitals
           document.getElementById("v-cpu").innerText = `${d.cpu_percent}%`;
           if (d.memory_percent !== undefined) {
@@ -940,16 +986,23 @@
           const homeDot = document.getElementById("home-status-dot");
           if (homeDot) homeDot.className = "status-dot online";
           const homeHostInput = document.getElementById("home-host-input");
-          if (homeHostInput) homeHostInput.value = `${window.location.protocol}//${window.location.host}`;
+          if (homeHostInput && !homeHostInput.value) {
+            homeHostInput.value = `${window.location.protocol}//${window.location.host}`;
+          }
           const homeTokenInput = document.getElementById("home-token-input");
-          if (homeTokenInput) homeTokenInput.value = token;
+          if (homeTokenInput && !homeTokenInput.value) {
+            homeTokenInput.value = token;
+          }
 
           if (d.active_session && d.active_session.cwd && !activePath) {
             activePath = d.active_session.cwd;
             updateFolderLabel(activePath);
           }
+        } else {
+          setTerminalActiveState(false);
         }
       } catch (err) {
+        setTerminalActiveState(false);
         const homeDot = document.getElementById("home-status-dot");
         if (homeDot) homeDot.className = "status-dot";
         const homeStatusTitle = document.getElementById("home-status-title");

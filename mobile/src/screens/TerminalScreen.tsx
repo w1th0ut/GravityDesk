@@ -68,6 +68,18 @@ export const TerminalScreen: React.FC<Props> = ({
     }
   }, [isSessionRunning, activeWorkspace, refreshVitals]);
 
+  if (!isConnected) {
+    return (
+      <View style={styles.inactiveContainer}>
+        <Text style={styles.inactiveIcon}>⚡</Text>
+        <Text style={styles.inactiveTitle}>Sesi belum aktif.</Text>
+        <Text style={styles.inactiveSub}>
+          Pastikan Tailscale di HP & Laptop terhubung dan aplikasi GravityDesk desktop sedang berjalan.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Top Header (<header> matching index.html) */}
@@ -171,6 +183,33 @@ export const TerminalScreen: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
+  inactiveContainer: {
+    flex: 1,
+    backgroundColor: "#0c0c0c",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  inactiveIcon: {
+    fontSize: 32,
+    color: "#737373",
+    marginBottom: 12,
+  },
+  inactiveTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#ffffff",
+    fontFamily: "monospace",
+    textAlign: "center",
+  },
+  inactiveSub: {
+    fontSize: 12,
+    color: "#737373",
+    fontFamily: "monospace",
+    textAlign: "center",
+    marginTop: 8,
+    lineHeight: 18,
+  },
   container: {
     flex: 1,
     backgroundColor: "#0c0c0c",

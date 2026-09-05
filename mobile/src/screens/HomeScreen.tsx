@@ -148,12 +148,6 @@ export const HomeScreen: React.FC<Props> = ({
             </View>
           </View>
         )}
-
-        {isConnected && (
-          <TouchableOpacity style={styles.terminalJumpBtn} onPress={onNavigateToTerminal}>
-            <Text style={styles.terminalJumpText}>💻 Buka Terminal Sesi</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Pairing & Scanner Section */}
