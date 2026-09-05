@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import { FavoriteItem, WorkspacesResponse } from "../types";
+import { WorkspacesResponse } from "../types";
 
 /**
  * Fetches directories, drives, and breadcrumbs for a given laptop path
@@ -10,18 +10,11 @@ export async function fetchWorkspaces(targetPath?: string): Promise<WorkspacesRe
 }
 
 /**
- * Fetches pinned favorite directories
+ * Selects an active workspace path on the host
  */
-export async function fetchFavorites(): Promise<FavoriteItem[]> {
-  return apiFetch<FavoriteItem[]>("/api/favorites");
-}
-
-/**
- * Toggles a directory in the pinned favorites list
- */
-export async function toggleFavoriteApi(targetPath: string): Promise<FavoriteItem[]> {
-  return apiFetch<FavoriteItem[]>(
-    `/api/favorites/toggle?path=${encodeURIComponent(targetPath)}`,
+export async function selectWorkspaceApi(targetPath: string): Promise<{ status: string; cwd: string }> {
+  return apiFetch<{ status: string; cwd: string }>(
+    `/api/workspaces/select?path=${encodeURIComponent(targetPath)}`,
     { method: "POST" }
   );
 }

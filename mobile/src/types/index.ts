@@ -41,9 +41,17 @@ export interface WorkspacesResponse {
   error?: string;
 }
 
-export interface FavoriteItem {
-  name: string;
-  path: string;
+export interface ConversationItem {
+  id: string;
+  summary: string;
+  timestamp: number;
+  relative_time: string;
+  workspace?: string;
+}
+
+export interface ConversationsResponse {
+  conversations: ConversationItem[];
+  active_id: string | null;
 }
 
 export interface TerminalOutputMessage {

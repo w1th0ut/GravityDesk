@@ -8,8 +8,8 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { fetchWorkspaces, fetchFavorites, toggleFavoriteApi } from "../api/workspaces";
-import { FavoriteItem, WorkspacesResponse } from "../types";
+import { fetchWorkspaces, selectWorkspaceApi } from "../api/workspaces";
+import { WorkspacesResponse } from "../types";
 
 interface Props {
   visible: boolean;
@@ -25,20 +25,16 @@ export const WorkspacePickerModal: React.FC<Props> = ({
   onSelectWorkspace,
 }) => {
   const [data, setData] = useState<WorkspacesResponse | null>(null);
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [selecting, setSelecting] = useState<boolean>(false);
   const [currentNavPath, setCurrentNavPath] = useState<string>(activePath);
 
   const loadData = async (path?: string) => {
     setLoading(true);
     try {
-      const [workspaceRes, favsRes] = await Promise.all([
-        fetchWorkspaces(path || currentNavPath),
-        fetchFavorites(),
-      ]);
+      const workspaceRes = await fetchWorkspaces(path || currentNavPath);
       setData(workspaceRes);
       setCurrentNavPath(workspaceRes.current_path);
-      setFavorites(favsRes);
     } catch (err) {
       console.warn("Failed to load workspace data:", err);
     } finally {
@@ -52,19 +48,22 @@ export const WorkspacePickerModal: React.FC<Props> = ({
     }
   }, [visible, activePath]);
 
-  const handleTogglePin = async () => {
+  const handleSelectWorkspace = async () => {
     if (!currentNavPath) return;
+    setSelecting(true);
     try {
-      const updatedFavs = await toggleFavoriteApi(currentNavPath);
-      setFavorites(updatedFavs);
+      await selectWorkspaceApi(currentNavPath);
+      onSelectWorkspace(currentNavPath);
+      onClose();
     } catch (err) {
-      console.warn("Failed to toggle favorite:", err);
+      console.warn("Failed to select workspace on host:", err);
+      // Still update UI
+      onSelectWorkspace(currentNavPath);
+      onClose();
+    } finally {
+      setSelecting(false);
     }
   };
-
-  const isCurrentPinned = favorites.some(
-    (f) => f.path.toLowerCase() === currentNavPath.toLowerCase()
-  );
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -72,7 +71,7 @@ export const WorkspacePickerModal: React.FC<Props> = ({
         <View style={styles.card}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Select Project Folder</Text>
+            <Text style={styles.title}>📁 Select Workspace Folder</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
@@ -80,32 +79,6 @@ export const WorkspacePickerModal: React.FC<Props> = ({
 
           {/* Body */}
           <ScrollView style={styles.body}>
-            {/* Favorites Section */}
-            {favorites.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>⭐ FAVORITES</Text>
-                <View style={styles.favoritesGrid}>
-                  {favorites.map((fav, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.favoritePill}
-                      onPress={() => {
-                        onSelectWorkspace(fav.path);
-                        onClose();
-                      }}
-                    >
-                      <Text style={styles.favoriteName} numberOfLines={1}>
-                        📁 {fav.name}
-                      </Text>
-                      <Text style={styles.favoritePath} numberOfLines={1}>
-                        {fav.path}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
             {/* Drives */}
             {data?.drives && data.drives.length > 0 && (
               <View style={styles.section}>
@@ -176,20 +149,21 @@ export const WorkspacePickerModal: React.FC<Props> = ({
 
           {/* Footer Actions */}
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.pinBtn} onPress={handleTogglePin}>
-              <Text style={styles.pinBtnText}>
-                {isCurrentPinned ? "★ Pinned" : "☆ Pin Folder"}
+            <View style={styles.currentPathRow}>
+              <Text style={styles.currentPathText} numberOfLines={1}>
+                {currentNavPath}
               </Text>
-            </TouchableOpacity>
-
+            </View>
             <TouchableOpacity
-              style={styles.selectBtn}
-              onPress={() => {
-                onSelectWorkspace(currentNavPath);
-                onClose();
-              }}
+              style={[styles.selectBtn, selecting && styles.selectBtnDisabled]}
+              onPress={handleSelectWorkspace}
+              disabled={selecting}
             >
-              <Text style={styles.selectBtnText}>Select Folder</Text>
+              {selecting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.selectBtnText}>Select This Workspace</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -250,26 +224,6 @@ const styles = StyleSheet.create({
     color: "#8b949e",
     marginBottom: 6,
     letterSpacing: 0.5,
-  },
-  favoritesGrid: {
-    gap: 6,
-  },
-  favoritePill: {
-    backgroundColor: "#21262d",
-    padding: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#30363d",
-  },
-  favoriteName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#58a6ff",
-  },
-  favoritePath: {
-    fontSize: 11,
-    color: "#8b949e",
-    marginTop: 2,
   },
   drivesRow: {
     flexDirection: "row",
@@ -339,29 +293,25 @@ const styles = StyleSheet.create({
     padding: 12,
     borderTopWidth: 1,
     borderTopColor: "#30363d",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     backgroundColor: "#161b22",
+    gap: 8,
   },
-  pinBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    backgroundColor: "#21262d",
-    borderWidth: 1,
-    borderColor: "#30363d",
+  currentPathRow: {
+    paddingHorizontal: 4,
   },
-  pinBtnText: {
-    fontSize: 12,
-    color: "#c9d1d9",
-    fontWeight: "600",
+  currentPathText: {
+    fontSize: 11,
+    color: "#8b949e",
   },
   selectBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
     backgroundColor: "#1f6feb",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectBtnDisabled: {
+    opacity: 0.6,
   },
   selectBtnText: {
     fontSize: 13,
