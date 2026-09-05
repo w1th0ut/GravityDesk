@@ -13,6 +13,7 @@ interface Props {
   onSendInput: (text: string) => void;
   onSendSignal: (signal: string) => void;
   onClearLogs?: () => void;
+  onScrollToBottom?: () => void;
   isSessionRunning: boolean;
   onToggleSession: () => void;
   isSessionLoading?: boolean;
@@ -22,12 +23,13 @@ export const PromptBar: React.FC<Props> = ({
   onSendInput,
   onSendSignal,
   onClearLogs,
+  onScrollToBottom,
   isSessionRunning,
   onToggleSession,
   isSessionLoading = false,
 }) => {
   const [promptText, setPromptText] = useState("");
-  const [inputHeight, setInputHeight] = useState(38);
+  const [inputHeight, setInputHeight] = useState(36);
   const { isRecording, transcript, isAvailable, startRecording, stopRecording, resetTranscript } =
     useVoiceRecognition("id-ID");
 
@@ -43,7 +45,7 @@ export const PromptBar: React.FC<Props> = ({
     if (!trimmed) return;
     onSendInput(trimmed + "\r\n");
     setPromptText("");
-    setInputHeight(38);
+    setInputHeight(36);
     resetTranscript();
   };
 
@@ -61,66 +63,77 @@ export const PromptBar: React.FC<Props> = ({
 
   return (
     <View style={styles.container}>
-      {/* Quick Action Toolbar */}
+      {/* Quick Action Bar (.quick-bar matching index.html) */}
       <View style={styles.quickBar}>
         <TouchableOpacity
-          style={[styles.sessionBtn, isSessionRunning ? styles.sessionBtnStop : styles.sessionBtnStart]}
+          style={[styles.keyBtn, isSessionRunning ? styles.sessionBtnStop : styles.sessionBtnStart]}
           onPress={onToggleSession}
           disabled={isSessionLoading}
         >
           {isSessionLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.sessionBtnText}>
+            <Text style={[styles.keyBtnText, isSessionRunning && styles.sessionStopText]}>
               {isSessionRunning ? "⏹ Stop agy" : "▶ Start agy"}
             </Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.quickKey, styles.keySigint]}
+          style={[styles.keyBtn, styles.btnCtrlC]}
           onPress={() => onSendSignal("SIGINT")}
         >
-          <Text style={styles.keySigintText}>Ctrl+C</Text>
+          <Text style={styles.btnCtrlCText}>Ctrl+C</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.quickKey}
+          style={styles.keyBtn}
           onPress={handleInsertNewline}
         >
-          <Text style={styles.quickKeyText}>Enter ↵</Text>
+          <Text style={styles.keyBtnText}>Enter ↵</Text>
         </TouchableOpacity>
 
         {onClearLogs && (
           <TouchableOpacity
-            style={styles.quickKey}
+            style={styles.keyBtn}
             onPress={onClearLogs}
           >
-            <Text style={styles.quickKeyText}>Clear</Text>
+            <Text style={styles.keyBtnText}>Clear</Text>
+          </TouchableOpacity>
+        )}
+
+        {onScrollToBottom && (
+          <TouchableOpacity
+            style={styles.keyBtn}
+            onPress={onScrollToBottom}
+          >
+            <Text style={styles.keyBtnText}>Bottom ↓</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Main Input Row - Auto-expanding WhatsApp style */}
-      <View style={styles.inputRow}>
+      {/* Input Dock (.input-dock matching index.html) */}
+      <View style={styles.inputDock}>
         {isAvailable && (
           <TouchableOpacity
             style={[styles.micBtn, isRecording && styles.micBtnRecording]}
             onPress={handleMicToggle}
           >
-            <Text style={styles.micIcon}>{isRecording ? "⏹" : "🎙️"}</Text>
+            <Text style={[styles.micIcon, isRecording && styles.micIconRecording]}>
+              {isRecording ? "🔴" : "🎙️"}
+            </Text>
           </TouchableOpacity>
         )}
 
         <TextInput
-          style={[styles.textInput, { height: Math.min(Math.max(38, inputHeight), 120) }]}
+          style={[styles.termInput, { height: Math.min(Math.max(36, inputHeight), 130) }]}
           value={promptText}
           onChangeText={setPromptText}
           onContentSizeChange={(e) => {
             setInputHeight(e.nativeEvent.contentSize.height);
           }}
-          placeholder="Prompt agy CLI (type or speak)..."
-          placeholderTextColor="#8b949e"
+          placeholder="Type message or command..."
+          placeholderTextColor="#737373"
           multiline={true}
           autoCapitalize="none"
           autoCorrect={false}
@@ -140,114 +153,109 @@ export const PromptBar: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#161b22",
+    backgroundColor: "#141414",
     borderTopWidth: 1,
-    borderTopColor: "#30363d",
-    paddingBottom: 6,
+    borderTopColor: "#262626",
   },
   quickBar: {
     flexDirection: "row",
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: "#21262d",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#141414",
     alignItems: "center",
   },
-  sessionBtn: {
-    paddingVertical: 5,
+  keyBtn: {
+    backgroundColor: "#1e1e1e",
+    borderWidth: 1,
+    borderColor: "#262626",
+    paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: 6,
+    borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 4,
+  },
+  keyBtnText: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    color: "#e5e5e5",
+    fontWeight: "600",
   },
   sessionBtnStart: {
-    backgroundColor: "#1f6feb",
+    borderColor: "#58a6ff",
   },
   sessionBtnStop: {
-    backgroundColor: "rgba(248, 81, 73, 0.2)",
-    borderWidth: 1,
-    borderColor: "#f85149",
-  },
-  sessionBtnText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#ffffff",
-  },
-  quickKey: {
-    backgroundColor: "#21262d",
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: "#30363d",
-  },
-  quickKeyText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#c9d1d9",
-  },
-  keySigint: {
-    backgroundColor: "rgba(248, 81, 73, 0.15)",
     borderColor: "rgba(248, 81, 73, 0.4)",
   },
-  keySigintText: {
-    fontSize: 11,
-    fontWeight: "700",
+  sessionStopText: {
     color: "#f85149",
   },
-  inputRow: {
+  btnCtrlC: {
+    borderColor: "rgba(248, 81, 73, 0.4)",
+  },
+  btnCtrlCText: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    color: "#f85149",
+    fontWeight: "700",
+  },
+  inputDock: {
     flexDirection: "row",
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingTop: 4,
+    paddingBottom: 8,
+    backgroundColor: "#141414",
+    borderTopWidth: 1,
+    borderTopColor: "#262626",
     alignItems: "flex-end",
   },
   micBtn: {
-    backgroundColor: "#21262d",
-    borderWidth: 1,
-    borderColor: "#30363d",
-    borderRadius: 8,
-    width: 38,
-    height: 38,
+    width: 32,
+    height: 36,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
   micBtnRecording: {
-    backgroundColor: "#f85149",
-    borderColor: "#f85149",
+    transform: [{ scale: 1.15 }],
   },
   micIcon: {
-    fontSize: 16,
+    fontSize: 18,
+    opacity: 0.7,
   },
-  textInput: {
+  micIconRecording: {
+    opacity: 1,
+  },
+  termInput: {
     flex: 1,
-    backgroundColor: "#0d1117",
+    backgroundColor: "#0c0c0c",
     borderWidth: 1,
-    borderColor: "#30363d",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderColor: "#262626",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     color: "#ffffff",
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: "monospace",
+    lineHeight: 18,
     textAlignVertical: "top",
   },
   sendBtn: {
     backgroundColor: "#1f6feb",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    height: 38,
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
   },
   sendBtnDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   sendBtnText: {
     color: "#ffffff",
+    fontSize: 12,
     fontWeight: "700",
-    fontSize: 14,
   },
 });
+

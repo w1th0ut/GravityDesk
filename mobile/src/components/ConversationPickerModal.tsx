@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Modal,
   View,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { fetchConversations, selectConversationApi } from "../api/conversations";
 import { ConversationItem } from "../types";
@@ -27,6 +28,9 @@ export const ConversationPickerModal: React.FC<Props> = ({
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [currentActiveId, setCurrentActiveId] = useState<string | null>(activeId);
   const [loading, setLoading] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filterScope, setFilterScope] = useState<"all" | "repo">("all");
+  const [currentRepoName, setCurrentRepoName] = useState<string>("");
 
   const loadConversations = async () => {
     setLoading(true);
@@ -34,6 +38,9 @@ export const ConversationPickerModal: React.FC<Props> = ({
       const res = await fetchConversations();
       setConversations(res.conversations || []);
       setCurrentActiveId(res.active_id);
+      if (res.current_repo) {
+        setCurrentRepoName(res.current_repo);
+      }
     } catch (err) {
       console.warn("Failed to load conversations:", err);
     } finally {
@@ -61,79 +68,135 @@ export const ConversationPickerModal: React.FC<Props> = ({
     }
   };
 
+  const filteredConversations = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return conversations.filter((c) => {
+      if (filterScope === "repo" && !c.is_current) {
+        return false;
+      }
+      if (q) {
+        const matchTitle = (c.summary || "").toLowerCase().includes(q);
+        const matchWs = (c.workspace || "").toLowerCase().includes(q);
+        const matchId = (c.id || "").toLowerCase().includes(q);
+        return matchTitle || matchWs || matchId;
+      }
+      return true;
+    });
+  }, [conversations, filterScope, searchQuery]);
+
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+        <View style={styles.modalBox}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>💬 Resume Conversation</Text>
+          <View style={styles.modalHead}>
+            <Text style={styles.headTitle}>Resume Conversation</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          {/* New Session Button */}
-          <TouchableOpacity
-            style={[
-              styles.newChatBtn,
-              !currentActiveId && styles.activeItem,
-            ]}
-            onPress={() => handleSelect("new", "New Session")}
-          >
-            <Text style={styles.newChatText}>➕ Start Fresh Chat</Text>
-            {!currentActiveId && (
-              <Text style={styles.activeBadge}>Active</Text>
-            )}
-          </TouchableOpacity>
+          {/* Body */}
+          <View style={styles.modalBody}>
+            {/* Start New Chat Button */}
+            <TouchableOpacity
+              style={styles.newChatRow}
+              onPress={() => handleSelect("new", "New Chat")}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.newChatText}>➕ Start New Chat</Text>
+            </TouchableOpacity>
 
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#58a6ff" />
-              <Text style={styles.loadingText}>Loading conversations...</Text>
+            {/* Filter Tabs */}
+            <View style={styles.tabsRow}>
+              <TouchableOpacity
+                style={[styles.tabBtn, filterScope === "all" && styles.tabBtnActive]}
+                onPress={() => setFilterScope("all")}
+              >
+                <Text style={[styles.tabBtnText, filterScope === "all" && styles.tabBtnTextActive]}>
+                  All Projects
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.tabBtn, filterScope === "repo" && styles.tabBtnActive]}
+                onPress={() => setFilterScope("repo")}
+              >
+                <Text style={[styles.tabBtnText, filterScope === "repo" && styles.tabBtnTextActive]}>
+                  📁 {currentRepoName || "Current Repo"}
+                </Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <ScrollView style={styles.list}>
-              {conversations.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No prior conversations found</Text>
-                </View>
-              ) : (
-                conversations.map((item) => {
-                  const isActive = currentActiveId === item.id;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[styles.itemCard, isActive && styles.activeItem]}
-                      onPress={() => handleSelect(item.id, item.summary)}
-                    >
-                      <View style={styles.itemHeader}>
-                        <Text style={styles.itemTitle} numberOfLines={2}>
-                          {item.summary || "Untitled conversation"}
-                        </Text>
-                        {isActive && (
-                          <Text style={styles.activeBadge}>Active</Text>
-                        )}
-                      </View>
-                      <View style={styles.itemFooter}>
-                        <Text style={styles.itemTime}>🕒 {item.relative_time}</Text>
-                        {item.workspace && (
-                          <Text style={styles.itemWorkspace} numberOfLines={1}>
-                            📁 {item.workspace.split(/[\\/]/).pop()}
+
+            {/* Search Input */}
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search conversations or projects..."
+              placeholderTextColor="#737373"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            {loading ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="small" color="#58a6ff" />
+                <Text style={styles.loadingText}>Loading conversations...</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.chatList} showsVerticalScrollIndicator={false}>
+                {filteredConversations.length === 0 ? (
+                  <View style={styles.emptyBox}>
+                    <Text style={styles.emptyText}>No conversations found</Text>
+                  </View>
+                ) : (
+                  filteredConversations.map((item) => {
+                    const isActive = currentActiveId === item.id;
+                    const wsName = item.workspace
+                      ? item.workspace.split(/[\\/]/).filter(Boolean).pop()
+                      : "";
+
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[styles.itemCard, isActive && styles.itemCardActive]}
+                        onPress={() => handleSelect(item.id, item.summary)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.itemHeadRow}>
+                          <Text style={styles.itemTitle} numberOfLines={1}>
+                            {item.summary || `Chat ${item.id.slice(0, 8)}`}
                           </Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </ScrollView>
-          )}
+                          {isActive && (
+                            <View style={styles.activeBadge}>
+                              <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <View style={styles.itemMetaRow}>
+                          {wsName ? (
+                            <View style={styles.wsBadge}>
+                              <Text style={styles.wsBadgeText}>📁 {wsName}</Text>
+                            </View>
+                          ) : null}
+                          <Text style={styles.metaText}>{item.steps || 1} steps</Text>
+                          <Text style={styles.metaText}>•</Text>
+                          <Text style={styles.metaText}>{item.relative_time || ""}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </ScrollView>
+            )}
+          </View>
         </View>
       </View>
     </Modal>
@@ -143,122 +206,177 @@ export const ConversationPickerModal: React.FC<Props> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 14,
   },
-  modalContainer: {
-    backgroundColor: "#161b22",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderWidth: 1,
-    borderColor: "#30363d",
+  modalBox: {
+    width: "100%",
+    maxWidth: 440,
     maxHeight: "80%",
-    paddingBottom: 24,
+    backgroundColor: "#141414",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#262626",
+    overflow: "hidden",
   },
-  header: {
+  modalHead: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#30363d",
+    borderBottomColor: "#262626",
   },
-  title: {
-    fontSize: 16,
+  headTitle: {
+    fontSize: 13,
     fontWeight: "700",
     color: "#ffffff",
   },
   closeBtn: {
-    padding: 6,
+    padding: 2,
   },
   closeText: {
-    fontSize: 18,
-    color: "#8b949e",
+    fontSize: 16,
+    color: "#737373",
   },
-  newChatBtn: {
+  modalBody: {
+    padding: 12,
+    flex: 1,
+  },
+  newChatRow: {
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#262626",
+  },
+  newChatText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#3fb950",
+    fontFamily: "monospace",
+  },
+  tabsRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 8,
+  },
+  tabBtn: {
+    backgroundColor: "#1e1e1e",
+    borderWidth: 1,
+    borderColor: "#262626",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+  },
+  tabBtnActive: {
+    backgroundColor: "#58a6ff",
+    borderColor: "#58a6ff",
+  },
+  tabBtnText: {
+    fontSize: 11,
+    fontFamily: "monospace",
+    color: "#e5e5e5",
+  },
+  tabBtnTextActive: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+  searchInput: {
+    backgroundColor: "#0c0c0c",
+    borderWidth: 1,
+    borderColor: "#262626",
+    color: "#ffffff",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    fontSize: 11,
+    fontFamily: "monospace",
+    marginBottom: 8,
+  },
+  chatList: {
+    flex: 1,
+  },
+  itemCard: {
+    backgroundColor: "#141414",
+    borderWidth: 1,
+    borderColor: "#262626",
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 4,
+  },
+  itemCardActive: {
+    borderColor: "#3fb950",
+    backgroundColor: "#101d14",
+  },
+  itemHeadRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    padding: 12,
-    backgroundColor: "#21262d",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#388bfd",
-  },
-  newChatText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#58a6ff",
-  },
-  list: {
-    paddingHorizontal: 16,
-  },
-  itemCard: {
-    backgroundColor: "#0d1117",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#30363d",
-    marginBottom: 8,
-  },
-  activeItem: {
-    borderColor: "#388bfd",
-    backgroundColor: "rgba(56, 139, 253, 0.1)",
-  },
-  itemHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   itemTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
-    color: "#e6edf3",
+    color: "#ffffff",
     flex: 1,
   },
   activeBadge: {
-    fontSize: 10,
+    backgroundColor: "rgba(63, 185, 80, 0.2)",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
+    marginLeft: 6,
+  },
+  activeBadgeText: {
+    fontSize: 9,
     fontWeight: "700",
-    color: "#58a6ff",
-    backgroundColor: "rgba(56, 139, 253, 0.2)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
+    color: "#3fb950",
+    fontFamily: "monospace",
   },
-  itemFooter: {
+  itemMetaRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
   },
-  itemTime: {
-    fontSize: 11,
-    color: "#8b949e",
+  wsBadge: {
+    backgroundColor: "#21262d",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
-  itemWorkspace: {
-    fontSize: 11,
-    color: "#8b949e",
-    maxWidth: "50%",
+  wsBadgeText: {
+    fontSize: 10,
+    color: "#58a6ff",
+    fontFamily: "monospace",
   },
-  loadingContainer: {
-    padding: 32,
+  metaText: {
+    fontSize: 10,
+    color: "#737373",
+    fontFamily: "monospace",
+  },
+  loadingBox: {
+    padding: 20,
     alignItems: "center",
   },
   loadingText: {
-    color: "#8b949e",
-    marginTop: 12,
-    fontSize: 13,
+    color: "#737373",
+    marginTop: 8,
+    fontSize: 11,
+    fontFamily: "monospace",
   },
-  emptyContainer: {
-    padding: 24,
+  emptyBox: {
+    padding: 16,
     alignItems: "center",
   },
   emptyText: {
-    color: "#8b949e",
-    fontSize: 13,
+    color: "#737373",
+    fontSize: 11,
+    fontFamily: "monospace",
   },
 });
+

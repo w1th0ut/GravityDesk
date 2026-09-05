@@ -66,19 +66,19 @@ export const WorkspacePickerModal: React.FC<Props> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.card}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>📁 Select Workspace Folder</Text>
+            <Text style={styles.title}>Select Folder</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
           </View>
 
           {/* Body */}
-          <ScrollView style={styles.body}>
+          <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
             {/* Drives */}
             {data?.drives && data.drives.length > 0 && (
               <View style={styles.section}>
@@ -93,8 +93,17 @@ export const WorkspacePickerModal: React.FC<Props> = ({
                           styles.driveBtnActive,
                       ]}
                       onPress={() => loadData(d)}
+                      activeOpacity={0.7}
                     >
-                      <Text style={styles.driveBtnText}>{d}</Text>
+                      <Text
+                        style={[
+                          styles.driveBtnText,
+                          currentNavPath.toLowerCase().startsWith(d.toLowerCase()) &&
+                            styles.driveBtnTextActive,
+                        ]}
+                      >
+                        {d}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -110,10 +119,11 @@ export const WorkspacePickerModal: React.FC<Props> = ({
                       key={i}
                       onPress={() => loadData(b.path)}
                       style={styles.breadcrumbItem}
+                      activeOpacity={0.7}
                     >
                       <Text style={styles.breadcrumbText}>
                         {b.name}
-                        {i < data.breadcrumbs.length - 1 ? "  / " : ""}
+                        {i < data.breadcrumbs.length - 1 ? " / " : ""}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -123,10 +133,10 @@ export const WorkspacePickerModal: React.FC<Props> = ({
 
             {/* Directory Entries */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>FOLDERS</Text>
               {loading ? (
                 <View style={styles.loadingBox}>
-                  <ActivityIndicator color="#58a6ff" />
+                  <ActivityIndicator size="small" color="#58a6ff" />
+                  <Text style={styles.loadingText}>Loading folders...</Text>
                 </View>
               ) : data?.entries && data.entries.length > 0 ? (
                 data.entries.map((entry, idx) => (
@@ -134,6 +144,7 @@ export const WorkspacePickerModal: React.FC<Props> = ({
                     key={idx}
                     style={styles.folderRow}
                     onPress={() => loadData(entry.path)}
+                    activeOpacity={0.7}
                   >
                     <Text style={styles.folderIcon}>📁</Text>
                     <Text style={styles.folderName} numberOfLines={1}>
@@ -149,20 +160,16 @@ export const WorkspacePickerModal: React.FC<Props> = ({
 
           {/* Footer Actions */}
           <View style={styles.footer}>
-            <View style={styles.currentPathRow}>
-              <Text style={styles.currentPathText} numberOfLines={1}>
-                {currentNavPath}
-              </Text>
-            </View>
             <TouchableOpacity
               style={[styles.selectBtn, selecting && styles.selectBtnDisabled]}
               onPress={handleSelectWorkspace}
               disabled={selecting}
+              activeOpacity={0.7}
             >
               {selecting ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.selectBtnText}>Select This Workspace</Text>
+                <Text style={styles.selectBtnText}>Select This Folder</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -175,146 +182,153 @@ export const WorkspacePickerModal: React.FC<Props> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "center",
     alignItems: "center",
     padding: 14,
   },
   card: {
     width: "100%",
-    maxWidth: 480,
-    height: "82%",
-    backgroundColor: "#161b22",
-    borderRadius: 12,
+    maxWidth: 440,
+    maxHeight: "80%",
+    backgroundColor: "#141414",
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#30363d",
+    borderColor: "#262626",
     overflow: "hidden",
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#30363d",
+    borderBottomColor: "#262626",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   title: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: "700",
     color: "#ffffff",
   },
   closeBtn: {
-    padding: 4,
+    padding: 2,
   },
   closeText: {
     fontSize: 16,
-    color: "#8b949e",
+    color: "#737373",
   },
   body: {
     flex: 1,
-    padding: 14,
+    padding: 12,
   },
   section: {
-    marginBottom: 14,
+    marginBottom: 8,
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
-    color: "#8b949e",
+    color: "#737373",
     marginBottom: 6,
     letterSpacing: 0.5,
+    fontFamily: "monospace",
   },
   drivesRow: {
     flexDirection: "row",
     gap: 6,
+    flexWrap: "wrap",
+    marginBottom: 8,
   },
   driveBtn: {
-    backgroundColor: "#21262d",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    backgroundColor: "#1e1e1e",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: "#30363d",
+    borderColor: "#262626",
   },
   driveBtnActive: {
     borderColor: "#58a6ff",
     backgroundColor: "rgba(88, 166, 255, 0.15)",
   },
   driveBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#c9d1d9",
+    fontSize: 11,
+    fontFamily: "monospace",
+    color: "#e5e5e5",
+  },
+  driveBtnTextActive: {
+    color: "#58a6ff",
+    fontWeight: "700",
   },
   breadcrumbsBar: {
-    backgroundColor: "#0d1117",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    marginBottom: 10,
+    backgroundColor: "#0c0c0c",
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#30363d",
+    borderColor: "#262626",
   },
   breadcrumbItem: {
-    paddingVertical: 2,
+    paddingVertical: 1,
   },
   breadcrumbText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#58a6ff",
-    fontWeight: "500",
+    fontFamily: "monospace",
   },
   folderRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   folderIcon: {
-    fontSize: 14,
+    fontSize: 12,
   },
   folderName: {
-    fontSize: 13,
-    color: "#c9d1d9",
+    fontSize: 12,
+    fontFamily: "monospace",
+    color: "#e5e5e5",
     flex: 1,
   },
   loadingBox: {
-    paddingVertical: 20,
+    paddingVertical: 16,
     alignItems: "center",
   },
+  loadingText: {
+    fontSize: 11,
+    color: "#737373",
+    fontFamily: "monospace",
+    marginTop: 6,
+  },
   emptyText: {
-    fontSize: 12,
-    color: "#8b949e",
-    fontStyle: "italic",
+    fontSize: 11,
+    color: "#737373",
+    fontFamily: "monospace",
     paddingVertical: 8,
   },
   footer: {
-    padding: 12,
+    padding: 10,
     borderTopWidth: 1,
-    borderTopColor: "#30363d",
-    backgroundColor: "#161b22",
-    gap: 8,
-  },
-  currentPathRow: {
-    paddingHorizontal: 4,
-  },
-  currentPathText: {
-    fontSize: 11,
-    color: "#8b949e",
+    borderTopColor: "#262626",
+    backgroundColor: "#141414",
   },
   selectBtn: {
-    paddingVertical: 10,
-    borderRadius: 8,
+    height: 34,
+    borderRadius: 6,
     backgroundColor: "#1f6feb",
     alignItems: "center",
     justifyContent: "center",
   },
   selectBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   selectBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#ffffff",
     fontWeight: "700",
   },

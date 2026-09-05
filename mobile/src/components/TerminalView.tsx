@@ -1,11 +1,14 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, forwardRef, useImperativeHandle } from "react";
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
-  TouchableOpacity,
 } from "react-native";
+
+export interface TerminalViewRef {
+  scrollToBottom: () => void;
+}
 
 interface Props {
   logs: string[];
@@ -20,26 +23,26 @@ interface StyledSpan {
 }
 
 const ANSI_COLOR_MAP: Record<number, string> = {
-  30: "#484f58", // Black
-  31: "#ff7b72", // Red
-  32: "#7ee787", // Green
-  33: "#d29922", // Yellow
-  34: "#58a6ff", // Blue
-  35: "#bc8cff", // Magenta
-  36: "#39c5cf", // Cyan
-  37: "#d1d5db", // White
-  90: "#6e7681", // Bright Black
-  91: "#ffa198", // Bright Red
-  92: "#56d364", // Bright Green
-  93: "#e3b341", // Bright Yellow
-  94: "#79c0ff", // Bright Blue
-  95: "#d2a8ff", // Bright Magenta
-  96: "#56d4dd", // Bright Cyan
-  97: "#f0f6fc", // Bright White
+  30: "#484f58",
+  31: "#f85149",
+  32: "#3fb950",
+  33: "#d29922",
+  34: "#58a6ff",
+  35: "#bc8cff",
+  36: "#39c5cf",
+  37: "#e6edf3",
+  90: "#6e7681",
+  91: "#ffa198",
+  92: "#56d364",
+  93: "#e3b341",
+  94: "#79c0ff",
+  95: "#d2a8ff",
+  96: "#56d4dd",
+  97: "#ffffff",
 };
 
 /**
- * Deep ANSI SGR State Machine Parser.
+ * Deep ANSI SGR State Machine Parser matching index.html.
  * Transforms raw ANSI escape strings into structured, colored spans.
  */
 function parseAnsiToSpans(rawChunk: string): StyledSpan[] {
@@ -94,183 +97,139 @@ function parseAnsiToSpans(rawChunk: string): StyledSpan[] {
   return spans;
 }
 
-export const TerminalView: React.FC<Props> = ({ logs, isWsConnected, onClear }) => {
-  const flatListRef = useRef<FlatList>(null);
-  const [autoScroll, setAutoScroll] = useState<boolean>(true);
+export const TerminalView = forwardRef<TerminalViewRef, Props>(
+  ({ logs }, ref) => {
+    const flatListRef = useRef<FlatList>(null);
+    const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
-  // Group raw chunks into virtualized lines with memoization
-  const parsedLines = useMemo(() => {
-    return logs.map((chunk, index) => ({
-      id: `${index}`,
-      spans: parseAnsiToSpans(chunk),
+    const scrollToBottom = () => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+      setAutoScroll(true);
+    };
+
+    useImperativeHandle(ref, () => ({
+      scrollToBottom,
     }));
-  }, [logs]);
 
-  const scrollToBottom = () => {
-    flatListRef.current?.scrollToEnd({ animated: true });
-    setAutoScroll(true);
-  };
+    // Group raw chunks into virtualized lines with memoization
+    const parsedLines = useMemo(() => {
+      return logs.map((chunk, index) => ({
+        id: `${index}`,
+        spans: parseAnsiToSpans(chunk),
+      }));
+    }, [logs]);
 
-  const renderItem = ({ item }: { item: { id: string; spans: StyledSpan[] } }) => (
-    <Text style={styles.lineWrapper} selectable>
-      {item.spans.map((span, sIdx) => (
-        <Text
-          key={sIdx}
-          style={[
-            styles.baseTerminalText,
-            span.color ? { color: span.color } : styles.defaultTextColor,
-            span.bold ? styles.boldText : undefined,
-          ]}
-        >
-          {span.text}
+    const renderItem = ({ item }: { item: { id: string; spans: StyledSpan[] } }) => (
+      <View style={styles.lineWrapper}>
+        <Text selectable>
+          {item.spans.map((span, sIdx) => (
+            <Text
+              key={sIdx}
+              style={[
+                styles.baseTerminalText,
+                span.color ? { color: span.color } : styles.defaultTextColor,
+                span.bold ? styles.boldText : undefined,
+              ]}
+            >
+              {span.text}
+            </Text>
+          ))}
         </Text>
-      ))}
-    </Text>
-  );
-
-  return (
-    <View style={styles.container}>
-      {/* Terminal Header */}
-      <View style={styles.terminalHeader}>
-        <View style={styles.leftPill}>
-          <View
-            style={[styles.wsDot, isWsConnected ? styles.wsOnline : styles.wsOffline]}
-          />
-          <Text style={styles.wsLabel}>
-            {isWsConnected ? "Stream Active" : "Stream Offline"}
-          </Text>
-        </View>
-
-        <View style={styles.controls}>
-          <TouchableOpacity
-            style={[styles.ctrlBtn, autoScroll && styles.ctrlBtnActive]}
-            onPress={scrollToBottom}
-          >
-            <Text style={styles.ctrlBtnText}>↓ Auto-Scroll</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.ctrlBtn} onPress={onClear}>
-            <Text style={styles.ctrlBtnText}>Clear</Text>
-          </TouchableOpacity>
-        </View>
       </View>
+    );
 
-      {/* Virtualized Terminal Window */}
-      <FlatList
-        ref={flatListRef}
-        data={parsedLines}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        style={styles.terminalScreen}
-        contentContainerStyle={styles.terminalContent}
-        initialNumToRender={25}
-        maxToRenderPerBatch={25}
-        windowSize={7}
-        removeClippedSubviews={true}
-        onContentSizeChange={() => {
-          if (autoScroll) {
-            flatListRef.current?.scrollToEnd({ animated: false });
+    return (
+      <View style={styles.container}>
+        <FlatList
+          ref={flatListRef}
+          data={parsedLines}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          style={styles.terminalScreen}
+          contentContainerStyle={styles.terminalContent}
+          initialNumToRender={30}
+          maxToRenderPerBatch={30}
+          windowSize={9}
+          removeClippedSubviews={true}
+          onContentSizeChange={() => {
+            if (autoScroll) {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }
+          }}
+          ListEmptyComponent={
+            <View style={styles.emptyBanner}>
+              <Text style={styles.bannerAscii}>
+{`   ____                 _ _         ____            _    
+  / ___|_ __ __ ___   _(_) |_ _   _|  _ \\  ___  ___| | __
+ | |  _| '__/ _\` \\ \\ / / | __| | | | | | |/ _ \\/ __| |/ /
+ | |_| | | | (_| |\\ V /| | |_| |_| | |_| |  __/\\__ \\   < 
+  \\____|_|  \\__,_| \\_/ |_|\\__|\\__, |____/ \\___||___/_|\\_\\
+                              |___/                      `}
+              </Text>
+              <Text style={styles.bannerStatus}>[+] AGY Ready • Host Stream Active</Text>
+              <Text style={styles.bannerSub}>
+                Type your prompt or select an action below to begin.
+              </Text>
+            </View>
           }
-        }}
-        ListEmptyComponent={
-          <Text style={styles.placeholderText}>
-            Terminal ready. Start an agy session or enter commands below.
-          </Text>
-        }
-      />
-    </View>
-  );
-};
+        />
+      </View>
+    );
+  }
+);
+
+TerminalView.displayName = "TerminalView";
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#040d1a",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#30363d",
-    marginHorizontal: 12,
-    marginVertical: 6,
-    overflow: "hidden",
-  },
-  terminalHeader: {
-    backgroundColor: "#161b22",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#30363d",
-  },
-  leftPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  wsDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  wsOnline: {
-    backgroundColor: "#3fb950",
-  },
-  wsOffline: {
-    backgroundColor: "#f85149",
-  },
-  wsLabel: {
-    fontSize: 11,
-    color: "#8b949e",
-    fontWeight: "600",
-  },
-  controls: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  ctrlBtn: {
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    backgroundColor: "#21262d",
-    borderWidth: 1,
-    borderColor: "#30363d",
-  },
-  ctrlBtnActive: {
-    borderColor: "#58a6ff",
-    backgroundColor: "rgba(88, 166, 255, 0.15)",
-  },
-  ctrlBtnText: {
-    fontSize: 10,
-    color: "#c9d1d9",
-    fontWeight: "600",
+    backgroundColor: "#0c0c0c",
   },
   terminalScreen: {
     flex: 1,
-    paddingHorizontal: 10,
+    backgroundColor: "#0c0c0c",
   },
   terminalContent: {
+    paddingHorizontal: 10,
     paddingVertical: 8,
   },
   lineWrapper: {
-    fontFamily: "monospace",
-    fontSize: 12,
-    lineHeight: 18,
+    minHeight: 18,
   },
   baseTerminalText: {
     fontFamily: "monospace",
-    fontSize: 12,
+    fontSize: 12.5,
+    lineHeight: 18,
   },
   defaultTextColor: {
-    color: "#c9d1d9",
+    color: "#cccccc",
   },
   boldText: {
     fontWeight: "700",
   },
-  placeholderText: {
+  emptyBanner: {
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+  },
+  bannerAscii: {
     fontFamily: "monospace",
-    fontSize: 12,
-    color: "#8b949e",
-    fontStyle: "italic",
-    padding: 10,
+    fontSize: 9,
+    lineHeight: 12,
+    color: "#58a6ff",
+    fontWeight: "700",
+  },
+  bannerStatus: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    color: "#3fb950",
+    fontWeight: "700",
+    marginTop: 10,
+  },
+  bannerSub: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    color: "#737373",
+    marginTop: 4,
   },
 });
+

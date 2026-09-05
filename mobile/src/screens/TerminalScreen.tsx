@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,7 +8,7 @@ import {
 import { HealthResponse } from "../types";
 import { WorkspacePickerModal } from "../components/WorkspacePickerModal";
 import { ConversationPickerModal } from "../components/ConversationPickerModal";
-import { TerminalView } from "../components/TerminalView";
+import { TerminalView, TerminalViewRef } from "../components/TerminalView";
 import { PromptBar } from "../components/PromptBar";
 import { startSessionApi, stopSessionApi } from "../api/session";
 
@@ -39,8 +39,9 @@ export const TerminalScreen: React.FC<Props> = ({
   const [showConvoModal, setShowConvoModal] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState<string>("");
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
-  const [activeConvoName, setActiveConvoName] = useState<string>("New Chat");
+  const [activeConvoName, setActiveConvoName] = useState<string>("Resume Chat");
   const [isSessionLoading, setIsSessionLoading] = useState<boolean>(false);
+  const terminalRef = useRef<TerminalViewRef>(null);
 
   const isSessionRunning =
     wsSessionRunning || (health?.active_session?.is_alive ?? false);
@@ -69,9 +70,9 @@ export const TerminalScreen: React.FC<Props> = ({
 
   return (
     <View style={styles.container}>
-      {/* Header Container */}
+      {/* Top Header (<header> matching index.html) */}
       <View style={styles.header}>
-        {/* Row 1: Brand & Full Telemetry Chips (NO settings button) */}
+        {/* Row 1: Brand & Vitals */}
         <View style={styles.headerTop}>
           <View style={styles.brandRow}>
             <View
@@ -80,69 +81,68 @@ export const TerminalScreen: React.FC<Props> = ({
                 isConnected ? styles.dotOnline : styles.dotOffline,
               ]}
             />
-            <Text style={styles.brandTitle}>⚡ GravityDesk</Text>
+            <Text style={styles.brandTitle}>GravityDesk</Text>
           </View>
 
-          <View style={styles.vitalsRow}>
-            <View style={styles.vitalChip}>
-              <Text style={styles.vitalText}>
-                {health?.battery
-                  ? `${health.battery.is_charging ? "⚡" : "🔋"}${health.battery.percent}%`
-                  : "🔋--"}
-              </Text>
-            </View>
-
-            <View style={styles.vitalChip}>
-              <Text style={styles.vitalText}>
-                CPU {health ? `${health.cpu_percent}%` : "--"}
-              </Text>
-            </View>
-
-            <View style={styles.vitalChip}>
-              <Text style={styles.vitalText}>
-                RAM {health ? `${health.memory_percent}%` : "--"}
-              </Text>
-            </View>
+          <View style={styles.vitalsText}>
+            <Text style={styles.vitalLabel}>Bat: </Text>
+            <Text style={styles.vitalVal}>
+              {health?.battery
+                ? `${health.battery.is_charging ? "⚡" : ""}${health.battery.percent}%`
+                : "-"}
+            </Text>
+            <Text style={styles.vitalLabel}> | CPU: </Text>
+            <Text style={styles.vitalVal}>
+              {health ? `${health.cpu_percent}%` : "-"}
+            </Text>
+            <Text style={styles.vitalLabel}> | RAM: </Text>
+            <Text style={styles.vitalVal}>
+              {health?.memory_percent !== undefined ? `${health.memory_percent}%` : "-"}
+            </Text>
           </View>
         </View>
 
-        {/* Row 2: Workspace & Resume Controls */}
-        <View style={styles.headerSub}>
+        {/* Row 2: Chips Row (.chips-row matching index.html) */}
+        <View style={styles.chipsRow}>
           <TouchableOpacity
-            style={styles.ctrlPill}
+            style={styles.folderChip}
             onPress={() => setShowWorkspaceModal(true)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.ctrlPillLabel} numberOfLines={1}>
+            <Text style={styles.chipText} numberOfLines={1}>
               📁{" "}
               {activeWorkspace
-                ? activeWorkspace.split(/[\\/]/).pop() || activeWorkspace
-                : "Select Folder"}
+                ? activeWorkspace.split(/[\\/]/).filter(Boolean).pop() || activeWorkspace
+                : "Folder"}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.ctrlPill}
+            style={styles.folderChip}
             onPress={() => setShowConvoModal(true)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.ctrlPillLabel} numberOfLines={1}>
+            <Text style={styles.chipText} numberOfLines={1}>
               💬 {activeConvoName}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Live ANSI Terminal Screen (Full Screen Area) */}
+      {/* Pure Edge-to-Edge Terminal Screen (#terminal-screen matching index.html) */}
       <TerminalView
+        ref={terminalRef}
         logs={logs}
         isWsConnected={isWsConnected}
         onClear={clearLogs}
       />
 
-      {/* WhatsApp-style Multiline Prompt Bar & Quick Controls */}
+      {/* Quick Action Bar + Input Dock (.quick-bar & .input-dock matching index.html) */}
       <PromptBar
         onSendInput={sendInput}
         onSendSignal={sendSignal}
         onClearLogs={clearLogs}
+        onScrollToBottom={() => terminalRef.current?.scrollToBottom()}
         isSessionRunning={isSessionRunning}
         onToggleSession={handleToggleSession}
         isSessionLoading={isSessionLoading}
@@ -173,16 +173,16 @@ export const TerminalScreen: React.FC<Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0d1117",
+    backgroundColor: "#0c0c0c",
   },
   header: {
-    backgroundColor: "#161b22",
+    backgroundColor: "#141414",
     borderBottomWidth: 1,
-    borderBottomColor: "#30363d",
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
-    gap: 8,
+    borderBottomColor: "#262626",
+    paddingHorizontal: 10,
+    paddingTop: 6,
+    paddingBottom: 6,
+    gap: 6,
   },
   headerTop: {
     flexDirection: "row",
@@ -192,12 +192,12 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   statusDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   dotOnline: {
     backgroundColor: "#3fb950",
@@ -206,45 +206,44 @@ const styles = StyleSheet.create({
     backgroundColor: "#f85149",
   },
   brandTitle: {
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: 13,
+    fontWeight: "700",
     color: "#ffffff",
-    letterSpacing: -0.3,
+    letterSpacing: 0.2,
   },
-  vitalsRow: {
+  vitalsText: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
   },
-  vitalChip: {
-    backgroundColor: "#21262d",
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: "#30363d",
-  },
-  vitalText: {
+  vitalLabel: {
+    fontFamily: "monospace",
     fontSize: 11,
-    color: "#8b949e",
+    color: "#737373",
+  },
+  vitalVal: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    color: "#e5e5e5",
     fontWeight: "600",
   },
-  headerSub: {
+  chipsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
   },
-  ctrlPill: {
+  folderChip: {
     flex: 1,
-    backgroundColor: "#21262d",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 7,
+    backgroundColor: "#1e1e1e",
     borderWidth: 1,
-    borderColor: "#30363d",
+    borderColor: "#262626",
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    justifyContent: "center",
   },
-  ctrlPillLabel: {
-    fontSize: 12,
+  chipText: {
+    fontFamily: "monospace",
+    fontSize: 11,
     color: "#58a6ff",
-    fontWeight: "600",
   },
 });
+

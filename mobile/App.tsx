@@ -38,7 +38,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0d1117" />
+      <StatusBar barStyle="light-content" backgroundColor="#0c0c0c" />
 
       {/* Screen Content */}
       <View style={styles.mainContent}>
@@ -72,6 +72,7 @@ export default function App() {
         <TouchableOpacity
           style={[styles.navTab, currentTab === "home" && styles.navTabActive]}
           onPress={() => setCurrentTab("home")}
+          activeOpacity={0.7}
         >
           <View style={styles.tabIconBox}>
             <Text style={styles.tabIcon}>🏠</Text>
@@ -96,6 +97,7 @@ export default function App() {
         <TouchableOpacity
           style={[styles.navTab, currentTab === "terminal" && styles.navTabActive]}
           onPress={() => setCurrentTab("terminal")}
+          activeOpacity={0.7}
         >
           <View style={styles.tabIconBox}>
             <Text style={styles.tabIcon}>💻</Text>
@@ -120,43 +122,43 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0d1117",
+    backgroundColor: "#0c0c0c",
   },
   mainContent: {
     flex: 1,
   },
   bottomNav: {
     flexDirection: "row",
-    backgroundColor: "#161b22",
+    backgroundColor: "#141414",
     borderTopWidth: 1,
-    borderTopColor: "#30363d",
-    paddingTop: 6,
-    paddingBottom: 8,
+    borderTopColor: "#262626",
+    paddingTop: 5,
+    paddingBottom: 6,
   },
   navTab: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginHorizontal: 12,
   },
   navTabActive: {
-    backgroundColor: "rgba(88, 166, 255, 0.1)",
+    backgroundColor: "#1e1e1e",
   },
   tabIconBox: {
     position: "relative",
   },
   tabIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   navBadgeDot: {
     position: "absolute",
     top: -2,
     right: -6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   dotOnline: {
     backgroundColor: "#3fb950",
@@ -168,13 +170,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#58a6ff",
   },
   navLabel: {
-    fontSize: 11,
-    color: "#8b949e",
+    fontSize: 10,
+    color: "#737373",
     fontWeight: "600",
     marginTop: 2,
+    fontFamily: "monospace",
   },
   navLabelActive: {
     color: "#58a6ff",
-    fontWeight: "800",
+    fontWeight: "700",
   },
 });

@@ -43,15 +43,22 @@ export interface WorkspacesResponse {
 
 export interface ConversationItem {
   id: string;
-  summary: string;
-  timestamp: number;
-  relative_time: string;
+  title?: string;
+  summary?: string;
+  preview?: string;
+  steps?: number;
+  time_str?: string;
+  relative_time?: string;
   workspace?: string;
+  workspace_name?: string;
+  workspace_path?: string;
+  is_current?: boolean;
 }
 
 export interface ConversationsResponse {
   conversations: ConversationItem[];
   active_id: string | null;
+  current_repo?: string;
 }
 
 export interface TerminalOutputMessage {
