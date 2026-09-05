@@ -12,6 +12,55 @@ import { TerminalView, TerminalViewRef } from "../components/TerminalView";
 import { PromptBar } from "../components/PromptBar";
 import { startSessionApi, stopSessionApi } from "../api/session";
 
+const FolderIcon = ({ color = "#58a6ff", size = 12 }: { color?: string; size?: number }) => (
+  <View style={{ width: size, height: size * 0.75, justifyContent: "flex-end", marginRight: 5 }}>
+    <View
+      style={{
+        width: size * 0.45,
+        height: size * 0.25,
+        backgroundColor: color,
+        borderTopLeftRadius: 1.5,
+        borderTopRightRadius: 1.5,
+      }}
+    />
+    <View
+      style={{
+        width: size,
+        height: size * 0.6,
+        backgroundColor: color,
+        borderRadius: 1.5,
+        marginTop: -0.5,
+      }}
+    />
+  </View>
+);
+
+const ChatIcon = ({ color = "#58a6ff", size = 12 }: { color?: string; size?: number }) => (
+  <View
+    style={{
+      width: size,
+      height: size * 0.75,
+      borderWidth: 1.4,
+      borderColor: color,
+      borderRadius: 2.5,
+      position: "relative",
+      marginRight: 5,
+    }}
+  >
+    <View
+      style={{
+        position: "absolute",
+        bottom: -2,
+        left: 2,
+        width: 3,
+        height: 3,
+        backgroundColor: color,
+        transform: [{ rotate: "45deg" }],
+      }}
+    />
+  </View>
+);
+
 interface Props {
   health: HealthResponse | null;
   isConnected: boolean;
@@ -120,6 +169,7 @@ export const TerminalScreen: React.FC<Props> = ({
             onPress={() => setShowWorkspaceModal(true)}
             activeOpacity={0.7}
           >
+            <FolderIcon color="#58a6ff" size={12} />
             <Text style={styles.chipText} numberOfLines={1}>
               {activeWorkspace
                 ? activeWorkspace.split(/[\\/]/).filter(Boolean).pop() || activeWorkspace
@@ -132,6 +182,7 @@ export const TerminalScreen: React.FC<Props> = ({
             onPress={() => setShowConvoModal(true)}
             activeOpacity={0.7}
           >
+            <ChatIcon color="#58a6ff" size={12} />
             <Text style={styles.chipText} numberOfLines={1}>
               {activeConvoName}
             </Text>
@@ -270,7 +321,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingVertical: 4,
     paddingHorizontal: 8,
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
   },
   chipText: {
     fontFamily: "monospace",

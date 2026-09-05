@@ -9,6 +9,7 @@ import threading
 from typing import Dict, List, Optional, Set
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -462,8 +463,23 @@ async def terminal_websocket(
         hub.notify_event("Client disconnected")
 
 
-# Mount static directory for mobile web view
+# Serve index.html with strict no-cache headers to prevent mobile PWA stale cache
 static_dir = os.path.join(os.path.dirname(__file__), "static")
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    index_file = os.path.join(static_dir, "index.html")
+    if os.path.isfile(index_file):
+        with open(index_file, "r", encoding="utf-8") as f:
+            content = f.read()
+        resp = HTMLResponse(content=content)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+    raise HTTPException(status_code=404, detail="Index file not found")
+
+
 if os.path.isdir(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
