@@ -146,7 +146,12 @@ export const HomeScreen: React.FC<Props> = ({
 
             <View style={styles.telemetryItem}>
               <Text style={styles.telemetryLabel}>Sleep Inhibit</Text>
-              <Text style={styles.telemetryValue}>
+              <Text
+                style={[
+                  styles.telemetryValue,
+                  { color: health.sleep_inhibit_active ? "#3fb950" : "#8b949e" },
+                ]}
+              >
                 {health.sleep_inhibit_active ? "Active" : "Disabled"}
               </Text>
             </View>

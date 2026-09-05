@@ -174,11 +174,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
     paddingHorizontal: 10,
-    paddingTop: 6,
+    paddingTop: 4,
     paddingBottom: 78,
     backgroundColor: "#141414",
-    borderTopWidth: 1,
-    borderTopColor: "#262626",
     alignItems: "flex-end",
   },
   micBtn: {
