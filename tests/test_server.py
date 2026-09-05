@@ -54,12 +54,21 @@ def test_workspaces_navigation():
 
 def test_favorites_toggle():
     token = get_or_create_token()
-    with TestClient(app) as client:
-        test_dir = os.path.realpath(os.getcwd())
-        res = client.post(f"/api/favorites/toggle?path={test_dir}&token={token}")
-        assert res.status_code == 200
-        favs = res.json()
-        assert isinstance(favs, list)
+    fav_file = "favorites.json"
+    try:
+        with TestClient(app) as client:
+            test_dir = os.path.realpath(os.getcwd())
+            res = client.post(f"/api/favorites/toggle?path={test_dir}&token={token}")
+            assert res.status_code == 200
+            favs = res.json()
+            assert isinstance(favs, list)
+    finally:
+        if os.path.exists(fav_file):
+            try:
+                os.remove(fav_file)
+            except Exception:
+                pass
+
 
 
 def test_command_allowlist_enforcement():

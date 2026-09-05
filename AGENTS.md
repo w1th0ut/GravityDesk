@@ -8,7 +8,7 @@ Remote Control & Telemetry System for Google Antigravity (`agy`) CLI from Androi
 
 GravityDesk is organized as a multi-context monorepo engineered to strict Clean Architecture paradigms. The project bridges mobile devices to a Windows developer workstation, streaming bidirectional terminal I/O and telemetry with sub-50ms latency.
 
-Consult [`CONTEXT-MAP.md`](file:///C:/Users/bagas/Downloads/GravityDesk/CONTEXT-MAP.md) before reading or modifying code across boundaries.
+Consult [`server/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/server/CONTEXT.md) and [`mobile/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile/CONTEXT.md) before reading or modifying code across boundaries.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -43,7 +43,6 @@ Consult [`CONTEXT-MAP.md`](file:///C:/Users/bagas/Downloads/GravityDesk/CONTEXT-
 | **Mobile Client** | [`mobile/`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile) | React Native (Expo) TypeScript application, Android native voice dictation, virtualized ANSI terminal renderer. | [`mobile/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile/CONTEXT.md) |
 | **PWA Web Terminal** | [`server/static/index.html`](file:///C:/Users/bagas/Downloads/GravityDesk/server/static/index.html) | Zero-install web client, WhatsApp-style multiline input, ASCII AGY welcome banner, ANSI terminal rendering, auto-reconnect. | [`server/static/index.html`](file:///C:/Users/bagas/Downloads/GravityDesk/server/static/index.html) |
 | **Integration Tests** | [`tests/`](file:///C:/Users/bagas/Downloads/GravityDesk/tests) | End-to-end security, token entropy, ConPTY lifecycle, and endpoint contracts. | [`tests/test_server.py`](file:///C:/Users/bagas/Downloads/GravityDesk/tests/test_server.py) |
-| **Agent Docs & Specs** | [`docs/agents/`](file:///C:/Users/bagas/Downloads/GravityDesk/docs/agents), [`.scratch/`](file:///C:/Users/bagas/Downloads/GravityDesk/.scratch) | Issue tracking, triage state machine, system specs, and Architecture Decision Records (ADRs). | [`docs/agents/`](file:///C:/Users/bagas/Downloads/GravityDesk/docs/agents) |
 
 ---
 
@@ -90,15 +89,7 @@ GravityDesk provides remote terminal execution into the host workstation. The fo
 
 ## 4. Issue Tracking & Autonomous Triage
 
-Issues and task specifications are tracked locally as Markdown files:
-
-### Storage & Conventions
-- **Feature Directory**: `.scratch/<feature-name>/` (e.g. [`.scratch/gravitydesk-core/`](file:///C:/Users/bagas/Downloads/GravityDesk/.scratch/gravitydesk-core)).
-- **Spec File**: `spec.md` defines context, technical requirements, acceptance criteria, and status.
-- **Map File**: `map.md` outlines implementation roadmaps and dependency graphs.
-
-### Canonical Triage State Machine
-Agents must respect the 5-role triage vocabulary:
+For complex multi-stage tasks or issue analysis, agents follow the canonical 5-role triage state machine:
 
 | Status Label | Role / Intent | Execution Rule |
 |---|---|---|
@@ -108,7 +99,6 @@ Agents must respect the 5-role triage vocabulary:
 | `ready-for-human` | Requires physical device or credentials | Blocked on human action (e.g., physical Android camera scan). |
 | `wontfix` | Out of scope or obsolete | Discarded; do not implement. |
 
-See [`docs/agents/triage-labels.md`](file:///C:/Users/bagas/Downloads/GravityDesk/docs/agents/triage-labels.md) for detailed reference.
 
 ---
 

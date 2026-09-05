@@ -27,52 +27,6 @@
 - 🚫 **Instant Access Revocation**: One-click 256-bit cryptographic token rotation instantly locks out stale or lost mobile sessions and invalidates active connections in real time.
 - 🔒 **Zero-Trust Defense-in-Depth**: Operates exclusively over encrypted Tailscale WireGuard mesh tunnels, timing-safe authentication (`hmac.compare_digest`), path-traversal safeguards, and strict command execution allowlists.
 - 🔋 **Windows Sleep Inhibit**: Prevents host laptops from entering standby or suspend mode during active remote sessions using the native Win32 API (`kernel32.SetThreadExecutionState`).
-
----
-
-## 📐 System Architecture
-
-```mermaid
-flowchart TD
-    subgraph Mobile["📱 Mobile Client (Android / PWA)"]
-        Scanner["📷 QR Pairing / Auth Token"]
-        VoiceInput["🎙️ Native Voice Dictation"]
-        PromptBox["💬 WhatsApp-style Prompt Bar"]
-        AnsiScreen["🖥️ Virtualized ANSI Terminal"]
-    end
-
-    subgraph Mesh["🔐 Tailscale Encrypted WireGuard Mesh (100.x.y.z)"]
-        Tunnel["Peer-to-Peer Tunnel (Zero Public Ports Exposed)"]
-    end
-
-    subgraph Host["💻 Windows Developer Workstation"]
-        GUI["🖥️ Desktop GUI Control Center\n(Tkinter + QR + Revoke)"]
-        
-        subgraph Server["⚡ GravityDesk Daemon (FastAPI :8000)"]
-            AuthGuard["🛡️ Timing-Safe Token Auth\n(256-bit Entropy)"]
-            SysVitals["📊 System Telemetry & Sleep Inhibit\n(psutil + SetThreadExecutionState)"]
-            Workspaces["📁 Workspace Explorer & Path Guard"]
-            ConvoSync["🔄 SQLite Chat Resume Sync"]
-            PTYHub["⚙️ ConPTY Process Runner\n(pywinpty + Monotonic Ring Buffer)"]
-        end
-
-        subgraph Process["🤖 Antigravity Execution Core"]
-            AGY["Google Antigravity CLI\n(agy --dangerously-skip-permissions)"]
-            CMD["Windows CMD Shell / PowerShell"]
-        end
-    end
-
-    Mobile <-->|Encrypted HTTP / WebSocket| Tunnel
-    Tunnel <--> AuthGuard
-    AuthGuard --> SysVitals
-    AuthGuard --> Workspaces
-    AuthGuard --> ConvoSync
-    AuthGuard --> PTYHub
-    PTYHub <-->|ConPTY Bidirectional Pipe| AGY
-    PTYHub <-->|ConPTY Bidirectional Pipe| CMD
-    GUI -.->|Manages & Revokes Token| AuthGuard
-```
-
 ---
 
 ## 🛠️ Tech Stack
@@ -192,13 +146,11 @@ GravityDesk/
 │   └── src/                   # Native components, hooks, and secure storage
 ├── tests/                     # Test suite
 │   └── test_server.py         # Integration & security test harness
-├── docs/                      # Architectural documentation & agent specs
-│   └── agents/                # Triage labels, domain map, issue tracker
 ├── gui.py                     # Desktop GUI root launcher
 ├── run_gui.bat                # Windows 1-click execution batch script
 ├── requirements.txt           # Python package dependencies
-├── AGENTS.md                  # Autonomous agent operational manual
-└── CONTEXT-MAP.md             # Monorepo architectural context mapping
+├── LICENSE                    # MIT Open Source License
+└── AGENTS.md                  # Autonomous agent operational manual
 ```
 
 ---
