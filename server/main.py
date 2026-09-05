@@ -107,13 +107,15 @@ async def lifespan(app: FastAPI):
     # Inhibit Windows Sleep while daemon is active
     enable_sleep_inhibit()
 
-    # Terminal Startup Banner & QR
-    display_startup_banner(server_ip, port, server_token)
+    # Terminal Startup Banner & QR (suppressed in GUI mode)
+    if os.environ.get("GRAVITYDESK_GUI") != "1":
+        display_startup_banner(server_ip, port, server_token)
 
     yield
 
     # Teardown
-    print("[Server] Shutting down GravityDesk...")
+    if os.environ.get("GRAVITYDESK_GUI") != "1":
+        print("[Server] Shutting down GravityDesk...")
     disable_sleep_inhibit()
     hub.stop_session()
 

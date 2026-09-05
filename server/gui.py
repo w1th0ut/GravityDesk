@@ -653,7 +653,7 @@ class GravityDeskGUI:
             app,
             host="0.0.0.0",
             port=self.port,
-            log_level="warning",
+            log_level="error",
             access_log=False,
         )
         self.server = uvicorn.Server(config)
