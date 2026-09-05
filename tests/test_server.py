@@ -13,6 +13,27 @@ from server.main import app
 from server.network import get_or_create_token
 
 
+@pytest.fixture(autouse=True)
+def preserve_devices_file():
+    """Preserves live devices.json and restores it after test runs so test runs never revoke live devices."""
+    backup = None
+    if os.path.exists("devices.json"):
+        try:
+            with open("devices.json", "r", encoding="utf-8") as f:
+                backup = f.read()
+        except Exception:
+            pass
+    try:
+        yield
+    finally:
+        if backup is not None:
+            try:
+                with open("devices.json", "w", encoding="utf-8") as f:
+                    f.write(backup)
+            except Exception:
+                pass
+
+
 def test_token_entropy():
     token = get_or_create_token()
     assert len(token) == 64, f"Token must have 256-bit entropy (64 hex characters), got {len(token)}"

@@ -175,16 +175,13 @@ export const TerminalView = forwardRef<TerminalViewRef, Props>(
           ListEmptyComponent={
             <View style={styles.emptyBanner}>
               <Text style={styles.bannerAgyAscii}>
-{` ███  ████   ███  █   █ ███ █████ █   █
-█     █   █ █   █ █   █  █    █    █ █ 
-█ ██  ████  █████  █ █   █    █     █  
- ███  █  █  █   █   █   ███   █     █  
-        ████  █████  ████ █   █        
-        █   █ █     █     ████         
-        █   █ ████     ██ █  █         
-        ████  █████ ████  █   █        `}
+{`  █████   ██████  ██    ██
+ ██   ██ ██        ██  ██ 
+ ███████ ██  ███    ████  
+ ██   ██ ██    ██    ██   
+ ██   ██  ██████     ██   `}
               </Text>
-              <Text style={styles.bannerDivider}>───────────────────────────────────────</Text>
+              <Text style={styles.bannerDivider}>──────────────────────────────</Text>
               <Text style={styles.bannerTitle}>
                 <Text style={styles.cyanText}>Anti-Gravity</Text>
                 <Text style={styles.whiteText}> (AGY) Remote CLI</Text>
