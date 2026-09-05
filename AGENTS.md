@@ -8,8 +8,6 @@ Remote Control & Telemetry System for Google Antigravity (`agy`) CLI from Androi
 
 GravityDesk is organized as a multi-context monorepo engineered to strict Clean Architecture paradigms. The project bridges mobile devices to a Windows developer workstation, streaming bidirectional terminal I/O and telemetry with sub-50ms latency.
 
-Consult [`server/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/server/CONTEXT.md) and [`mobile/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile/CONTEXT.md) before reading or modifying code across boundaries.
-
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                   Mobile Client (Android)                │
@@ -37,10 +35,10 @@ Consult [`server/CONTEXT.md`](file:///C:/Users/bagas/Downloads/GravityDesk/serve
 
 | Subsystem | Root Path | Primary Responsibilities | Domain Reference |
 |---|---|---|---|
-| **Backend Daemon** | [`server/`](file:///C:/Users/bagas/Downloads/GravityDesk/server) | FastAPI REST/WebSocket endpoints, ConPTY runner, Tailscale resolver, process supervisor, system vitals, sleep inhibitor. | [`server/main.py`](file:///C:/Users/bagas/Downloads/GravityDesk/server/main.py) |
-| **Desktop Control Center** | [`gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/gui.py), [`server/gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/server/gui.py) | Modern Tkinter desktop dashboard, dynamic QR Code pairing, 1-click token copy, workspace directory picker, Instant Access Revocation. | [`server/gui.py`](file:///C:/Users/bagas/Downloads/GravityDesk/server/gui.py) |
-| **Mobile Client** | [`mobile/`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile) | React Native (Expo) TypeScript application, Android native voice dictation, virtualized ANSI terminal renderer. | [`mobile/src/screens/TerminalScreen.tsx`](file:///C:/Users/bagas/Downloads/GravityDesk/mobile/src/screens/TerminalScreen.tsx) |
-| **Integration Tests** | [`tests/`](file:///C:/Users/bagas/Downloads/GravityDesk/tests) | End-to-end security, token entropy, ConPTY lifecycle, and endpoint contracts. | [`tests/test_server.py`](file:///C:/Users/bagas/Downloads/GravityDesk/tests/test_server.py) |
+| **Backend Daemon** | `server/` | FastAPI REST/WebSocket endpoints, ConPTY runner, Tailscale resolver, process supervisor, system vitals, sleep inhibitor. | `server/main.py` |
+| **Desktop Control Center** | `gui.py`, `server/gui.py` | Modern Tkinter desktop dashboard, dynamic QR Code pairing, 1-click token copy, workspace directory picker, Instant Access Revocation. | `server/gui.py` |
+| **Mobile Client** | `mobile/` | React Native (Expo) TypeScript application, Android native voice dictation, virtualized ANSI terminal renderer. | `mobile/src/screens/TerminalScreen.tsx` |
+| **Integration Tests** | `tests/` | End-to-end security, token entropy, ConPTY lifecycle, and endpoint contracts. | `tests/test_server.py` |
 
 ---
 
@@ -51,7 +49,7 @@ When operating within this codebase, all autonomous agents **MUST** comply with 
 1. **NEVER RUN `python -m server.main` AUTONOMOUSLY**:
    - The user or the Desktop GUI runs the live server daemon. Do not launch background instances of `server.main` as it binds port 8000 and interferes with the user's active session.
 2. **LAUNCHING THE DESKTOP GUI**:
-   - Use `python gui.py` or execute [`run_gui.bat`](file:///C:/Users/bagas/Downloads/GravityDesk/run_gui.bat).
+   - Use `python gui.py` or execute `run_gui.bat`.
 3. **RUNNING VERIFICATION & TESTS**:
    - Execute tests using `python -m tests.test_server` or `python -m pytest`.
    - Never consider a feature or refactor complete without verifying that all tests pass with exit code 0.
@@ -69,7 +67,7 @@ GravityDesk provides remote terminal execution into the host workstation. The fo
 ### Cryptographic Authentication
 - **Entropy**: Minimum 256-bit cryptographic entropy generated via `secrets.token_hex(32)`.
 - **Timing Attacks**: Token verification must use `hmac.compare_digest` to eliminate timing-channel vulnerability.
-- **Persistence**: Tokens are stored in `.env` (excluded by [`.gitignore`](file:///C:/Users/bagas/Downloads/GravityDesk/.gitignore)).
+- **Persistence**: Tokens are stored in `.env` (excluded by `.gitignore`).
 - **Instant Revocation**: Triggered via Desktop GUI (`server/network.py:revoke_and_create_token()`). Overwrites `.env` with a newly generated 256-bit token and resets the runtime cache immediately.
 
 ### Remote Code Execution (RCE) Allowlist
