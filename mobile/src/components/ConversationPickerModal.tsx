@@ -29,7 +29,7 @@ interface Props {
   visible: boolean;
   activeId: string | null;
   onClose: () => void;
-  onSelectConversation: (id: string | null, summary?: string) => void;
+  onSelectConversation: (id: string | null, summary?: string, wsPath?: string) => void;
 }
 
 export const ConversationPickerModal: React.FC<Props> = ({
@@ -70,12 +70,12 @@ export const ConversationPickerModal: React.FC<Props> = ({
     }
   }, [visible]);
 
-  const handleSelect = async (id: string, summary?: string) => {
+  const handleSelect = async (id: string, summary?: string, wsPath?: string) => {
     try {
       setLoading(true);
-      const res = await selectConversationApi(id);
+      const res = await selectConversationApi(id, summary, wsPath);
       setCurrentActiveId(res.active_id);
-      onSelectConversation(res.active_id, summary);
+      onSelectConversation(res.active_id, summary, wsPath || res.cwd);
       onClose();
     } catch (err) {
       console.warn("Failed to select conversation:", err);
@@ -195,7 +195,7 @@ export const ConversationPickerModal: React.FC<Props> = ({
                       <TouchableOpacity
                         key={item.id}
                         style={[styles.itemCard, isActive && styles.itemCardActive]}
-                        onPress={() => handleSelect(item.id, itemTitle)}
+                        onPress={() => handleSelect(item.id, itemTitle, item.workspace_path)}
                         activeOpacity={0.7}
                       >
                         <View style={styles.itemHeadRow}>

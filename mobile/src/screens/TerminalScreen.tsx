@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { HealthResponse } from "../types";
+import { fetchConversations } from "../api/conversations";
 import { WorkspacePickerModal } from "../components/WorkspacePickerModal";
 import { ConversationPickerModal } from "../components/ConversationPickerModal";
 import { TerminalView, TerminalViewRef } from "../components/TerminalView";
@@ -71,6 +72,27 @@ export const TerminalScreen: React.FC<Props> = ({
       setActiveWorkspace(health.active_session.cwd);
     }
   }, [health, activeWorkspace]);
+
+  useEffect(() => {
+    if (isConnected) {
+      fetchConversations()
+        .then((res) => {
+          if (res.active_id) {
+            setActiveConvoId(res.active_id);
+            const active = (res.conversations || []).find((c) => c.id === res.active_id);
+            if (active) {
+              const label =
+                active.title ||
+                active.summary ||
+                active.preview ||
+                `Chat ${res.active_id.slice(0, 8)}`;
+              setActiveConvoName(label);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isConnected]);
 
   if (!isConnected) {
     return (
@@ -150,9 +172,13 @@ export const TerminalScreen: React.FC<Props> = ({
         visible={showConvoModal}
         activeId={activeConvoId}
         onClose={() => setShowConvoModal(false)}
-        onSelectConversation={(id, summary) => {
+        onSelectConversation={(id, summary, wsPath) => {
           setActiveConvoId(id);
-          setActiveConvoName(summary || (id ? "Resumed Chat" : "New Chat"));
+          const label = summary || (id ? (id === "new" ? "New Chat" : `Chat ${id.slice(0, 8)}`) : "New Chat");
+          setActiveConvoName(label);
+          if (wsPath) {
+            setActiveWorkspace(wsPath);
+          }
           refreshVitals();
         }}
       />
@@ -230,6 +256,7 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 11,
     color: "#58a6ff",
+    flex: 1,
   },
 });
 
