@@ -11,10 +11,10 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 **Blocked by:** None — can start immediately.
 
-- [ ] Backend FastAPI application created with `/api/health` returning machine vitals and detected Tailscale IP.
-- [ ] Laptop Tailscale IPv4 auto-detection utility inspecting local network interfaces.
-- [ ] Mobile client connecting to `/api/health` with visual green/red connection status indicator and telemetry card.
-- [ ] Integration test verifying the `/api/health` response contract.
+- [x] Backend FastAPI application created with `/api/health` returning machine vitals and detected Tailscale IP.
+- [x] Laptop Tailscale IPv4 auto-detection utility inspecting local network interfaces.
+- [x] Mobile client connecting to `/api/health` with visual green/red connection status indicator and telemetry card.
+- [x] Integration test verifying the `/api/health` response contract.
 
 ## 2. QR Code Pairing & Secure Token Handshake
 
@@ -22,10 +22,10 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 **Blocked by:** 1. Foundation Scaffolding & Health Ping Tracer Bullet.
 
-- [ ] Backend generates 256-bit secret token on startup and prints terminal ASCII QR code `gravitydesk://pair?host=...&token=...`.
-- [ ] Backend FastAPI dependency validating `Bearer` token on protected endpoints.
-- [ ] Mobile client scans QR code or accepts manual token entry, saving credentials into `expo-secure-store`.
-- [ ] Unauthenticated requests return `401 Unauthorized`.
+- [x] Backend generates 256-bit secret token on startup and prints terminal ASCII QR code `gravitydesk://pair?host=...&token=...`.
+- [x] Backend FastAPI dependency validating `Bearer` token on protected endpoints.
+- [x] Mobile client scans QR code or accepts manual token entry, saving credentials into `expo-secure-store`.
+- [x] Unauthenticated requests return `401 Unauthorized`.
 
 ## 3. Workspace Explorer & Favorites Directory Picker
 
@@ -33,10 +33,10 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 **Blocked by:** 2. QR Code Pairing & Secure Token Handshake.
 
-- [ ] Backend `/api/workspaces` endpoint listing subdirectories, drive roots, and validating folder existence.
-- [ ] Backend `/api/workspaces/favorite` endpoint storing and retrieving user-pinned folders from `favorites.json`.
-- [ ] Mobile Directory Picker modal with breadcrumb navigation, quick folder jump, and favorite pinning toggle.
-- [ ] Integration tests for filesystem directory traversal security (preventing path traversal outside existing drives).
+- [x] Backend `/api/workspaces` endpoint listing subdirectories, drive roots, and validating folder existence.
+- [x] Backend `/api/workspaces/favorite` endpoint storing and retrieving user-pinned folders from `favorites.json`.
+- [x] Mobile Directory Picker modal with breadcrumb navigation, quick folder jump, and favorite pinning toggle.
+- [x] Integration tests for filesystem directory traversal security (preventing path traversal outside existing drives).
 
 ## 4. Interactive ConPTY Terminal & WebSocket Stream
 
@@ -44,10 +44,10 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 **Blocked by:** 3. Workspace Explorer & Favorites Directory Picker.
 
-- [ ] Backend ConPTY manager running a dedicated background thread reading from `pywinpty` and pushing to `asyncio.Queue`.
-- [ ] WebSocket endpoint `/ws/terminal` broadcasting live ANSI stream chunks with monotonic sequence numbers.
-- [ ] Mobile virtualized ANSI terminal screen rendering colored logs with 50ms batch throttling for smooth 60 FPS scrolling.
-- [ ] Bidirectional user keyboard input and `Enter` key transmission from mobile to the running CLI process.
+- [x] Backend ConPTY manager running a dedicated background thread reading from `pywinpty` and pushing to `asyncio.Queue`.
+- [x] WebSocket endpoint `/ws/terminal` broadcasting live ANSI stream chunks with monotonic sequence numbers.
+- [x] Mobile virtualized ANSI terminal screen rendering colored logs with 50ms batch throttling for smooth 60 FPS scrolling.
+- [x] Bidirectional user keyboard input and `Enter` key transmission from mobile to the running CLI process.
 
 ## 5. Voice-to-Text Input & Session Resiliency (Signals & Reconnect Replay)
 
@@ -55,7 +55,7 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 **Blocked by:** 4. Interactive ConPTY Terminal & WebSocket Stream.
 
-- [ ] On-device Android voice recognition button transcribing speech directly into the prompt text field for editing.
-- [ ] Quick-action toolbar firing `SIGINT` (Ctrl+C), `y`, `n`, `Clear`, and emergency process termination.
-- [ ] Sequence ring-buffer replaying missed logs on mobile reconnect (`{"type": "subscribe", "last_seq": N}`).
-- [ ] Windows power management integration (`SetThreadExecutionState`) preventing laptop sleep while daemon runs.
+- [x] On-device Android voice recognition button transcribing speech directly into the prompt text field for editing.
+- [x] Quick-action toolbar firing `SIGINT` (Ctrl+C), `y`, `n`, `Clear`, and emergency process termination.
+- [x] Sequence ring-buffer replaying missed logs on mobile reconnect (`{"type": "subscribe", "last_seq": N}`).
+- [x] Windows power management integration (`SetThreadExecutionState`) preventing laptop sleep while daemon runs.
