@@ -8,5 +8,9 @@ dist/
 favorites.json
 .pytest_cache/
 *.log
+local.properties
+android/
+ios/
+
 
 

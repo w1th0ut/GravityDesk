@@ -1,0 +1,6 @@
+android/
+ios/
+local.properties
+.expo/
+dist/
+node_modules/
