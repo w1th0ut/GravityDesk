@@ -33,22 +33,48 @@ export const QRScannerModal: React.FC<Props> = ({
       let host = "";
       let token = "";
 
-      if (data.startsWith("gravitydesk://pair")) {
-        const urlObj = new URL(data);
-        const hostParam = urlObj.searchParams.get("host");
-        const tokenParam = urlObj.searchParams.get("token");
-        if (hostParam && tokenParam) {
-          const proto = hostParam.startsWith("http") ? "" : "http://";
-          host = `${proto}${hostParam}`;
-          token = tokenParam;
+      const raw = data.trim();
+
+      // 1. Direct regex match for standard http(s) URL with token query
+      const httpMatch = raw.match(/^(https?:\/\/[^\/?#]+)/i);
+      const tokenMatch = raw.match(/[?&]token=([^&#]+)/i);
+
+      if (httpMatch && tokenMatch) {
+        host = httpMatch[1];
+        token = decodeURIComponent(tokenMatch[1]);
+      }
+
+      // 2. Custom app scheme gravitydesk://pair?host=...&token=...
+      if (!host || !token) {
+        if (raw.startsWith("gravitydesk://pair")) {
+          const hostMatch = raw.match(/[?&]host=([^&#]+)/i);
+          if (hostMatch && tokenMatch) {
+            const parsedHost = decodeURIComponent(hostMatch[1]);
+            host = parsedHost.startsWith("http") ? parsedHost : `http://${parsedHost}`;
+            token = decodeURIComponent(tokenMatch[1]);
+          }
         }
-      } else if (data.includes("token=")) {
-        const urlObj = new URL(data);
-        const tokenParam = urlObj.searchParams.get("token");
-        if (tokenParam) {
-          host = urlObj.origin;
-          token = tokenParam;
-        }
+      }
+
+      // 3. Fallback to URL constructor
+      if (!host || !token) {
+        try {
+          const urlObj = new URL(raw);
+          const qToken = urlObj.searchParams.get("token");
+          if (qToken) {
+            token = qToken;
+            const proto = urlObj.protocol || "http:";
+            const hostPort = urlObj.host || `${urlObj.hostname}${urlObj.port ? `:${urlObj.port}` : ""}`;
+            if (hostPort) {
+              host = `${proto}//${hostPort}`;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Ensure host is fully qualified
+      if (host && !host.startsWith("http")) {
+        host = `http://${host}`;
       }
 
       if (host && token) {

@@ -24,26 +24,45 @@ export async function pairDeviceApi(
   deviceName: string,
   platform: string = "android"
 ): Promise<PairDeviceResult> {
-  const cleanBase = host.replace(/\/+$/, "");
-  const response = await fetch(`${cleanBase}/api/devices/pair`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      device_id: deviceId,
-      device_name: deviceName,
-      platform,
-      pair_token: pairToken,
-    }),
-  });
+  const rawBase = (host || "").trim().replace(/\/+$/, "");
+  const cleanBase = rawBase.startsWith("http") ? rawBase : `http://${rawBase}`;
 
-  if (!response.ok) {
-    const txt = await response.text();
-    throw new Error(txt || `Pairing failed (HTTP ${response.status})`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(`${cleanBase}/api/devices/pair`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        device_id: deviceId,
+        device_name: deviceName,
+        platform,
+        pair_token: pairToken,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const txt = await response.text();
+      throw new Error(txt || `Pairing failed (HTTP ${response.status})`);
+    }
+
+    return (await response.json()) as PairDeviceResult;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      throw new Error(`Connection timed out reaching ${cleanBase}. Make sure Tailscale is connected.`);
+    }
+    if (err.message && err.message.toLowerCase().includes("network request failed")) {
+      throw new Error(`Cannot reach host (${cleanBase}). Ensure Tailscale VPN is CONNECTED on your phone.`);
+    }
+    throw err;
   }
-
-  return (await response.json()) as PairDeviceResult;
 }
 

@@ -7,12 +7,54 @@ import {
   StatusBar,
   TouchableOpacity,
 } from "react-native";
+import Svg, { Path, Polyline, Line } from "react-native-svg";
 import { useLaptopVitals } from "./src/hooks/useLaptopVitals";
 import { useTerminalSocket } from "./src/hooks/useTerminalSocket";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { TerminalScreen } from "./src/screens/TerminalScreen";
 
 type TabKey = "home" | "terminal";
+
+const HomeNavIcon: React.FC<{ color: string; size?: number }> = ({ color, size = 18 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Polyline
+      points="9 22 9 12 15 12 15 22"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+const TerminalNavIcon: React.FC<{ color: string; size?: number }> = ({ color, size = 18 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Polyline
+      points="4 17 10 11 4 5"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Line
+      x1="12"
+      y1="19"
+      x2="20"
+      y2="19"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 export default function App() {
   const { health, isConnected, isChecking, refresh } = useLaptopVitals(3000);
@@ -66,7 +108,7 @@ export default function App() {
         )}
       </View>
 
-      {/* Floating Capsule Bottom Navigation Bar (Matching Reference Image) */}
+      {/* Floating Capsule Bottom Navigation Bar (Exact 1:1 match with PWA) */}
       <View style={styles.floatingNavContainer} pointerEvents="box-none">
         <View style={styles.capsuleNav}>
           {/* Tab 1: Home */}
@@ -75,20 +117,10 @@ export default function App() {
             onPress={() => setCurrentTab("home")}
             activeOpacity={0.8}
           >
-            <View
-              style={[
-                styles.navIndicatorDot,
-                isConnected ? styles.dotOnline : styles.dotOffline,
-              ]}
-            />
-            <Text
-              style={[
-                styles.capsuleLabel,
-                currentTab === "home" ? styles.capsuleLabelActive : styles.capsuleLabelInactive,
-              ]}
-            >
-              Home
-            </Text>
+            <HomeNavIcon color={currentTab === "home" ? "#ffffff" : "#888888"} size={18} />
+            {currentTab === "home" && (
+              <Text style={styles.capsuleLabelActive}>Home</Text>
+            )}
           </TouchableOpacity>
 
           {/* Tab 2: Terminal */}
@@ -97,20 +129,10 @@ export default function App() {
             onPress={() => setCurrentTab("terminal")}
             activeOpacity={0.8}
           >
-            <View
-              style={[
-                styles.navIndicatorDot,
-                isSessionRunning ? styles.dotRunning : styles.dotMuted,
-              ]}
-            />
-            <Text
-              style={[
-                styles.capsuleLabel,
-                currentTab === "terminal" ? styles.capsuleLabelActive : styles.capsuleLabelInactive,
-              ]}
-            >
-              Terminal
-            </Text>
+            <TerminalNavIcon color={currentTab === "terminal" ? "#ffffff" : "#888888"} size={18} />
+            {currentTab === "terminal" && (
+              <Text style={styles.capsuleLabelActive}>Terminal</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -147,48 +169,29 @@ const styles = StyleSheet.create({
     gap: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.7,
+    shadowOpacity: 0.75,
     shadowRadius: 16,
     elevation: 12,
   },
   capsuleItem: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 30,
     backgroundColor: "transparent",
+    gap: 0,
   },
   capsuleItemActive: {
     backgroundColor: "#252528",
     paddingHorizontal: 18,
-  },
-  navIndicatorDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  capsuleLabel: {
-    fontSize: 13,
-    fontWeight: "700",
+    gap: 8,
   },
   capsuleLabelActive: {
+    fontSize: 13,
+    fontWeight: "700",
     color: "#ffffff",
-  },
-  capsuleLabelInactive: {
-    color: "#8b949e",
-  },
-  dotOnline: {
-    backgroundColor: "#3fb950",
-  },
-  dotOffline: {
-    backgroundColor: "#f85149",
-  },
-  dotRunning: {
-    backgroundColor: "#58a6ff",
-  },
-  dotMuted: {
-    backgroundColor: "#737373",
+    marginLeft: 8,
   },
 });

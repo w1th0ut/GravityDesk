@@ -10,55 +10,31 @@ import { WorkspacePickerModal } from "../components/WorkspacePickerModal";
 import { ConversationPickerModal } from "../components/ConversationPickerModal";
 import { TerminalView, TerminalViewRef } from "../components/TerminalView";
 import { PromptBar } from "../components/PromptBar";
+import Svg, { Path } from "react-native-svg";
 import { startSessionApi, stopSessionApi } from "../api/session";
 
-const FolderIcon = ({ color = "#58a6ff", size = 12 }: { color?: string; size?: number }) => (
-  <View style={{ width: size, height: size * 0.75, justifyContent: "flex-end", marginRight: 5 }}>
-    <View
-      style={{
-        width: size * 0.45,
-        height: size * 0.25,
-        backgroundColor: color,
-        borderTopLeftRadius: 1.5,
-        borderTopRightRadius: 1.5,
-      }}
+const FolderIcon = ({ color = "#58a6ff", size = 13 }: { color?: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
+    <Path
+      d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
-    <View
-      style={{
-        width: size,
-        height: size * 0.6,
-        backgroundColor: color,
-        borderRadius: 1.5,
-        marginTop: -0.5,
-      }}
-    />
-  </View>
+  </Svg>
 );
 
-const ChatIcon = ({ color = "#58a6ff", size = 12 }: { color?: string; size?: number }) => (
-  <View
-    style={{
-      width: size,
-      height: size * 0.75,
-      borderWidth: 1.4,
-      borderColor: color,
-      borderRadius: 2.5,
-      position: "relative",
-      marginRight: 5,
-    }}
-  >
-    <View
-      style={{
-        position: "absolute",
-        bottom: -2,
-        left: 2,
-        width: 3,
-        height: 3,
-        backgroundColor: color,
-        transform: [{ rotate: "45deg" }],
-      }}
+const ChatIcon = ({ color = "#58a6ff", size = 13 }: { color?: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
+    <Path
+      d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
-  </View>
+  </Svg>
 );
 
 interface Props {
