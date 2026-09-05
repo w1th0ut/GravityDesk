@@ -105,6 +105,22 @@ def test_workspaces_select():
         assert res.json()["cwd"] == test_dir
 
 
+def test_conversations_list_and_select():
+    token = get_or_create_token()
+    with TestClient(app) as client:
+        res = client.get(f"/api/conversations?token={token}")
+        assert res.status_code == 200
+        data = res.json()
+        assert "conversations" in data
+        assert isinstance(data["conversations"], list)
+        assert "active_id" in data
+
+        res_sel = client.post(f"/api/conversations/select?id=new&token={token}")
+        assert res_sel.status_code == 200
+        assert res_sel.json()["status"] == "resumed"
+        assert res_sel.json()["active_id"] is None
+
+
 if __name__ == "__main__":
     print("Running Hardened Architecture & Security Test Suite...")
     test_token_entropy()
@@ -117,6 +133,8 @@ if __name__ == "__main__":
     print("[PASS] test_workspaces_navigation (Safe directory navigation)")
     test_workspaces_select()
     print("[PASS] test_workspaces_select (Workspace selection and directory change)")
+    test_conversations_list_and_select()
+    print("[PASS] test_conversations_list_and_select (Conversation discovery and resumption)")
     test_favorites_toggle()
     print("[PASS] test_favorites_toggle (Favorites persistence)")
     test_command_allowlist_enforcement()

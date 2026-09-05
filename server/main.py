@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from server.conversations import list_conversations
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, print_ascii_qr
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import TerminalSession, hub
@@ -140,6 +141,30 @@ async def select_workspace(path: str = Query(...), _: str = Depends(verify_token
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Directory does not exist")
     hub.change_directory(path)
     return {"status": "changed", "cwd": hub.current_cwd}
+
+
+@app.get("/api/conversations")
+async def get_conversations(_: str = Depends(verify_token)):
+    """Returns list of past agy conversations for resumption."""
+    convs = list_conversations()
+    return {
+        "active_id": hub.active_conversation_id,
+        "conversations": convs,
+    }
+
+
+@app.post("/api/conversations/select")
+async def select_conversation(
+    id: str = Query(...),
+    title: Optional[str] = Query(None),
+    _: str = Depends(verify_token),
+):
+    """Switches active conversation session (resume chat)."""
+    hub.resume_conversation(id, title or "")
+    return {
+        "status": "resumed",
+        "active_id": hub.active_conversation_id,
+    }
 
 
 @app.post("/api/session/start")

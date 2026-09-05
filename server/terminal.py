@@ -182,6 +182,7 @@ class SessionHub:
         self.current_seq = 0
         self.lock = threading.Lock()
         self.running_subprocess: Optional[subprocess.Popen] = None
+        self.active_conversation_id: Optional[str] = None
         self._seed_initial_banner()
 
     def _seed_initial_banner(self) -> None:
@@ -271,14 +272,20 @@ class SessionHub:
 
         self.broadcast_chunk(f"\r\n\x1b[33m[*] Workspace: {clean_dir}\x1b[0m\r\n\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m ")
 
+    def resume_conversation(self, conv_id: str, title: str = "") -> None:
+        """Switches active conversation target for subsequent prompts."""
+        self.active_conversation_id = conv_id if conv_id != "new" else None
+        label = title or (f"Chat {conv_id[:8]}" if conv_id != "new" else "New Chat")
+        self.broadcast_chunk(f"\r\n\x1b[33m[*] Resumed chat: {label}\x1b[0m\r\n\x1b[36mAGY>\x1b[0m Ready.\r\n\x1b[32mprompt>\x1b[0m ")
+
     def send_input(self, data: str) -> None:
         """Processes user input, routing prompts to agy and shell commands to cmd."""
         clean_text = data.strip()
         if not clean_text:
             return
 
-        # 1. Echo prompt to terminal stream
-        self.broadcast_chunk(f"\r\n\x1b[32mprompt>\x1b[0m {clean_text}\r\n\x1b[36mAGY>\x1b[0m ")
+        # 1. Echo prompt to terminal stream with Thinking indicator
+        self.broadcast_chunk(f"\r\n\x1b[32mprompt>\x1b[0m {clean_text}\r\n\x1b[36mAGY>\x1b[0m \x1b[33mThinking...\x1b[0m\r\n")
 
         # 2. If an interactive session is actively running (e.g. spawned via /api/session/start), forward stdin
         if self.active_session and self.active_session.is_alive:
@@ -310,7 +317,7 @@ class SessionHub:
             ).start()
             return
 
-        # 4. Prompt to AGY CLI with conversation continuity (-c)
+        # 4. Prompt to AGY CLI with conversation continuity (-c or --conversation) and workspace binding
         agy_bin = os.environ.get("AGY_BIN_PATH")
         if not agy_bin or not os.path.exists(agy_bin):
             agy_bin = DEFAULT_AGY_PATH if os.path.exists(DEFAULT_AGY_PATH) else shutil.which("agy")
@@ -330,16 +337,24 @@ class SessionHub:
             ).start()
 
     def _run_agy_prompt(self, agy_bin: str, prompt_text: str, cwd: str) -> None:
-        """Executes prompt via agy CLI and streams stdout chunks cleanly."""
+        """Executes prompt via agy CLI with workspace binding and streams stdout chunks."""
         cmd = [
             agy_bin,
+            "--add-dir",
+            cwd,
             "--dangerously-skip-permissions",
-            "-c",
+        ]
+        if self.active_conversation_id:
+            cmd.extend(["--conversation", self.active_conversation_id])
+        else:
+            cmd.append("-c")
+
+        cmd.extend([
             "-p",
             prompt_text,
             "--output-format",
             "text",
-        ]
+        ])
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -403,6 +418,7 @@ class SessionHub:
         return {
             "is_alive": is_sub_running or is_session_running,
             "cwd": self.current_cwd,
+            "active_conversation_id": self.active_conversation_id,
             "command": self.active_session.command if self.active_session else DEFAULT_AGY_PATH,
             "pid": (self.running_subprocess.pid if is_sub_running else (self.active_session.pid if self.active_session else None)),
             "current_seq": self.current_seq,
