@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GravityDesk Remote Control</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --primary: #58a6ff;
+      --primary-hover: #1f6feb;
+      --success: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+      --terminal-bg: #040d1a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .status-online { background: rgba(63, 185, 80, 0.2); color: var(--success); border: 1px solid var(--success); }
+    .status-offline { background: rgba(248, 81, 73, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    .vitals-bar {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      align-items: center;
+    }
+    .vital-item span { color: var(--text); font-weight: 600; }
+
+    .toolbar {
+      background: #11151c;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+
+    .workspace-tag {
+      font-size: 12px;
+      background: #21262d;
+      padding: 4px 8px;
+      border-radius: 6px;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    .workspace-tag:hover { border-color: var(--primary); }
+
+    .btn {
+      background: #21262d;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn:hover { background: #30363d; }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger { background: rgba(248, 81, 73, 0.2); color: var(--danger); border-color: var(--danger); }
+
+    #terminal-container {
+      flex: 1;
+      background: var(--terminal-bg);
+      padding: 10px;
+      overflow-y: auto;
+      font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #d1d5db;
+    }
+
+    .quick-keys {
+      background: var(--card-bg);
+      padding: 6px 12px;
+      display: flex;
+      gap: 6px;
+      border-top: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .key-btn {
+      background: #21262d;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .key-btn:active { background: var(--primary); }
+
+    .input-bar {
+      background: var(--card-bg);
+      padding: 8px 12px;
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .prompt-input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+    .prompt-input:focus { border-color: var(--primary); }
+
+    .mic-btn {
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0 12px;
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mic-btn.recording {
+      background: var(--danger);
+      color: #fff;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body {
+      padding: 12px 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .folder-item {
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .folder-item:hover { background: #21262d; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/ansi_up@5.1.0/ansi_up.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span>⚡ GravityDesk</span>
+      <div id="status-pill" class="status-pill status-offline">
+        <span class="status-dot"></span> <span id="status-text">Connecting</span>
+      </div>
+    </div>
+    <div class="vitals-bar">
+      <div class="vital-item">CPU: <span id="vital-cpu">-</span></div>
+      <div class="vital-item">RAM: <span id="vital-ram">-</span></div>
+      <div class="vital-item">Bat: <span id="vital-bat">-</span></div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div id="workspace-display" class="workspace-tag" onclick="openWorkspaceModal()">
+      📁 <span id="active-path">Loading workspace...</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button id="btn-session" class="btn btn-primary" onclick="toggleSession()">Start agy</button>
+      <button class="btn" onclick="openWorkspaceModal()">Browse</button>
+    </div>
+  </div>
+
+  <div id="terminal-container"></div>
+
+  <div class="quick-keys">
+    <button class="key-btn" onclick="sendSignal('SIGINT')">Ctrl+C</button>
+    <button class="key-btn" onclick="sendDirectInput('y\n')">Yes (y)</button>
+    <button class="key-btn" onclick="sendDirectInput('n\n')">No (n)</button>
+    <button class="key-btn" onclick="sendDirectInput('\n')">Enter ↵</button>
+    <button class="key-btn" onclick="clearTerminal()">Clear</button>
+    <button class="key-btn" onclick="scrollToBottom()">Bottom ↓</button>
+  </div>
+
+  <div class="input-bar">
+    <button id="mic-btn" class="mic-btn" title="Voice Input" onclick="toggleVoiceInput()">🎙️</button>
+    <input type="text" id="prompt-input" class="prompt-input" placeholder="Prompt agy (type or speak)..." autocomplete="off" />
+    <button class="btn btn-primary" onclick="sendPrompt()">Send</button>
+  </div>
+
+  <!-- Workspace Modal -->
+  <div id="workspace-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span>Select Workspace Folder</span>
+        <button class="btn" onclick="closeWorkspaceModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">FAVORITES:</div>
+          <div id="favorites-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">EXPLORER:</div>
+        <div id="breadcrumbs-bar" style="font-size: 12px; margin-bottom: 8px; color: var(--primary);"></div>
+        <div id="directory-list" style="display: flex; flex-direction: column; gap: 2px;"></div>
+      </div>
+      <div style="padding: 10px 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between;">
+        <button class="btn" onclick="togglePinFavorite()">⭐ Toggle Pin</button>
+        <button class="btn btn-primary" onclick="selectCurrentFolder()">Select This Folder</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ansiUp = new AnsiUp();
+    ansiUp.use_classes = false;
+
+    let ws = null;
+    let currentSeq = 0;
+    let activePath = "";
+    let isSessionRunning = false;
+    let token = new URLSearchParams(window.location.search).get("token") || "";
+
+    const terminalEl = document.getElementById("terminal-container");
+    const statusPill = document.getElementById("status-pill");
+    const statusText = document.getElementById("status-text");
+    const promptInput = document.getElementById("prompt-input");
+    const activePathEl = document.getElementById("active-path");
+    const btnSession = document.getElementById("btn-session");
+    const micBtn = document.getElementById("mic-btn");
+
+    // Connect WebSocket
+    function connectWS() {
+      const loc = window.location;
+      const proto = loc.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${proto}//${loc.host}/ws/terminal?token=${token}`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        statusPill.className = "status-pill status-online";
+        statusText.innerText = "Online";
+        ws.send(JSON.stringify({ type: "subscribe", last_seq: currentSeq }));
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "output") {
+          currentSeq = msg.seq;
+          appendTerminalOutput(msg.data);
+        } else if (msg.type === "status") {
+          isSessionRunning = msg.state === "RUNNING";
+          updateSessionButton();
+        }
+      };
+
+      ws.onclose = () => {
+        statusPill.className = "status-pill status-offline";
+        statusText.innerText = "Reconnecting...";
+        setTimeout(connectWS, 2000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    function appendTerminalOutput(rawAnsi) {
+      const html = ansiUp.ansi_to_html(rawAnsi);
+      const span = document.createElement("span");
+      span.innerHTML = html;
+      terminalEl.appendChild(span);
+      scrollToBottom();
+    }
+
+    function scrollToBottom() {
+      terminalEl.scrollTop = terminalEl.scrollHeight;
+    }
+
+    function clearTerminal() {
+      terminalEl.innerHTML = "";
+    }
+
+    function sendPrompt() {
+      const text = promptInput.value.trim();
+      if (!text) return;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "stdin", data: text + "\r\n" }));
+        promptInput.value = "";
+      }
+    }
+
+    function sendDirectInput(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "stdin", data: data }));
+      }
+    }
+
+    function sendSignal(sig) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "signal", signal: sig }));
+      }
+    }
+
+    promptInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        sendPrompt();
+      }
+    });
+
+    // Vitals Polling
+    async function fetchVitals() {
+      try {
+        const res = await fetch(`/api/health?token=${token}`);
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById("vital-cpu").innerText = `${data.cpu_percent}%`;
+          document.getElementById("vital-ram").innerText = `${data.memory_percent}%`;
+          if (data.battery) {
+            const bolt = data.battery.is_charging ? "⚡" : "";
+            document.getElementById("vital-bat").innerText = `${bolt}${data.battery.percent}%`;
+          }
+          if (data.active_session) {
+            isSessionRunning = data.active_session.is_alive;
+            updateSessionButton();
+            if (data.active_session.cwd && !activePath) {
+              activePath = data.active_session.cwd;
+              activePathEl.innerText = activePath;
+            }
+          }
+        }
+      } catch (err) {}
+    }
+
+    function updateSessionButton() {
+      if (isSessionRunning) {
+        btnSession.innerText = "Stop agy";
+        btnSession.className = "btn btn-danger";
+      } else {
+        btnSession.innerText = "Start agy";
+        btnSession.className = "btn btn-primary";
+      }
+    }
+
+    async function toggleSession() {
+      if (isSessionRunning) {
+        await fetch(`/api/session/stop?token=${token}`, { method: "POST" });
+      } else {
+        await fetch(`/api/session/start?token=${token}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cwd: activePath }),
+        });
+      }
+      fetchVitals();
+    }
+
+    // Voice STT Integration
+    let recognition = null;
+    let isRecording = false;
+
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "id-ID"; // Default Indonesian, auto fallback to en-US
+
+      recognition.onresult = (event) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+        promptInput.value = transcript;
+      };
+
+      recognition.onerror = () => stopRecording();
+      recognition.onend = () => stopRecording();
+    } else {
+      micBtn.style.display = "none";
+    }
+
+    function toggleVoiceInput() {
+      if (!recognition) return;
+      if (isRecording) {
+        recognition.stop();
+        stopRecording();
+      } else {
+        recognition.start();
+        isRecording = true;
+        micBtn.classList.add("recording");
+      }
+    }
+
+    function stopRecording() {
+      isRecording = false;
+      micBtn.classList.remove("recording");
+    }
+
+    // Directory Explorer
+    let modalCurrentPath = "";
+
+    async function openWorkspaceModal() {
+      document.getElementById("workspace-modal").classList.add("open");
+      loadFavorites();
+      loadDirectory(activePath || "");
+    }
+
+    function closeWorkspaceModal() {
+      document.getElementById("workspace-modal").classList.remove("open");
+    }
+
+    async function loadFavorites() {
+      const res = await fetch(`/api/favorites?token=${token}`);
+      const favs = await res.json();
+      const listEl = document.getElementById("favorites-list");
+      listEl.innerHTML = "";
+      favs.forEach((f) => {
+        const div = document.createElement("div");
+        div.className = "folder-item";
+        div.innerHTML = `⭐ <b>${f.name}</b> <span style="font-size:11px;color:var(--text-muted)">(${f.path})</span>`;
+        div.onclick = () => {
+          activePath = f.path;
+          activePathEl.innerText = activePath;
+          closeWorkspaceModal();
+        };
+        listEl.appendChild(div);
+      });
+    }
+
+    async function loadDirectory(path) {
+      const res = await fetch(`/api/workspaces?path=${encodeURIComponent(path)}&token=${token}`);
+      const data = await res.json();
+      modalCurrentPath = data.current_path;
+
+      // Render Breadcrumbs
+      const bcEl = document.getElementById("breadcrumbs-bar");
+      bcEl.innerHTML = "";
+      data.breadcrumbs.forEach((b, idx) => {
+        const link = document.createElement("span");
+        link.style.cursor = "pointer";
+        link.innerText = b.name + (idx < data.breadcrumbs.length - 1 ? " / " : "");
+        link.onclick = () => loadDirectory(b.path);
+        bcEl.appendChild(link);
+      });
+
+      // Render Folders
+      const dirEl = document.getElementById("directory-list");
+      dirEl.innerHTML = "";
+      data.entries.forEach((entry) => {
+        const div = document.createElement("div");
+        div.className = "folder-item";
+        div.innerHTML = `📁 <span>${entry.name}</span>`;
+        div.onclick = () => loadDirectory(entry.path);
+        dirEl.appendChild(div);
+      });
+    }
+
+    function selectCurrentFolder() {
+      activePath = modalCurrentPath;
+      activePathEl.innerText = activePath;
+      closeWorkspaceModal();
+    }
+
+    async function togglePinFavorite() {
+      await fetch(`/api/favorites/toggle?path=${encodeURIComponent(modalCurrentPath)}&token=${token}`, { method: "POST" });
+      loadFavorites();
+    }
+
+    // Init
+    window.addEventListener("DOMContentLoaded", () => {
+      connectWS();
+      fetchVitals();
+      setInterval(fetchVitals, 3000);
+    });
+  </script>
+</body>
+</html>
