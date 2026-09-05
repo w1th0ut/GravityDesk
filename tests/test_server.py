@@ -209,12 +209,20 @@ def test_device_pairing_and_revocation():
         assert repair_res.status_code == 200
         assert repair_res.json()["device"]["status"] == "active"
 
-        # 8. Re-authorized device passes health check again
+        # 8. Re-authorized device passes health check again (with token)
         ok_res = client.get(
             f"/api/health?token={token}",
             headers={"X-Device-Id": test_device_id},
         )
         assert ok_res.status_code == 200
+
+        # 8b. Paired device can access endpoints ZERO-TOKEN (only X-Device-Id required!)
+        zero_token_res = client.get(
+            "/api/health",
+            headers={"X-Device-Id": test_device_id},
+        )
+        assert zero_token_res.status_code == 200
+        assert zero_token_res.json()["status"] == "online"
 
         # 9. Rename device
         rename_res = client.post(

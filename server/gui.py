@@ -176,7 +176,7 @@ class GravityDeskGUI:
         url_frame = tk.Frame(card, bg=C_CARD)
         url_frame.pack(fill=tk.X, padx=12, pady=(6, 8))
 
-        tk.Label(url_frame, text="Access URL:", font=("Segoe UI", 8), fg=C_MUTED, bg=C_CARD).pack(anchor="w")
+        tk.Label(url_frame, text="Web URL (Buka di Browser HP):", font=("Segoe UI", 8), fg=C_MUTED, bg=C_CARD).pack(anchor="w")
 
         self.url_var = tk.StringVar()
         url_entry = tk.Entry(
@@ -193,7 +193,7 @@ class GravityDeskGUI:
 
         copy_btn = tk.Button(
             url_frame,
-            text="📋 Copy Pair Link",
+            text="📋 Salin Web URL",
             font=("Segoe UI", 8, "bold"),
             bg="#21262d",
             fg=C_TEXT,
@@ -607,7 +607,8 @@ class GravityDeskGUI:
 
     def update_qr(self):
         pair_url = f"http://{self.ip}:{self.port}/?token={self.token}"
-        self.url_var.set(pair_url)
+        clean_url = f"http://{self.ip}:{self.port}"
+        self.url_var.set(clean_url)
 
         qr = qrcode.QRCode(
             version=1,
@@ -637,7 +638,7 @@ class GravityDeskGUI:
     def copy_url(self):
         self.root.clipboard_clear()
         self.root.clipboard_append(self.url_var.get())
-        self.log_event("Copied pairing link to clipboard")
+        self.log_event(f"Tersalin ke clipboard: {self.url_var.get()}")
 
     def copy_token(self):
         self.root.clipboard_clear()

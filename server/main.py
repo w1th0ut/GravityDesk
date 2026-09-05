@@ -74,16 +74,16 @@ def update_server_token(new_token: str) -> None:
 
 def display_startup_banner(ip: str, port: int, token: str) -> None:
     """Prints the connection URLs and terminal ASCII QR code."""
-    pair_url = f"http://{ip}:{port}/?token={token}"
     pair_qr_payload = f"gravitydesk://pair?host={ip}:{port}&token={token}"
+    web_url = f"http://{ip}:{port}"
 
     print("\n" + "=" * 60)
     print("[*] GRAVITYDESK SERVER READY")
     print("=" * 60)
-    print(f"[*] Access URL:   {pair_url}")
+    print(f"[*] Web URL:      {web_url}")
     print(f"[*] Tailscale IP: {ip}")
-    print(f"[*] Auth Token:   {token}")
-    print("\nScan this QR Code from Android to pair:")
+    print(f"[*] Pairing:      Scan QR Code on screen with Android App / Web Browser")
+    print("\nScan this QR Code to pair device:")
     try:
         print_ascii_qr(pair_qr_payload)
     except Exception as e:
@@ -135,21 +135,14 @@ def verify_token(
     device_id: Optional[str] = Query(None),
 ) -> str:
     """
-    Timing-attack-safe authentication token validator.
-    Supports either Bearer token in Authorization header or query parameter.
-    Validates device authorization if device ID is specified.
+    Timing-attack-safe authentication validator.
+    1. Paired devices: Authenticated directly via registered device ID.
+    2. Revoked devices: Blocked with 403 Forbidden.
+    3. Admin/Initial pairing: Authenticated via Bearer token or query parameter.
     """
-    client_token = token
-    if authorization and authorization.startswith("Bearer "):
-        client_token = authorization.split("Bearer ", 1)[1].strip()
-
-    if not client_token or not secrets.compare_digest(client_token, server_token):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing pairing token",
-        )
-
     active_id = x_device_id or device_id
+
+    # If device ID is specified:
     if active_id:
         if not is_device_authorized(active_id):
             raise HTTPException(
@@ -157,8 +150,20 @@ def verify_token(
                 detail="Akses perangkat telah dicabut atau belum terdaftar",
             )
         touch_device(active_id)
+        return "device-authorized"
 
-    return client_token
+    # Admin / Direct Master Token Authentication (when no device ID is provided)
+    client_token = token
+    if authorization and authorization.startswith("Bearer "):
+        client_token = authorization.split("Bearer ", 1)[1].strip()
+
+    if client_token and secrets.compare_digest(client_token, server_token):
+        return client_token
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Perangkat belum terdaftar atau token pairing tidak valid. Silakan scan QR Code di laptop.",
+    )
 
 
 class PairDeviceRequest(BaseModel):
@@ -362,12 +367,18 @@ async def terminal_websocket(
     device_id: Optional[str] = Query(None),
 ):
     """Bidirectional streaming terminal WebSocket with reconnect catch-up."""
-    if not token or not secrets.compare_digest(token, server_token):
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
-
     if device_id and not is_device_authorized(device_id):
         await websocket.close(code=4001, reason="Device Revoked")
+        return
+
+    authorized = False
+    if device_id and is_device_authorized(device_id):
+        authorized = True
+    elif token and secrets.compare_digest(token, server_token):
+        authorized = True
+
+    if not authorized:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
     await websocket.accept()
