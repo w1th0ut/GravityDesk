@@ -71,10 +71,9 @@ export const TerminalScreen: React.FC<Props> = ({
   if (!isConnected) {
     return (
       <View style={styles.inactiveContainer}>
-        <Text style={styles.inactiveIcon}>⚡</Text>
-        <Text style={styles.inactiveTitle}>Sesi belum aktif.</Text>
+        <Text style={styles.inactiveTitle}>No active session.</Text>
         <Text style={styles.inactiveSub}>
-          Pastikan Tailscale di HP & Laptop terhubung dan aplikasi GravityDesk desktop sedang berjalan.
+          Ensure Tailscale is connected on both devices and the GravityDesk host application is running.
         </Text>
       </View>
     );
@@ -100,7 +99,7 @@ export const TerminalScreen: React.FC<Props> = ({
             <Text style={styles.vitalLabel}>Bat: </Text>
             <Text style={styles.vitalVal}>
               {health?.battery
-                ? `${health.battery.is_charging ? "⚡" : ""}${health.battery.percent}%`
+                ? `${health.battery.percent}%${health.battery.is_charging ? " (Chg)" : ""}`
                 : "-"}
             </Text>
             <Text style={styles.vitalLabel}> | CPU: </Text>
@@ -122,7 +121,6 @@ export const TerminalScreen: React.FC<Props> = ({
             activeOpacity={0.7}
           >
             <Text style={styles.chipText} numberOfLines={1}>
-              📁{" "}
               {activeWorkspace
                 ? activeWorkspace.split(/[\\/]/).filter(Boolean).pop() || activeWorkspace
                 : "Folder"}
@@ -135,7 +133,7 @@ export const TerminalScreen: React.FC<Props> = ({
             activeOpacity={0.7}
           >
             <Text style={styles.chipText} numberOfLines={1}>
-              💬 {activeConvoName}
+              {activeConvoName}
             </Text>
           </TouchableOpacity>
         </View>
@@ -189,11 +187,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
-  },
-  inactiveIcon: {
-    fontSize: 32,
-    color: "#737373",
-    marginBottom: 12,
   },
   inactiveTitle: {
     fontSize: 18,

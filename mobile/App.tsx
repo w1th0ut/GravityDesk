@@ -75,18 +75,20 @@ export default function App() {
             onPress={() => setCurrentTab("home")}
             activeOpacity={0.8}
           >
-            <View style={styles.tabIconBox}>
-              <Text style={[styles.capsuleIcon, currentTab === "home" && styles.capsuleIconActive]}>🏠</Text>
-              <View
-                style={[
-                  styles.navBadgeDot,
-                  isConnected ? styles.dotOnline : styles.dotOffline,
-                ]}
-              />
-            </View>
-            {currentTab === "home" && (
-              <Text style={styles.capsuleLabel}>Home</Text>
-            )}
+            <View
+              style={[
+                styles.navIndicatorDot,
+                isConnected ? styles.dotOnline : styles.dotOffline,
+              ]}
+            />
+            <Text
+              style={[
+                styles.capsuleLabel,
+                currentTab === "home" ? styles.capsuleLabelActive : styles.capsuleLabelInactive,
+              ]}
+            >
+              Home
+            </Text>
           </TouchableOpacity>
 
           {/* Tab 2: Terminal */}
@@ -95,15 +97,20 @@ export default function App() {
             onPress={() => setCurrentTab("terminal")}
             activeOpacity={0.8}
           >
-            <View style={styles.tabIconBox}>
-              <Text style={[styles.capsuleIcon, currentTab === "terminal" && styles.capsuleIconActive]}>💻</Text>
-              {isSessionRunning && (
-                <View style={[styles.navBadgeDot, styles.dotRunning]} />
-              )}
-            </View>
-            {currentTab === "terminal" && (
-              <Text style={styles.capsuleLabel}>Terminal</Text>
-            )}
+            <View
+              style={[
+                styles.navIndicatorDot,
+                isSessionRunning ? styles.dotRunning : styles.dotMuted,
+              ]}
+            />
+            <Text
+              style={[
+                styles.capsuleLabel,
+                currentTab === "terminal" ? styles.capsuleLabelActive : styles.capsuleLabelInactive,
+              ]}
+            >
+              Terminal
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -155,30 +162,22 @@ const styles = StyleSheet.create({
   capsuleItemActive: {
     backgroundColor: "#252528",
     paddingHorizontal: 18,
-    gap: 8,
   },
-  capsuleIcon: {
-    fontSize: 16,
-    opacity: 0.6,
-  },
-  capsuleIconActive: {
-    opacity: 1,
+  navIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
   },
   capsuleLabel: {
     fontSize: 13,
     fontWeight: "700",
+  },
+  capsuleLabelActive: {
     color: "#ffffff",
   },
-  tabIconBox: {
-    position: "relative",
-  },
-  navBadgeDot: {
-    position: "absolute",
-    top: -2,
-    right: -6,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+  capsuleLabelInactive: {
+    color: "#8b949e",
   },
   dotOnline: {
     backgroundColor: "#3fb950",
@@ -188,5 +187,8 @@ const styles = StyleSheet.create({
   },
   dotRunning: {
     backgroundColor: "#58a6ff",
+  },
+  dotMuted: {
+    backgroundColor: "#737373",
   },
 });

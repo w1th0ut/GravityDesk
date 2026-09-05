@@ -55,11 +55,11 @@ export const QRScannerModal: React.FC<Props> = ({
         onScanSuccess(host, token);
         onClose();
       } else {
-        setScanError("Format QR Code tidak dikenali.");
+        setScanError("Unrecognized QR Code format.");
         setTimeout(() => setScanned(false), 2000);
       }
     } catch (err) {
-      setScanError("Gagal membaca payload QR Code.");
+      setScanError("Failed to read QR Code payload.");
       setTimeout(() => setScanned(false), 2000);
     }
   };
@@ -81,25 +81,25 @@ export const QRScannerModal: React.FC<Props> = ({
         {!permission ? (
           <View style={styles.centerBox}>
             <ActivityIndicator size="large" color="#58a6ff" />
-            <Text style={styles.infoText}>Memeriksa izin kamera...</Text>
+            <Text style={styles.infoText}>Checking camera permissions...</Text>
           </View>
         ) : !permission.granted ? (
           <View style={styles.centerBox}>
-            <Text style={styles.permissionTitle}>Izin Kamera Diperlukan</Text>
+            <Text style={styles.permissionTitle}>Camera Permission Required</Text>
             <Text style={styles.permissionDesc}>
-              Aplikasi memerlukan izin akses kamera untuk memindai QR Code di layar laptop.
+              GravityDesk requires camera access to scan the pairing QR code from your desktop screen.
             </Text>
             <TouchableOpacity
               style={styles.grantBtn}
               onPress={requestPermission}
             >
-              <Text style={styles.grantBtnText}>Berikan Izin Kamera</Text>
+              <Text style={styles.grantBtnText}>Grant Camera Permission</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.cancelBtn}
               onPress={handleModalClose}
             >
-              <Text style={styles.cancelBtnText}>Batal</Text>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -117,7 +117,7 @@ export const QRScannerModal: React.FC<Props> = ({
             <View style={styles.overlay}>
               {/* Top Bar */}
               <View style={styles.topBar}>
-                <Text style={styles.headerTitle}>Scan QR Code Laptop</Text>
+                <Text style={styles.headerTitle}>Scan Host QR Code</Text>
                 <TouchableOpacity
                   style={styles.closeBtn}
                   onPress={handleModalClose}
@@ -139,13 +139,13 @@ export const QRScannerModal: React.FC<Props> = ({
               {/* Instruction Banner */}
               <View style={styles.instructionBox}>
                 <Text style={styles.instructionText}>
-                  Arahkan kamera ke QR Code di Desktop Control Center / Terminal Laptop
+                  Point camera at the QR code displayed on your Desktop Control Center
                 </Text>
                 {scanError && (
                   <Text style={styles.errorText}>{scanError}</Text>
                 )}
                 {scanned && !scanError && (
-                  <Text style={styles.successText}>QR Code Terdeteksi! Menghubungkan...</Text>
+                  <Text style={styles.successText}>QR Code detected! Connecting...</Text>
                 )}
               </View>
             </View>

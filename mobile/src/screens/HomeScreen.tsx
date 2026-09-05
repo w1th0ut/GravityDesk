@@ -61,14 +61,14 @@ export const HomeScreen: React.FC<Props> = ({
     await clearCredentials();
     setHostUrl("");
     setToken("");
-    setStatusMsg({ type: "info", text: "Koneksi pairing telah diputus." });
+    setStatusMsg({ type: "info", text: "Device pairing disconnected." });
     await onRefresh();
     onConnectionChanged();
   };
 
   const handleQRSuccess = async (scannedHost: string, scannedToken: string) => {
     setIsPairing(true);
-    setStatusMsg({ type: "info", text: "Mendaftarkan perangkat ke laptop..." });
+    setStatusMsg({ type: "info", text: "Registering device to host..." });
 
     const currentDevId = deviceId || (await getOrCreateDeviceId());
     const currentDevName = deviceName || getDeviceName();
@@ -89,7 +89,7 @@ export const HomeScreen: React.FC<Props> = ({
       setToken(scannedToken);
       setStatusMsg({
         type: "success",
-        text: `Perangkat '${currentDevName}' berhasil terdaftar & tersambung!`,
+        text: `Device '${currentDevName}' registered & connected!`,
       });
 
       await onRefresh();
@@ -97,7 +97,7 @@ export const HomeScreen: React.FC<Props> = ({
     } catch (err: any) {
       setStatusMsg({
         type: "error",
-        text: `Gagal pairing: ${err.message || "Pastikan Tailscale aktif dan QR code masih berlaku."}`,
+        text: `Pairing failed: ${err.message || "Ensure Tailscale is active and QR code is valid."}`,
       });
     } finally {
       setIsPairing(false);
@@ -108,8 +108,8 @@ export const HomeScreen: React.FC<Props> = ({
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header Banner */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>⚡ GravityDesk Control</Text>
-        <Text style={styles.headerSubtitle}>Status Koneksi & Manajemen Perangkat</Text>
+        <Text style={styles.headerTitle}>GravityDesk Control</Text>
+        <Text style={styles.headerSubtitle}>Connection Status & Device Management</Text>
       </View>
 
       {/* Main Connection Status Card */}
@@ -119,15 +119,15 @@ export const HomeScreen: React.FC<Props> = ({
           <View style={styles.statusTitleBox}>
             <Text style={styles.statusMainText}>
               {isConnected
-                ? "Terhubung ke Laptop (Tailscale Online)"
+                ? "Connected to Host (Tailscale Online)"
                 : isChecking
-                ? "Memeriksa Koneksi..."
-                : "Laptop Offline / Disconnected"}
+                ? "Checking Connection..."
+                : "Host Offline / Disconnected"}
             </Text>
             <Text style={styles.statusSubText}>
               {isConnected
                 ? `Host: ${health?.tailscale_ip || hostUrl}`
-                : "Pastikan Tailscale di HP & Laptop aktif pada tailnet yang sama."}
+                : "Ensure Tailscale is active on both devices within the same tailnet."}
             </Text>
           </View>
         </View>
@@ -135,9 +135,9 @@ export const HomeScreen: React.FC<Props> = ({
         {isConnected && health && (
           <View style={styles.telemetryGrid}>
             <View style={styles.telemetryItem}>
-              <Text style={styles.telemetryLabel}>Baterai Laptop</Text>
+              <Text style={styles.telemetryLabel}>Host Battery</Text>
               <Text style={styles.telemetryValue}>
-                {health.battery ? `${health.battery.is_charging ? "⚡ " : "🔋 "}${health.battery.percent}%` : "--"}
+                {health.battery ? `${health.battery.percent}%${health.battery.is_charging ? " (Chg)" : ""}` : "--"}
               </Text>
             </View>
 
@@ -154,7 +154,7 @@ export const HomeScreen: React.FC<Props> = ({
             <View style={styles.telemetryItem}>
               <Text style={styles.telemetryLabel}>Sleep Inhibit</Text>
               <Text style={[styles.telemetryValue, { color: "#3fb950" }]}>
-                {health.sleep_inhibit_active ? "🛡️ Aktif" : "Nonaktif"}
+                {health.sleep_inhibit_active ? "Active" : "Disabled"}
               </Text>
             </View>
           </View>
@@ -163,23 +163,22 @@ export const HomeScreen: React.FC<Props> = ({
 
       {/* Device Identity & Zero-Input QR Pairing Card */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>📱 Identitas Perangkat Ini</Text>
+        <Text style={styles.cardTitle}>Device Identity</Text>
 
         <View style={styles.deviceIdentityBox}>
-          <Text style={styles.deviceIcon}>📱</Text>
           <View style={styles.deviceInfoText}>
-            <Text style={styles.deviceNameText}>{deviceName || "Perangkat Android"}</Text>
+            <Text style={styles.deviceNameText}>{deviceName || "Android Device"}</Text>
             <Text style={styles.deviceIdText}>
-              ID Klien: {deviceId ? `${deviceId.slice(0, 8)}...` : "Menghasilkan ID..."}
+              Client ID: {deviceId ? `${deviceId.slice(0, 8)}...` : "Generating ID..."}
             </Text>
           </View>
           <View style={styles.deviceBadge}>
-            <Text style={styles.deviceBadgeText}>{isConnected ? "TERDAFTAR" : "SIAP PAIR"}</Text>
+            <Text style={styles.deviceBadgeText}>{isConnected ? "REGISTERED" : "READY TO PAIR"}</Text>
           </View>
         </View>
 
         <Text style={styles.cardDesc}>
-          Scan QR Code di Desktop GUI laptop Anda untuk pairing otomatis tanpa perlu mengetik Host URL atau Token manual.
+          Scan the QR Code on your Desktop GUI for instant pairing without manual entry.
         </Text>
 
         {/* Big Scan Button */}
@@ -191,7 +190,7 @@ export const HomeScreen: React.FC<Props> = ({
           {isPairing ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.scanBtnText}>📷 Scan QR Code Pairing</Text>
+            <Text style={styles.scanBtnText}>Scan Pairing QR Code</Text>
           )}
         </TouchableOpacity>
 
@@ -223,7 +222,7 @@ export const HomeScreen: React.FC<Props> = ({
 
         {isConnected && (
           <TouchableOpacity style={styles.clearBtn} onPress={handleClear}>
-            <Text style={styles.clearBtnText}>🗑️ Putuskan / Reset Pairing Perangkat Ini</Text>
+            <Text style={styles.clearBtnText}>Disconnect / Reset Device Pairing</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -348,9 +347,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#21262d",
     gap: 12,
-  },
-  deviceIcon: {
-    fontSize: 24,
   },
   deviceInfoText: {
     flex: 1,

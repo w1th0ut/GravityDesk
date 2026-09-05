@@ -123,7 +123,7 @@ export const PairingModal: React.FC<Props> = ({ visible, onClose, onPaired }) =>
                 setShowCamera(true);
               }}
             >
-              <Text style={styles.scanBtnText}>📷 Scan Terminal QR Code</Text>
+              <Text style={styles.scanBtnText}>Scan Terminal QR Code</Text>
             </TouchableOpacity>
 
             <Text style={styles.label}>Laptop Host URL:</Text>

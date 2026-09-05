@@ -489,8 +489,8 @@
   <div id="home-view" class="app-view">
     <div class="home-container">
       <div class="home-header">
-        <div class="home-title">⚡ GravityDesk Control</div>
-        <div class="home-sub">Status Koneksi & Pairing Tailscale</div>
+        <div class="home-title">GravityDesk Control</div>
+        <div class="home-sub">Connection & Tailscale Pairing Status</div>
       </div>
 
       <!-- Main Status Card -->
@@ -498,14 +498,14 @@
         <div class="dash-status-head">
           <span class="status-dot online" id="home-status-dot"></span>
           <div>
-            <div class="dash-status-title" id="home-status-title">Terhubung ke Laptop (Tailscale Online)</div>
+            <div class="dash-status-title" id="home-status-title">Connected to Host (Tailscale Online)</div>
             <div class="dash-status-sub" id="home-status-sub">Host: Tailscale Mesh</div>
           </div>
         </div>
 
         <div class="telemetry-grid">
           <div class="telemetry-box">
-            <div class="telemetry-lbl">Baterai Laptop</div>
+            <div class="telemetry-lbl">Laptop Battery</div>
             <div class="telemetry-val" id="home-v-bat">-</div>
           </div>
           <div class="telemetry-box">
@@ -518,28 +518,27 @@
           </div>
           <div class="telemetry-box">
             <div class="telemetry-lbl">Sleep Inhibit</div>
-            <div class="telemetry-val" style="color:var(--success);" id="home-v-sleep">🛡️ Aktif</div>
+            <div class="telemetry-val" style="color:var(--success);" id="home-v-sleep">Active</div>
           </div>
         </div>
       </div>
 
       <!-- Device Identity & Pairing Card -->
       <div class="dash-card">
-        <div class="dash-card-title">📱 Identitas Perangkat Ini</div>
+        <div class="dash-card-title">This Device Identity</div>
         <div style="display:flex;align-items:center;background:#0d1117;padding:10px 12px;border-radius:8px;border:1px solid #21262d;margin:8px 0;gap:10px;">
-          <div style="font-size:20px;">💻</div>
           <div style="flex:1;">
             <div id="web-dev-name" style="font-size:13px;font-weight:700;color:#ffffff;">Web Browser</div>
-            <div id="web-dev-id" style="font-size:10.5px;color:var(--accent);font-family:monospace;margin-top:2px;">ID: Menghasilkan ID...</div>
+            <div id="web-dev-id" style="font-size:10.5px;color:var(--accent);font-family:monospace;margin-top:2px;">ID: Generating ID...</div>
           </div>
           <div style="background:#21262d;border:1px solid #30363d;padding:3px 7px;border-radius:4px;font-size:9px;font-weight:700;color:var(--success);" id="web-dev-status">
-            SIAP PAIR
+            READY TO PAIR
           </div>
         </div>
-        <div class="dash-card-desc">Scan QR Code desktop untuk pairing otomatis tanpa perlu mengetik Host URL atau Token manual:</div>
+        <div class="dash-card-desc">Scan desktop QR Code for automatic pairing without manual Host URL or Token configuration:</div>
 
         <button class="key-btn" style="width:100%;padding:12px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--success);color:#ffffff;" onclick="triggerQrScan()">
-          📷 Scan QR Code Pairing
+          Scan Pairing QR Code
         </button>
         <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleQrImage(event)" />
       </div>
@@ -550,10 +549,10 @@
   <div id="terminal-view" class="app-view active">
     <!-- Inactive State (When Tailscale or Laptop is not active) -->
     <div id="terminal-inactive" class="terminal-inactive-view" style="display:none;">
-      <div style="font-size:32px;margin-bottom:12px;opacity:0.6;">⚡</div>
-      <div style="font-size:17px;font-weight:700;color:#ffffff;font-family:monospace;">Sesi belum aktif.</div>
+      <div style="font-size:26px;margin-bottom:12px;opacity:0.6;font-family:monospace;color:var(--accent);">&gt;_</div>
+      <div style="font-size:17px;font-weight:700;color:#ffffff;font-family:monospace;">No active session.</div>
       <div style="font-size:11.5px;color:var(--text-muted);font-family:monospace;margin-top:8px;max-width:280px;line-height:1.5;text-align:center;">
-        Pastikan Tailscale di HP & Laptop terhubung dan aplikasi GravityDesk desktop sedang berjalan.
+        Ensure Tailscale is connected on both devices and the GravityDesk host application is running.
       </div>
     </div>
 
@@ -572,10 +571,10 @@
         </div>
         <div class="chips-row">
           <div class="folder-chip" id="folder-chip" onclick="openFolderModal()">
-            📁 <span id="folder-name">Folder</span>
+            <span id="folder-name">Folder</span>
           </div>
           <div class="folder-chip" id="chat-chip" onclick="openChatModal()">
-            💬 <span id="chat-name">Resume Chat</span>
+            <span id="chat-name">Resume Chat</span>
           </div>
         </div>
       </header>
@@ -587,7 +586,7 @@
       <div class="quick-bar">
         <button class="key-btn btn-ctrlc" onclick="sendSignal('SIGINT')">Ctrl+C</button>
         <button class="key-btn" onclick="clearTerminal()">Clear</button>
-        <button class="key-btn" onclick="scrollToBottom()">Bottom ↓</button>
+        <button class="key-btn" onclick="scrollToBottom()">Bottom</button>
       </div>
 
       <!-- Input Dock -->
@@ -631,13 +630,13 @@
       </div>
       <div class="modal-body">
         <div class="folder-row" style="color:var(--success);font-weight:700;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:8px;" onclick="chooseConversation('new', 'New Chat')">
-          ➕ <span>Start New Chat</span>
+          <span>+ Start New Chat</span>
         </div>
         
         <!-- Filter Tabs & Quick Search -->
         <div style="display:flex;gap:6px;margin-bottom:8px;">
           <button id="chat-tab-all" class="key-btn" style="background:var(--accent);color:#fff;" onclick="setChatFilter('all')">All Projects</button>
-          <button id="chat-tab-repo" class="key-btn" onclick="setChatFilter('repo')">📁 Current Repo</button>
+          <button id="chat-tab-repo" class="key-btn" onclick="setChatFilter('repo')">Current Directory</button>
         </div>
         <input type="text" id="chat-search" class="term-input" style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:6px 8px;font-size:11px;" placeholder="Search conversations or projects..." oninput="renderFilteredChats()" />
 
@@ -694,7 +693,7 @@
 
       if (!token) {
         if (devStatusEl) {
-          devStatusEl.innerText = "SIAP PAIR";
+          devStatusEl.innerText = "READY TO PAIR";
           devStatusEl.style.color = "var(--warning)";
         }
         return;
@@ -713,7 +712,7 @@
         });
         if (res.ok) {
           if (devStatusEl) {
-            devStatusEl.innerText = "TERDAFTAR";
+            devStatusEl.innerText = "REGISTERED";
             devStatusEl.style.color = "var(--success)";
           }
         }
@@ -863,7 +862,7 @@
           setTerminalActiveState(false);
           const devStatusEl = document.getElementById("web-dev-status");
           if (devStatusEl) {
-            devStatusEl.innerText = "DICABUT";
+            devStatusEl.innerText = "REVOKED";
             devStatusEl.style.color = "var(--danger)";
           }
           return;
@@ -886,7 +885,7 @@
         if (event && event.code === 4001) {
           const devStatusEl = document.getElementById("web-dev-status");
           if (devStatusEl) {
-            devStatusEl.innerText = "DICABUT";
+            devStatusEl.innerText = "REVOKED";
             devStatusEl.style.color = "var(--danger)";
           }
           return;
@@ -975,7 +974,7 @@
       }
     }
 
-    // Toggle Terminal Empty State ("Sesi belum aktif.")
+    // Toggle Terminal Empty State ("No active session.")
     function setTerminalActiveState(isOnline) {
       const inactiveEl = document.getElementById("terminal-inactive");
       const activeContent = document.getElementById("terminal-active-content");
@@ -1017,7 +1016,7 @@
                   await registerWebDevice();
                   connectWS();
                   fetchVitals();
-                  alert("Pairing Berhasil! Perangkat web telah didaftarkan ke host.");
+                  alert("Pairing successful! Web device registered to host.");
                   return;
                 }
               } catch (err) {}
@@ -1025,13 +1024,13 @@
               return;
             }
           } else {
-            alert("QR Code tidak terdeteksi. Silakan coba foto kembali lebih jelas.");
+            alert("QR Code not detected. Please take a clearer photo.");
           }
         } catch (e) {
-          alert("Gagal memproses QR Code: " + e.message);
+          alert("Failed to process QR Code: " + e.message);
         }
       } else {
-        alert("Browser belum mendukung pemrosesan QR otomatis. Gunakan kamera langsung pada aplikasi Android GravityDesk atau buka URL langsung.");
+        alert("Browser does not support automatic QR processing. Use Android app camera or open pairing URL directly.");
       }
     }
 
@@ -1052,7 +1051,7 @@
             document.getElementById("v-ram").innerText = `${d.memory_percent}%`;
           }
           if (d.battery) {
-            document.getElementById("v-bat").innerText = `${d.battery.is_charging ? "⚡" : ""}${d.battery.percent}%`;
+            document.getElementById("v-bat").innerText = `${d.battery.is_charging ? "Chg " : ""}${d.battery.percent}%`;
           } else {
             document.getElementById("v-bat").innerText = "AC";
           }
@@ -1060,16 +1059,16 @@
           // Home dashboard vitals
           const homeBat = document.getElementById("home-v-bat");
           if (homeBat) {
-            homeBat.innerText = d.battery ? `${d.battery.is_charging ? "⚡ " : "🔋 "}${d.battery.percent}%` : "🔌 AC Power";
+            homeBat.innerText = d.battery ? `${d.battery.is_charging ? "Charging " : ""}${d.battery.percent}%` : "AC Power";
           }
           const homeCpu = document.getElementById("home-v-cpu");
           if (homeCpu) homeCpu.innerText = `${d.cpu_percent}%`;
           const homeRam = document.getElementById("home-v-ram");
           if (homeRam) homeRam.innerText = d.memory_percent !== undefined ? `${d.memory_percent}%` : "--";
           const homeSleep = document.getElementById("home-v-sleep");
-          if (homeSleep) homeSleep.innerText = d.sleep_inhibit_active ? "🛡️ Aktif" : "Nonaktif";
+          if (homeSleep) homeSleep.innerText = d.sleep_inhibit_active ? "Active" : "Disabled";
           const homeStatusTitle = document.getElementById("home-status-title");
-          if (homeStatusTitle) homeStatusTitle.innerText = "Terhubung ke Laptop (Tailscale Online)";
+          if (homeStatusTitle) homeStatusTitle.innerText = "Connected to Host (Tailscale Online)";
           const homeStatusSub = document.getElementById("home-status-sub");
           if (homeStatusSub) homeStatusSub.innerText = `Host: ${d.tailscale_ip || window.location.host}`;
           const homeDot = document.getElementById("home-status-dot");
@@ -1084,7 +1083,7 @@
           if (res.status === 403) {
             const devStatusEl = document.getElementById("web-dev-status");
             if (devStatusEl) {
-              devStatusEl.innerText = "DICABUT";
+              devStatusEl.innerText = "REVOKED";
               devStatusEl.style.color = "var(--danger)";
             }
           }
@@ -1094,7 +1093,7 @@
         const homeDot = document.getElementById("home-status-dot");
         if (homeDot) homeDot.className = "status-dot";
         const homeStatusTitle = document.getElementById("home-status-title");
-        if (homeStatusTitle) homeStatusTitle.innerText = "Laptop Disconnected / Checking...";
+        if (homeStatusTitle) homeStatusTitle.innerText = "Host Disconnected / Checking...";
       }
     }
 
@@ -1118,7 +1117,7 @@
         recognition = new SpeechAPI();
         recognition.continuous = false;
         recognition.interimResults = true;
-        recognition.lang = "id-ID";
+        recognition.lang = "en-US";
 
         recognition.onresult = (e) => {
           let t = "";
@@ -1134,9 +1133,9 @@
           stopVoice();
           if (e.error === "not-allowed" || e.error === "service-not-allowed") {
             if (!window.isSecureContext) {
-              alert("Mikrofon diblokir Chrome karena koneksi belum HTTPS / Secure Context.\n\nSolusi 10 Detik di HP:\n1. Buka tab baru: chrome://flags\n2. Cari: 'Insecure origins treated as secure'\n3. Masukkan URL ini: " + window.location.origin + "\n4. Aktifkan (Enabled) & klik Relaunch.");
+              alert("Microphone blocked by browser because connection is not HTTPS / Secure Context.\n\nQuick Solution:\n1. Open new tab: chrome://flags\n2. Search: 'Insecure origins treated as secure'\n3. Add: " + window.location.origin + "\n4. Set to Enabled & Relaunch.");
             } else {
-              alert("Izin mikrofon belum diberikan. Silakan izinkan akses mic di pengaturan browser.");
+              alert("Microphone permission not granted. Please allow microphone access in browser settings.");
             }
           }
         };
@@ -1151,7 +1150,7 @@
       if (!recognition) {
         initSpeech();
         if (!recognition) {
-          alert("Browser tidak mendukung Web Speech API.");
+          alert("Browser does not support Web Speech API.");
           return;
         }
       }
@@ -1167,7 +1166,7 @@
           console.warn("Speech start failed:", err);
           stopVoice();
           if (!window.isSecureContext) {
-            alert("Mikrofon diblokir Chrome pada koneksi HTTP non-localhost.\n\nCara buka blokir di Chrome HP:\n1. Buka tab baru: chrome://flags\n2. Cari: 'Insecure origins treated as secure'\n3. Masukkan: " + window.location.origin + "\n4. Pilih Enabled lalu klik Relaunch.");
+            alert("Microphone blocked by Chrome on non-localhost HTTP connection.\n\nTo unblock in mobile Chrome:\n1. Open new tab: chrome://flags\n2. Search: 'Insecure origins treated as secure'\n3. Enter: " + window.location.origin + "\n4. Select Enabled and tap Relaunch.");
           }
         }
       }
@@ -1219,7 +1218,7 @@
 
         const repoTab = document.getElementById("chat-tab-repo");
         if (repoTab && currentRepoName) {
-          repoTab.innerText = `📁 ${currentRepoName}`;
+          repoTab.innerText = currentRepoName;
         }
 
         renderFilteredChats();
@@ -1269,7 +1268,7 @@
         }
 
         const wsBadge = c.workspace_name
-          ? `<span style="background:#21262d;color:var(--accent);padding:1px 5px;border-radius:3px;font-size:10px;">📁 ${escapeHtml(c.workspace_name)}</span>`
+          ? `<span style="background:#21262d;color:var(--accent);padding:1px 5px;border-radius:3px;font-size:10px;">${escapeHtml(c.workspace_name)}</span>`
           : '';
         const activeBadge = isActive
           ? `<span style="background:rgba(63,185,80,0.2);color:var(--success);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;">ACTIVE</span>`
@@ -1351,7 +1350,7 @@
       data.entries.forEach((e) => {
         const div = document.createElement("div");
         div.className = "folder-row";
-        div.innerHTML = `📁 <span>${e.name}</span>`;
+        div.innerHTML = `<span>${e.name}</span>`;
         div.onclick = () => loadDirectory(e.path);
         dirEl.appendChild(div);
       });

@@ -146,7 +146,6 @@ export const WorkspacePickerModal: React.FC<Props> = ({
                     onPress={() => loadData(entry.path)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.folderIcon}>📁</Text>
                     <Text style={styles.folderName} numberOfLines={1}>
                       {entry.name}
                     </Text>
@@ -285,9 +284,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     gap: 6,
     marginBottom: 2,
-  },
-  folderIcon: {
-    fontSize: 12,
   },
   folderName: {
     fontSize: 12,

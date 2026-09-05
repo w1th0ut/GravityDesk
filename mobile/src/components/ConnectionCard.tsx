@@ -26,7 +26,7 @@ export const ConnectionCard: React.FC<Props> = ({
         </View>
         {onPressSettings && (
           <TouchableOpacity onPress={onPressSettings} style={styles.settingsBtn}>
-            <Text style={styles.settingsBtnText}>Pairing / IP ⚙️</Text>
+            <Text style={styles.settingsBtnText}>Pairing / IP</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -47,16 +47,16 @@ export const ConnectionCard: React.FC<Props> = ({
           </View>
           {health.battery && (
             <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Laptop Battery:</Text>
+              <Text style={styles.metricLabel}>Host Battery:</Text>
               <Text style={styles.metricValue}>
-                {health.battery.is_charging ? "⚡ " : ""}
                 {health.battery.percent}%
+                {health.battery.is_charging ? " (Chg)" : ""}
               </Text>
             </View>
           )}
           {health.sleep_inhibit_active && (
             <View style={styles.sleepBadge}>
-              <Text style={styles.sleepBadgeText}>🛡️ Sleep Inhibit Active (Laptop won't suspend)</Text>
+              <Text style={styles.sleepBadgeText}>Sleep Inhibit Active (Host won't suspend)</Text>
             </View>
           )}
         </View>

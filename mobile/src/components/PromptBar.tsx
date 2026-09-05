@@ -31,7 +31,7 @@ export const PromptBar: React.FC<Props> = ({
   const [promptText, setPromptText] = useState("");
   const [inputHeight, setInputHeight] = useState(36);
   const { isRecording, transcript, isAvailable, startRecording, stopRecording, resetTranscript } =
-    useVoiceRecognition("id-ID");
+    useVoiceRecognition("en-US");
 
   // Sync spoken transcript into prompt bar for user review
   useEffect(() => {
@@ -74,7 +74,7 @@ export const PromptBar: React.FC<Props> = ({
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text style={[styles.keyBtnText, isSessionRunning && styles.sessionStopText]}>
-              {isSessionRunning ? "⏹ Stop agy" : "▶ Start agy"}
+              {isSessionRunning ? "Stop agy" : "Start agy"}
             </Text>
           )}
         </TouchableOpacity>
@@ -90,7 +90,7 @@ export const PromptBar: React.FC<Props> = ({
           style={styles.keyBtn}
           onPress={handleInsertNewline}
         >
-          <Text style={styles.keyBtnText}>Enter ↵</Text>
+          <Text style={styles.keyBtnText}>Enter</Text>
         </TouchableOpacity>
 
         {onClearLogs && (
@@ -107,7 +107,7 @@ export const PromptBar: React.FC<Props> = ({
             style={styles.keyBtn}
             onPress={onScrollToBottom}
           >
-            <Text style={styles.keyBtnText}>Bottom ↓</Text>
+            <Text style={styles.keyBtnText}>Bottom</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -119,8 +119,8 @@ export const PromptBar: React.FC<Props> = ({
             style={[styles.micBtn, isRecording && styles.micBtnRecording]}
             onPress={handleMicToggle}
           >
-            <Text style={[styles.micIcon, isRecording && styles.micIconRecording]}>
-              {isRecording ? "🔴" : "🎙️"}
+            <Text style={[styles.micText, isRecording && styles.micTextRecording]}>
+              {isRecording ? "REC" : "MIC"}
             </Text>
           </TouchableOpacity>
         )}
@@ -211,21 +211,24 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   micBtn: {
-    width: 32,
     height: 36,
+    paddingHorizontal: 8,
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
   micBtnRecording: {
-    transform: [{ scale: 1.15 }],
+    backgroundColor: "rgba(248, 81, 73, 0.15)",
+    borderRadius: 6,
   },
-  micIcon: {
-    fontSize: 18,
-    opacity: 0.7,
+  micText: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#8b949e",
   },
-  micIconRecording: {
-    opacity: 1,
+  micTextRecording: {
+    color: "#f85149",
   },
   termInput: {
     flex: 1,

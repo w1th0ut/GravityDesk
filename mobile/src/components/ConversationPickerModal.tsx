@@ -109,7 +109,7 @@ export const ConversationPickerModal: React.FC<Props> = ({
               onPress={() => handleSelect("new", "New Chat")}
               activeOpacity={0.7}
             >
-              <Text style={styles.newChatText}>➕ Start New Chat</Text>
+              <Text style={styles.newChatText}>+ Start New Chat</Text>
             </TouchableOpacity>
 
             {/* Filter Tabs */}
@@ -128,7 +128,7 @@ export const ConversationPickerModal: React.FC<Props> = ({
                 onPress={() => setFilterScope("repo")}
               >
                 <Text style={[styles.tabBtnText, filterScope === "repo" && styles.tabBtnTextActive]}>
-                  📁 {currentRepoName || "Current Repo"}
+                  {currentRepoName || "Current Repo"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -183,7 +183,7 @@ export const ConversationPickerModal: React.FC<Props> = ({
                         <View style={styles.itemMetaRow}>
                           {wsName ? (
                             <View style={styles.wsBadge}>
-                              <Text style={styles.wsBadgeText}>📁 {wsName}</Text>
+                              <Text style={styles.wsBadgeText}>{wsName}</Text>
                             </View>
                           ) : null}
                           <Text style={styles.metaText}>{item.steps || 1} steps</Text>
