@@ -12,6 +12,4 @@ devices.json
 local.properties
 android/
 ios/
-
-
-
+build_apk.bat
