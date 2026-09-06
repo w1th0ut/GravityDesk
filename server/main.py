@@ -2,13 +2,17 @@ import argparse
 import asyncio
 import collections
 from contextlib import asynccontextmanager
+import io
 import os
 from pathlib import Path
 import secrets
+import shutil
+import subprocess
 import sys
 import threading
 from typing import Dict, List, Optional, Set
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
+import speech_recognition as sr
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -387,6 +391,72 @@ async def stop_session(_: str = Depends(verify_token)):
         hub.stop_session()
         return {"status": "stopped"}
     return {"status": "no_active_session"}
+
+
+def get_ffmpeg_bin() -> str:
+    """Resolves the ffmpeg executable location on the host system."""
+    bin_path = shutil.which("ffmpeg")
+    if bin_path:
+        return bin_path
+    winget_guess = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Packages"
+    if winget_guess.exists():
+        matches = list(winget_guess.glob("**/bin/ffmpeg.exe"))
+        if matches:
+            return str(matches[0])
+    return "ffmpeg"
+
+
+@app.post("/api/voice/transcribe")
+async def transcribe_voice(
+    file: UploadFile = File(...),
+    lang: str = Query("id-ID"),
+    _: str = Depends(verify_token),
+):
+    """
+    Transcribes audio uploaded from mobile client (e.g. m4a/aac/wav) using ffmpeg and Google Speech Recognition.
+    """
+    audio_bytes = await file.read()
+    if not audio_bytes or len(audio_bytes) < 100:
+        return {"status": "ok", "transcript": ""}
+
+    ffmpeg_bin = get_ffmpeg_bin()
+    try:
+        proc = subprocess.run(
+            [ffmpeg_bin, "-y", "-i", "pipe:0", "-ac", "1", "-ar", "16000", "-f", "wav", "pipe:1"],
+            input=audio_bytes,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=15,
+        )
+        if proc.returncode != 0:
+            return {"status": "error", "message": "Audio conversion failed", "transcript": ""}
+        wav_bytes = proc.stdout
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": "Audio conversion timed out", "transcript": ""}
+    except Exception as e:
+        return {"status": "error", "message": f"ffmpeg error: {e}", "transcript": ""}
+
+    recognizer = sr.Recognizer()
+    try:
+        with sr.AudioFile(io.BytesIO(wav_bytes)) as source:
+            audio_data = recognizer.record(source)
+
+        text = ""
+        try:
+            text = recognizer.recognize_google(audio_data, language=lang)
+        except sr.UnknownValueError:
+            alt_lang = "en-US" if lang.startswith("id") else "id-ID"
+            try:
+                text = recognizer.recognize_google(audio_data, language=alt_lang)
+            except sr.UnknownValueError:
+                text = ""
+
+        return {"status": "ok", "transcript": text.strip()}
+    except sr.RequestError as req_err:
+        return {"status": "error", "message": f"Speech service unavailable: {req_err}", "transcript": ""}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "transcript": ""}
+
 
 
 @app.websocket("/ws/terminal")

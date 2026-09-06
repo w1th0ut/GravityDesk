@@ -300,6 +300,21 @@ def test_revoke_all_devices():
 
 
 
+def test_voice_transcribe_endpoint():
+    token = get_or_create_token()
+    with TestClient(app) as client:
+        # Unauthorized
+        res_unauth = client.post("/api/voice/transcribe")
+        assert res_unauth.status_code == 401
+
+        # Authorized with empty audio
+        files = {"file": ("test.wav", b"12345", "audio/wav")}
+        res_auth = client.post(f"/api/voice/transcribe?token={token}", files=files)
+        assert res_auth.status_code == 200
+        assert res_auth.json()["status"] == "ok"
+        assert res_auth.json()["transcript"] == ""
+
+
 if __name__ == "__main__":
     print("Running Hardened Architecture & Security Test Suite...")
     test_token_entropy()
@@ -322,4 +337,7 @@ if __name__ == "__main__":
     print("[PASS] test_session_lifecycle (PTY lifecycle & atomic state)")
     test_device_pairing_and_revocation()
     print("[PASS] test_device_pairing_and_revocation (Device pairing, revocation & re-pairing)")
+    test_voice_transcribe_endpoint()
+    print("[PASS] test_voice_transcribe_endpoint (Voice transcription auth & payload processing)")
     print("\nALL HARDENED INTEGRATION TESTS PASSED WITH ZERO ERRORS! 🚀")
+
