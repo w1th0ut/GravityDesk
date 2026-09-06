@@ -45,7 +45,7 @@
 | **Backend Daemon** | FastAPI, Uvicorn, `pywinpty`, `psutil`, `qrcode`, `SpeechRecognition`, `pydub`, SQLite |
 | **Networking** | Tailscale (WireGuard Mesh), WebSocket (`/ws/terminal`), HTTP REST |
 | **Mobile Native** | React Native, Expo, TypeScript, `expo-secure-store`, `expo-av`, `lucide-react-native` |
-| **Target Engine** | Google Antigravity CLI (`agy`), Gemini 3.8 / Claude / GPT models |
+| **Target Engine** | Google Antigravity CLI (`agy`), Gemini / Claude / GPT models |
 
 ---
 
@@ -90,7 +90,6 @@ The GravityDesk Control Center will launch:
 2. Scan the QR code shown on your laptop desktop screen.
 3. The GravityDesk companion app will connect:
    - Displays real-time **CPU, RAM, and Battery** vitals.
-   - Greets you with the **ASCII AGY** welcome terminal.
    - Shows active **Antigravity Model & Quota Limits** with live reset countdowns.
    - Allows instant workspace switching and conversation resumption.
 
@@ -114,12 +113,10 @@ GravityDesk is engineered with institutional-grade security principles for remot
 | Feature | Description |
 |---|---|
 | **Antigravity Quota Monitor** | Seamless dashboard card showing active model (e.g., `Gemini 3.8 Flash (High)`), 5-hour session quota, and weekly limits with exact countdown timers (`Resets in Xh Ym`) and on-demand refresh. |
-| **WhatsApp-Style Input** | Auto-expanding textarea up to 130px that scrolls naturally and preserves multi-line prompts without obstructing the terminal viewport. |
 | **Voice-to-Text Dictation** | One-tap voice prompt bar utilizing native audio recording and host-side `ffmpeg` + speech recognition for hands-free agent steering. |
 | **Workspace Selector** | Interactive multi-drive breadcrumb navigation modal (`C:\`, `D:\`) to effortlessly switch project folders without touching your workstation. |
 | **Session Resume** | Direct integration with Antigravity SQLite database to resume prior chat conversations by summary and timestamp. |
 | **Quick Action Toolbar** | Dedicated touch buttons for `Ctrl+C` (SIGINT interrupt), `Enter`, and workspace/resume management. |
-| **1:1 Aligned Header Layout** | Mathematically identical header offset (24px top, 16px horizontal) across Home and Terminal tabs for a seamless, flicker-free tab transition. |
 
 ---
 
@@ -184,7 +181,7 @@ GravityDesk/
 - [x] Zero-popup headless background execution (`CREATE_NO_WINDOW`)
 - [x] Multi-drive breadcrumb workspace explorer
 - [x] Official Astro-Orb brand identity & adaptive Android icon
-- [ ] Standalone Android APK build (`expo prebuild` / EAS)
+- [x] Standalone Android APK build (`expo prebuild` / EAS)
 - [ ] Multi-OS host support (Linux & macOS)
 - [ ] Push notification alerts on AGY prompt completion or error
 - [ ] Biometric fingerprint authentication on mobile app
