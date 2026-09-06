@@ -269,9 +269,9 @@ class GravityDeskGUI:
         )
         self.host_lbl.pack(anchor="center", pady=(0, 6))
 
-        revoke_token_btn = tk.Button(
+        reset_token_btn = tk.Button(
             action_frame,
-            text="Revoke Pairing Token",
+            text="Reset Pairing Token",
             font=("Segoe UI", 8, "bold"),
             bg="#3b1219",
             fg=C_DANGER,
@@ -283,7 +283,7 @@ class GravityDeskGUI:
             cursor="hand2",
             command=self.revoke_token,
         )
-        revoke_token_btn.pack(fill=tk.X)
+        reset_token_btn.pack(fill=tk.X)
 
     def _build_devices_card(self, parent):
         self.devices_card = tk.Frame(parent, bg=C_CARD, highlightthickness=1, highlightbackground=C_BORDER)
@@ -658,8 +658,8 @@ class GravityDeskGUI:
 
     def revoke_token(self):
         confirm = messagebox.askyesno(
-            "Revoke Pairing Token",
-            "Are you sure you want to revoke the current pairing token?\n\n"
+            "Reset Pairing Token",
+            "Are you sure you want to reset the current pairing token?\n\n"
             "This generates a fresh 256-bit token and immediately revokes all registered devices and active sessions.",
             icon="warning",
         )
@@ -675,7 +675,7 @@ class GravityDeskGUI:
         active_devs = [d for d in get_devices() if d.get("status") == "active"]
         if hasattr(self, "clients_lbl"):
             self.clients_lbl.config(text=f"{len(active_devs)} registered (0 online)")
-        self.log_event("Pairing token revoked. All devices disconnected. Generated new access key.")
+        self.log_event("Pairing token reset. All devices disconnected. Generated new access key.")
 
     def change_workspace(self):
         target = filedialog.askdirectory(initialdir=hub.current_cwd, title="Select Project Directory")
