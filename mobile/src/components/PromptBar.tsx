@@ -6,9 +6,11 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  Keyboard,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { useVoiceRecognition } from "../hooks/useVoiceRecognition";
+import { VoiceBridge } from "./VoiceBridge";
 
 interface Props {
   onSendInput: (text: string) => void;
@@ -26,19 +28,28 @@ export const PromptBar: React.FC<Props> = ({
   const [promptText, setPromptText] = useState("");
   const [inputHeight, setInputHeight] = useState(36);
   const inputRef = useRef<TextInput>(null);
-  const { isRecording, isTranscribing, transcript, startRecording, stopRecording, resetTranscript } =
-    useVoiceRecognition("id-ID");
+  const prefixTextRef = useRef<string>("");
+  const {
+    isRecording,
+    isTranscribing,
+    transcript,
+    startRecording,
+    stopRecording,
+    resetTranscript,
+    handleBridgeResult,
+    handleBridgeError,
+    handleBridgeEnd,
+    voiceBridgeRef,
+  } = useVoiceRecognition("id-ID");
 
-  // Sync spoken transcript into prompt bar for user review
+  // Sync spoken transcript into prompt bar in REAL-TIME as user speaks
   useEffect(() => {
     if (transcript) {
-      setPromptText((prev) => {
-        const cleanPrev = prev.trim();
-        return cleanPrev ? `${cleanPrev} ${transcript}` : transcript;
-      });
-      resetTranscript();
+      const prefix = prefixTextRef.current;
+      const combined = prefix ? `${prefix} ${transcript}` : transcript;
+      setPromptText(combined);
     }
-  }, [transcript, resetTranscript]);
+  }, [transcript]);
 
   const handleSend = () => {
     const trimmed = promptText.trim();
@@ -47,12 +58,16 @@ export const PromptBar: React.FC<Props> = ({
     setPromptText("");
     setInputHeight(36);
     resetTranscript();
+    prefixTextRef.current = "";
+    Keyboard.dismiss();
   };
 
   const handleMicToggle = async () => {
     if (isRecording) {
       await stopRecording();
     } else {
+      prefixTextRef.current = promptText.trim();
+      resetTranscript();
       await startRecording();
     }
   };
@@ -138,6 +153,13 @@ export const PromptBar: React.FC<Props> = ({
           <Text style={styles.sendBtnText}>Send</Text>
         </TouchableOpacity>
       </View>
+
+      <VoiceBridge
+        ref={voiceBridgeRef}
+        onResult={handleBridgeResult}
+        onError={handleBridgeError}
+        onEnd={handleBridgeEnd}
+      />
     </View>
   );
 };
