@@ -10,7 +10,12 @@ import time
 from typing import Dict, List, Optional, Set
 import winpty
 
-DEFAULT_AGY_PATH = r"C:\Users\bagas\AppData\Local\agy\bin\agy.exe"
+DEFAULT_AGY_PATH = os.path.join(
+    os.environ.get("LOCALAPPDATA", os.path.expanduser(r"~\AppData\Local")),
+    "agy",
+    "bin",
+    "agy.exe",
+)
 
 # Whitelist of executables permitted to be spawned
 PERMITTED_COMMANDS = {"agy", "powershell.exe", "cmd.exe"}
@@ -60,10 +65,14 @@ class TerminalSession:
         env_agy_path = os.environ.get("AGY_BIN_PATH")
         if env_agy_path and os.path.exists(env_agy_path):
             agy_cmd = env_agy_path
+        elif shutil.which("agy"):
+            agy_cmd = shutil.which("agy")
+        elif shutil.which("agy.exe"):
+            agy_cmd = shutil.which("agy.exe")
         elif os.path.exists(DEFAULT_AGY_PATH):
             agy_cmd = DEFAULT_AGY_PATH
         else:
-            agy_cmd = shutil.which("agy") or r"C:\Windows\System32\cmd.exe"
+            agy_cmd = r"C:\Windows\System32\cmd.exe"
 
         default_shell = r"C:\Windows\System32\cmd.exe"
         if not os.path.exists(default_shell):

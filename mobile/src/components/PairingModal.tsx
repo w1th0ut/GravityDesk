@@ -18,7 +18,7 @@ interface Props {
 }
 
 export const PairingModal: React.FC<Props> = ({ visible, onClose, onPaired }) => {
-  const [hostUrl, setHostUrl] = useState("http://192.168.1.9:8000");
+  const [hostUrl, setHostUrl] = useState("");
   const [token, setToken] = useState("");
   const [isTesting, setIsTesting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
