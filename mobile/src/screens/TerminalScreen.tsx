@@ -121,16 +121,16 @@ export const TerminalScreen: React.FC<Props> = ({
 
   return (
     <View style={styles.container}>
-      {/* Top Header (<header> matching index.html) */}
+      {/* Top Header */}
       <View style={styles.header}>
-        {/* Row 1: Brand */}
-        <View style={styles.headerTop}>
-          <View style={styles.brandRow}>
-            <Text style={styles.brandTitle}>GravityDesk</Text>
-          </View>
+        <View style={styles.headerBanner}>
+          <Text style={styles.headerTitle}>GravityDesk Terminal</Text>
+          <Text style={styles.headerSubtitle}>Interactive Shell & Antigravity CLI</Text>
         </View>
 
-        {/* Row 2: Chips Row (.chips-row matching index.html) */}
+        <View style={styles.separator} />
+
+        {/* Chips Row: Select Folder & Resume Chat */}
         <View style={styles.chipsRow}>
           <TouchableOpacity
             style={styles.folderChip}
@@ -232,25 +232,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#141414",
     borderBottomWidth: 1,
     borderBottomColor: "#262626",
-    paddingHorizontal: 10,
-    paddingTop: 6,
-    paddingBottom: 6,
-    gap: 6,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    gap: 8,
   },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  headerBanner: {
+    gap: 2,
   },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  brandTitle: {
-    fontSize: 13,
-    fontWeight: "700",
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "800",
     color: "#ffffff",
-    letterSpacing: 0.2,
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: "#8b949e",
+    marginTop: 1,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#262626",
+    marginVertical: 2,
   },
   chipsRow: {
     flexDirection: "row",
@@ -262,7 +266,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#262626",
     borderRadius: 6,
-    paddingVertical: 4,
+    paddingVertical: 5,
     paddingHorizontal: 8,
     flexDirection: "row",
     alignItems: "center",

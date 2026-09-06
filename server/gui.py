@@ -108,7 +108,7 @@ class GravityDeskGUI:
 
         sub_lbl = tk.Label(
             brand_frame,
-            text="Anti-Gravity (AGY) Remote Bridge",
+            text="Antigravity (CLI) Remote Bridge",
             font=("Segoe UI", 9),
             fg=C_MUTED,
             bg=C_CARD,
@@ -170,7 +170,7 @@ class GravityDeskGUI:
 
         lbl = tk.Label(
             card,
-            text="MOBILE PAIRING (SCAN QR)",
+            text="MOBILE PAIRING",
             font=("Segoe UI", 9, "bold"),
             fg=C_MUTED,
             bg=C_CARD,
