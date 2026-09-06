@@ -25,21 +25,27 @@
 - 🖥️ **Modern Desktop GUI Control Center**: Clean dark-mode Tkinter management window showing host status, detected Tailscale IPv4, dynamic high-resolution QR pairing code, 1-click token copy, workspace picker, and real-time activity log.
 - ⚡ **Zero-Lag ConPTY Virtual Terminal**: Native Windows Pseudo Console (`pywinpty`) integration streaming ANSI output directly over WebSocket with a 3,000-chunk ring buffer for lossless session catch-up.
 - 🧠 **Google Antigravity (`agy`) First-Class Citizen**: Autonomous session continuity with `--dangerously-skip-permissions`, mobile-responsive ASCII welcome banner, and real-time conversation resume synchronized directly with local Antigravity SQLite storage.
-- 📱 **Native Android Companion App**: Auto-expanding WhatsApp-style multiline prompt input, native Android voice-to-text dictation, quick signals (`Ctrl+C`), and live workstation vitals (CPU %, RAM %, Battery %, Charging status).
+- 📊 **Live Antigravity Engine & Quota Telemetry**: Real-time active model detection (`settings.json`, e.g., Gemini 3.8 Flash (High)), 5-hour session quota, and weekly quota limits with exact reset countdowns (`Resets in 123h 29m`), cached with zero CPU overhead and refreshable on-demand.
+- 🪟 **Zero-Popup Headless Background Execution**: All Windows background subprocesses (including `agy -p /usage` and audio transcoding) run strictly with `CREATE_NO_WINDOW`, ensuring the developer's workstation screen never flashes or flickers CMD prompt windows.
+- 🛡️ **Subprocess Concurrency Guard**: Single-flight prompt lock in `SessionHub` blocks overlapping execution requests and prevents runaway background tasks.
+- 🎙️ **Remote Voice-to-Text Dictation Pipeline**: Native voice prompt bar with automated `ffmpeg` audio normalization to 16kHz PCM WAV and Google Speech Recognition fallback for hands-free agent steering.
+- 📱 **Native Android Companion App**: Auto-expanding WhatsApp-style multiline prompt input, 1:1 mathematically aligned screen headers, quick signals (`Ctrl+C`), and live workstation vitals (CPU %, RAM %, Battery %, Charging status).
+- 🧭 **Multi-Drive Breadcrumb Workspace Navigator**: Explore and switch project folders effortlessly across physical Windows drive roots (`C:\`, `D:\`) right from mobile.
 - 🚫 **Instant Access Revocation**: One-click 256-bit cryptographic token rotation instantly locks out stale or lost mobile sessions and invalidates active connections in real time.
 - 🔒 **Zero-Trust Defense-in-Depth**: Operates exclusively over encrypted Tailscale WireGuard mesh tunnels, timing-safe authentication (`hmac.compare_digest`), path-traversal safeguards, and strict command execution allowlists.
 - 🔋 **Windows Sleep Inhibit**: Prevents host laptops from entering standby or suspend mode during active remote sessions using the native Win32 API (`kernel32.SetThreadExecutionState`).
+
 ---
 
 ## 🛠️ Tech Stack
 
 | Layer | Technologies |
 |---|---|
-| **Host Workstation** | Windows 10 / 11, Python 3.12+, Tkinter, Pillow, Win32 API |
-| **Backend Daemon** | FastAPI, Uvicorn, `pywinpty`, `psutil`, `qrcode`, SQLite |
+| **Host Workstation** | Windows 10 / 11, Python 3.12+, Tkinter, Pillow, Win32 API, `ffmpeg` |
+| **Backend Daemon** | FastAPI, Uvicorn, `pywinpty`, `psutil`, `qrcode`, `SpeechRecognition`, `pydub`, SQLite |
 | **Networking** | Tailscale (WireGuard Mesh), WebSocket (`/ws/terminal`), HTTP REST |
-| **Mobile Native** | React Native, Expo, TypeScript, `expo-secure-store` |
-| **Target Engine** | Google Antigravity CLI (`agy`) |
+| **Mobile Native** | React Native, Expo, TypeScript, `expo-secure-store`, `expo-av`, `lucide-react-native` |
+| **Target Engine** | Google Antigravity CLI (`agy`), Gemini 3.8 / Claude / GPT models |
 
 ---
 
@@ -51,6 +57,7 @@
 - **Python**: Version `3.12+` installed and added to `PATH`.
 - **Google Antigravity**: `agy` CLI installed globally and authenticated.
 - **Tailscale**: Installed and signed in on both your Windows PC and your Android phone on the same tailnet.
+- **ffmpeg** *(Optional, for Voice STT)*: Installed and accessible in `PATH` for remote audio transcription.
 
 ### 2. Installation
 
@@ -84,9 +91,10 @@ The GravityDesk Control Center will launch:
 
 1. Open your Android device camera or mobile browser.
 2. Scan the QR code shown on your laptop desktop screen.
-3. The GravityDesk Web Terminal will launch instantly:
+3. The GravityDesk companion app will connect:
    - Displays real-time **CPU, RAM, and Battery** vitals.
    - Greets you with the **ASCII AGY** welcome terminal.
+   - Shows active **Antigravity Model & Quota Limits** with live reset countdowns.
    - Allows instant workspace switching and conversation resumption.
 
 ---
@@ -100,6 +108,7 @@ GravityDesk is engineered with institutional-grade security principles for remot
 - **Instant Revocation**: Compromised your phone or lost access? Tap **🚫 Revoke Access** in the Desktop GUI. GravityDesk generates a new 256-bit secret, overwrites `.env`, and invalidates all existing sessions immediately.
 - **Binary Allowlist**: Spawning arbitrary executables is prohibited. Only pre-vetted shells (`cmd.exe`, `powershell.exe`) and Google Antigravity (`agy.exe`) are permitted.
 - **Path Traversal Protection**: Folder browsing requests are sanitized via `os.path.realpath`, validating paths against physical drive roots (`C:\`, `D:\`) to block traversal exploits.
+- **Headless Process Sandboxing**: Background executions run with `CREATE_NO_WINDOW` and concurrency mutex locks to prevent desktop UI disruption and runaway process cascades.
 
 ---
 
@@ -107,11 +116,13 @@ GravityDesk is engineered with institutional-grade security principles for remot
 
 | Feature | Description |
 |---|---|
+| **Antigravity Quota Monitor** | Seamless dashboard card showing active model (e.g., `Gemini 3.8 Flash (High)`), 5-hour session quota, and weekly limits with exact countdown timers (`Resets in Xh Ym`) and on-demand refresh. |
 | **WhatsApp-Style Input** | Auto-expanding textarea up to 130px that scrolls naturally and preserves multi-line prompts without obstructing the terminal viewport. |
-| **Voice-to-Text Dictation** | One-tap voice prompt bar utilizing native on-device speech recognition for hands-free agent steering. |
-| **Workspace Selector** | Interactive directory navigation modal to effortlessly switch project folders without touching your workstation. |
+| **Voice-to-Text Dictation** | One-tap voice prompt bar utilizing native audio recording and host-side `ffmpeg` + speech recognition for hands-free agent steering. |
+| **Workspace Selector** | Interactive multi-drive breadcrumb navigation modal (`C:\`, `D:\`) to effortlessly switch project folders without touching your workstation. |
 | **Session Resume** | Direct integration with Antigravity SQLite database to resume prior chat conversations by summary and timestamp. |
 | **Quick Action Toolbar** | Dedicated touch buttons for `Ctrl+C` (SIGINT interrupt), `Enter`, and workspace/resume management. |
+| **1:1 Aligned Header Layout** | Mathematically identical header offset (24px top, 16px horizontal) across Home and Terminal tabs for a seamless, flicker-free tab transition. |
 
 ---
 
@@ -121,7 +132,7 @@ GravityDesk includes an automated integration test suite verifying authenticatio
 
 ```bash
 # Run the integration test suite
-python -m tests.test_server
+python -m pytest tests/
 ```
 
 All tests execute synchronously against the FastAPI test harness with zero network overhead.
@@ -132,19 +143,29 @@ All tests execute synchronously against the FastAPI test harness with zero netwo
 
 ```
 GravityDesk/
+├── assets/                    # Brand assets & application logos
+│   └── logo.png               # Official Astro-Orb mascot logo (512x512)
 ├── server/                    # Backend daemon bounded context
-│   ├── main.py                # FastAPI app, endpoints, WebSocket hub
+│   ├── main.py                # FastAPI app, REST endpoints, WebSocket hub
 │   ├── terminal.py            # Windows ConPTY runner & sequence ring buffer
+│   ├── antigravity.py         # AGY active model reader & quota telemetry
 │   ├── system.py              # Telemetry vitals & Win32 sleep inhibitor
 │   ├── network.py             # Tailscale IP resolver, token generator & QR
 │   ├── conversations.py       # AGY SQLite resume & session sync
 │   ├── workspaces.py          # Directory explorer & path safety validation
+│   ├── devices.py             # Mobile device pairing & identity registry
 │   └── gui.py                 # Desktop GUI Control Center (Tkinter)
 ├── mobile/                    # React Native / Expo client bounded context
 │   ├── App.tsx                # Main mobile application entrypoint
-│   └── src/                   # Native components, hooks, and secure storage
-├── tests/                     # Test suite
-│   └── test_server.py         # Integration & security test harness
+│   └── src/
+│       ├── screens/           # Tab screens (HomeScreen, TerminalScreen)
+│       ├── components/        # UI components (TerminalView, PromptBar, Modals)
+│       ├── api/               # Typed REST API & WebSocket client
+│       ├── hooks/             # Terminal, vitals, and pairing lifecycle hooks
+│       ├── storage/           # Token and device persistence (expo-secure-store)
+│       └── types/             # Domain TypeScript interfaces
+├── tests/                     # Integration test suite
+│   └── test_server.py         # Security, ConPTY, and endpoint harness
 ├── gui.py                     # Desktop GUI root launcher
 ├── run_gui.bat                # Windows 1-click execution batch script
 ├── requirements.txt           # Python package dependencies
@@ -162,9 +183,13 @@ GravityDesk/
 - [x] Dynamic QR Code pairing & Instant Access Revocation
 - [x] Modern Tkinter Desktop Control Center
 - [x] AGY conversation history sync from SQLite
-- [x] Mobile WhatsApp-style multiline prompt bar & Voice STT
-- [ ] Standalone Android APK build (`expo prebuild` / Android Studio)
-- [ ] Support Linux and MacOS for multi OS
+- [x] Mobile WhatsApp-style multiline prompt bar & Voice STT pipeline
+- [x] Real-time Antigravity engine active model & quota usage telemetry (`/usage`)
+- [x] Zero-popup headless background execution (`CREATE_NO_WINDOW`)
+- [x] Multi-drive breadcrumb workspace explorer
+- [x] Official Astro-Orb brand identity & adaptive Android icon
+- [ ] Standalone Android APK build (`expo prebuild` / EAS)
+- [ ] Multi-OS host support (Linux & macOS)
 - [ ] Push notification alerts on AGY prompt completion or error
 - [ ] Biometric fingerprint authentication on mobile app
 
@@ -175,3 +200,4 @@ GravityDesk/
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 Developed as a high-performance developer tool for the Google Antigravity ecosystem.
+
