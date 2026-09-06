@@ -63,6 +63,7 @@ export const TerminalScreen: React.FC<Props> = ({
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [showConvoModal, setShowConvoModal] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState<string>("");
+  const [selectedFolderName, setSelectedFolderName] = useState<string>("Select Folder");
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
   const [activeConvoName, setActiveConvoName] = useState<string>("Resume Chat");
   const terminalRef = useRef<TerminalViewRef>(null);
@@ -125,9 +126,7 @@ export const TerminalScreen: React.FC<Props> = ({
           >
             <FolderIcon color="#58a6ff" size={12} />
             <Text style={styles.chipText} numberOfLines={1}>
-              {activeWorkspace
-                ? activeWorkspace.split(/[\\/]/).filter(Boolean).pop() || activeWorkspace
-                : "Folder"}
+              {selectedFolderName}
             </Text>
           </TouchableOpacity>
 
@@ -168,7 +167,11 @@ export const TerminalScreen: React.FC<Props> = ({
         visible={showWorkspaceModal}
         activePath={activeWorkspace}
         onClose={() => setShowWorkspaceModal(false)}
-        onSelectWorkspace={(path) => setActiveWorkspace(path)}
+        onSelectWorkspace={(path) => {
+          setActiveWorkspace(path);
+          const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
+          setSelectedFolderName(name);
+        }}
       />
 
       <ConversationPickerModal
@@ -181,6 +184,8 @@ export const TerminalScreen: React.FC<Props> = ({
           setActiveConvoName(label);
           if (wsPath) {
             setActiveWorkspace(wsPath);
+            const name = wsPath.split(/[\\/]/).filter(Boolean).pop() || wsPath;
+            setSelectedFolderName(name);
           }
           refreshVitals();
         }}

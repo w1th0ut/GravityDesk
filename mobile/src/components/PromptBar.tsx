@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  Alert,
+  ActivityIndicator,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { useVoiceRecognition } from "../hooks/useVoiceRecognition";
@@ -26,15 +26,19 @@ export const PromptBar: React.FC<Props> = ({
   const [promptText, setPromptText] = useState("");
   const [inputHeight, setInputHeight] = useState(36);
   const inputRef = useRef<TextInput>(null);
-  const { isRecording, transcript, isAvailable, startRecording, stopRecording, resetTranscript } =
-    useVoiceRecognition("en-US");
+  const { isRecording, isTranscribing, transcript, startRecording, stopRecording, resetTranscript } =
+    useVoiceRecognition("id-ID");
 
   // Sync spoken transcript into prompt bar for user review
   useEffect(() => {
     if (transcript) {
-      setPromptText((prev) => (prev ? prev + " " + transcript : transcript));
+      setPromptText((prev) => {
+        const cleanPrev = prev.trim();
+        return cleanPrev ? `${cleanPrev} ${transcript}` : transcript;
+      });
+      resetTranscript();
     }
-  }, [transcript]);
+  }, [transcript, resetTranscript]);
 
   const handleSend = () => {
     const trimmed = promptText.trim();
@@ -45,19 +49,11 @@ export const PromptBar: React.FC<Props> = ({
     resetTranscript();
   };
 
-  const handleMicToggle = () => {
-    if (isAvailable) {
-      if (isRecording) {
-        stopRecording();
-      } else {
-        startRecording();
-      }
+  const handleMicToggle = async () => {
+    if (isRecording) {
+      await stopRecording();
     } else {
-      inputRef.current?.focus();
-      Alert.alert(
-        "Voice Input",
-        "Tap the microphone icon on your keyboard (e.g. Gboard) for instant voice typing."
-      );
+      await startRecording();
     }
   };
 
@@ -94,14 +90,23 @@ export const PromptBar: React.FC<Props> = ({
       {/* Input Dock (.input-dock matching index.html) */}
       <View style={styles.inputDock}>
         <TouchableOpacity
-          style={[styles.micBtn, isRecording && styles.micBtnRecording]}
+          style={[
+            styles.micBtn,
+            isRecording && styles.micBtnRecording,
+            isTranscribing && styles.micBtnTranscribing,
+          ]}
           onPress={handleMicToggle}
           activeOpacity={0.7}
+          disabled={isTranscribing}
         >
-          <Svg viewBox="0 0 24 24" width={20} height={20} fill={isRecording ? "#f85149" : "#8b949e"}>
-            <Path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-            <Path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-          </Svg>
+          {isTranscribing ? (
+            <ActivityIndicator size="small" color="#58a6ff" />
+          ) : (
+            <Svg viewBox="0 0 24 24" width={20} height={20} fill={isRecording ? "#f85149" : "#8b949e"}>
+              <Path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+              <Path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+            </Svg>
+          )}
         </TouchableOpacity>
 
         <TextInput
@@ -112,7 +117,13 @@ export const PromptBar: React.FC<Props> = ({
           onContentSizeChange={(e) => {
             setInputHeight(e.nativeEvent.contentSize.height);
           }}
-          placeholder="Type message or command..."
+          placeholder={
+            isRecording
+              ? "Listening... Tap mic again to finish"
+              : isTranscribing
+              ? "Transcribing voice to text..."
+              : "Type message or command..."
+          }
           placeholderTextColor="#737373"
           multiline={true}
           autoCapitalize="none"
@@ -188,6 +199,10 @@ const styles = StyleSheet.create({
   },
   micBtnRecording: {
     backgroundColor: "rgba(248, 81, 73, 0.15)",
+    borderRadius: 6,
+  },
+  micBtnTranscribing: {
+    backgroundColor: "rgba(88, 166, 255, 0.15)",
     borderRadius: 6,
   },
   termInput: {
