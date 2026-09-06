@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { apiFetch } from "./client";
 
 export interface TranscribeResponse {
@@ -14,8 +15,10 @@ export async function uploadVoiceAudio(
   lang: string = "id-ID"
 ): Promise<string> {
   const formData = new FormData();
+  const cleanUri = Platform.OS === "android" ? uri : uri.replace("file://", "");
+
   formData.append("file", {
-    uri,
+    uri: cleanUri,
     name: "audio.m4a",
     type: "audio/m4a",
   } as any);

@@ -33,13 +33,28 @@ export async function apiFetch<T>(
     urlObj.searchParams.set("token", token);
   }
 
-  const headers = new Headers(options.headers || {});
-  headers.set("Accept", "application/json");
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+  if (options.headers) {
+    if (typeof (options.headers as any).forEach === "function") {
+      (options.headers as any).forEach((value: string, key: string) => {
+        headers[key] = value;
+      });
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        headers[key] = value;
+      });
+    } else {
+      Object.assign(headers, options.headers);
+    }
+  }
+
   if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+    headers["Authorization"] = `Bearer ${token}`;
   }
   if (creds?.deviceId) {
-    headers.set("X-Device-Id", creds.deviceId);
+    headers["X-Device-Id"] = creds.deviceId;
   }
 
   const controller = new AbortController();

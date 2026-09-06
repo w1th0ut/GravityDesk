@@ -9,6 +9,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 from typing import Dict, List, Optional, Set
 import speech_recognition as sr
@@ -420,25 +421,23 @@ async def transcribe_voice(
         return {"status": "ok", "transcript": ""}
 
     ffmpeg_bin = get_ffmpeg_bin()
+    with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp_in:
+        tmp_in.write(audio_bytes)
+        tmp_in_path = tmp_in.name
+
+    tmp_out_path = tmp_in_path + ".wav"
     try:
         proc = subprocess.run(
-            [ffmpeg_bin, "-y", "-i", "pipe:0", "-ac", "1", "-ar", "16000", "-f", "wav", "pipe:1"],
-            input=audio_bytes,
+            [ffmpeg_bin, "-y", "-i", tmp_in_path, "-ac", "1", "-ar", "16000", "-f", "wav", tmp_out_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=15,
         )
-        if proc.returncode != 0:
+        if proc.returncode != 0 or not os.path.exists(tmp_out_path):
             return {"status": "error", "message": "Audio conversion failed", "transcript": ""}
-        wav_bytes = proc.stdout
-    except subprocess.TimeoutExpired:
-        return {"status": "error", "message": "Audio conversion timed out", "transcript": ""}
-    except Exception as e:
-        return {"status": "error", "message": f"ffmpeg error: {e}", "transcript": ""}
 
-    recognizer = sr.Recognizer()
-    try:
-        with sr.AudioFile(io.BytesIO(wav_bytes)) as source:
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(tmp_out_path) as source:
             audio_data = recognizer.record(source)
 
         text = ""
@@ -456,6 +455,14 @@ async def transcribe_voice(
         return {"status": "error", "message": f"Speech service unavailable: {req_err}", "transcript": ""}
     except Exception as e:
         return {"status": "error", "message": str(e), "transcript": ""}
+    finally:
+        try:
+            if os.path.exists(tmp_in_path):
+                os.remove(tmp_in_path)
+            if os.path.exists(tmp_out_path):
+                os.remove(tmp_out_path)
+        except Exception:
+            pass
 
 
 

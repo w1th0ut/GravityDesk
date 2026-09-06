@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { useVoiceRecognition } from "../hooks/useVoiceRecognition";
-import { VoiceBridge } from "./VoiceBridge";
 
 interface Props {
   onSendInput: (text: string) => void;
@@ -36,20 +35,17 @@ export const PromptBar: React.FC<Props> = ({
     startRecording,
     stopRecording,
     resetTranscript,
-    handleBridgeResult,
-    handleBridgeError,
-    handleBridgeEnd,
-    voiceBridgeRef,
   } = useVoiceRecognition("id-ID");
 
-  // Sync spoken transcript into prompt bar in REAL-TIME as user speaks
+  // Sync spoken transcript into prompt bar as soon as transcription completes
   useEffect(() => {
     if (transcript) {
       const prefix = prefixTextRef.current;
       const combined = prefix ? `${prefix} ${transcript}` : transcript;
       setPromptText(combined);
+      resetTranscript();
     }
-  }, [transcript]);
+  }, [transcript, resetTranscript]);
 
   const handleSend = () => {
     const trimmed = promptText.trim();
@@ -153,13 +149,6 @@ export const PromptBar: React.FC<Props> = ({
           <Text style={styles.sendBtnText}>Send</Text>
         </TouchableOpacity>
       </View>
-
-      <VoiceBridge
-        ref={voiceBridgeRef}
-        onResult={handleBridgeResult}
-        onError={handleBridgeError}
-        onEnd={handleBridgeEnd}
-      />
     </View>
   );
 };
@@ -258,4 +247,3 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
-

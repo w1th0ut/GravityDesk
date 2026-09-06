@@ -81,18 +81,11 @@ export const TerminalScreen: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
-    if (health?.active_session?.cwd) {
-      if (!savedWorkspace) {
-        setActiveWorkspace(health.active_session.cwd);
-        savedWorkspace = health.active_session.cwd;
-      }
-      if (health.active_session.is_alive && savedFolderName === "Select Folder") {
-        const name = health.active_session.cwd.split(/[\\/]/).filter(Boolean).pop() || health.active_session.cwd;
-        setSelectedFolderName(name);
-        savedFolderName = name;
-      }
+    if (health?.active_session?.cwd && !activeWorkspace) {
+      setActiveWorkspace(health.active_session.cwd);
+      savedWorkspace = health.active_session.cwd;
     }
-  }, [health]);
+  }, [health, activeWorkspace]);
 
   useEffect(() => {
     if (isConnected) {

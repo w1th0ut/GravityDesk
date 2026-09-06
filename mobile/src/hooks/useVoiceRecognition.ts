@@ -1,8 +1,7 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Platform } from "react-native";
 import { Audio } from "expo-av";
 import { uploadVoiceAudio } from "../api/voice";
-import { VoiceBridgeRef } from "../components/VoiceBridge";
 
 export interface UseVoiceRecognitionReturn {
   isRecording: boolean;
@@ -12,10 +11,6 @@ export interface UseVoiceRecognitionReturn {
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   resetTranscript: () => void;
-  handleBridgeResult: (text: string, isFinal: boolean) => void;
-  handleBridgeError: (error: string) => void;
-  handleBridgeEnd: () => void;
-  voiceBridgeRef: React.RefObject<VoiceBridgeRef>;
 }
 
 export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognitionReturn {
@@ -25,32 +20,27 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const webRecRef = useRef<any>(null);
-  const voiceBridgeRef = useRef<VoiceBridgeRef>(null);
-  const bridgeReceivedTextRef = useRef<boolean>(false);
-  const bridgeActiveRef = useRef<boolean>(false);
 
-  const handleBridgeResult = useCallback((text: string, _isFinal: boolean) => {
-    if (text) {
-      bridgeReceivedTextRef.current = true;
-      setTranscript(text);
-    }
-  }, []);
-
-  const handleBridgeError = useCallback((err: string) => {
-    console.warn("[VoiceBridge] Error:", err);
-    bridgeActiveRef.current = false;
-  }, []);
-
-  const handleBridgeEnd = useCallback(() => {
-    bridgeActiveRef.current = false;
+  // Clean up any lingering recording handles on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        recordingRef.current = null;
+      }
+      if (webRecRef.current) {
+        try {
+          webRecRef.current.stop();
+        } catch {}
+        webRecRef.current = null;
+      }
+    };
   }, []);
 
   const startRecording = useCallback(async () => {
     setTranscript("");
-    setIsRecording(true);
-    bridgeReceivedTextRef.current = false;
 
-    // 1. In Web / Mobile Chrome browser runtime, use native Web Speech API directly
+    // 1. Web browser fallback using native SpeechRecognition
     if (
       Platform.OS === "web" ||
       (typeof window !== "undefined" &&
@@ -86,6 +76,7 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
 
           webRecRef.current = rec;
           rec.start();
+          setIsRecording(true);
           return;
         }
       } catch (err) {
@@ -93,35 +84,34 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
       }
     }
 
-    // 2. In Native Android/iOS, trigger VoiceBridge for real-time speech recognition
-    if (Platform.OS !== "web" && voiceBridgeRef.current) {
-      bridgeActiveRef.current = true;
-      voiceBridgeRef.current.start(lang);
-    }
-
-    // 3. Simultaneously initialize expo-av audio recording as background fallback
+    // 2. Native Android / iOS Audio Recording via expo-av
     try {
       const perm = await Audio.requestPermissionsAsync();
-      if (perm.granted) {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-
-        if (recordingRef.current) {
-          try {
-            await recordingRef.current.stopAndUnloadAsync();
-          } catch {}
-          recordingRef.current = null;
-        }
-
-        const { recording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
-        );
-        recordingRef.current = recording;
+      if (!perm.granted) {
+        console.warn("[Voice] Microphone permission not granted");
+        return;
       }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch {}
+        recordingRef.current = null;
+      }
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setIsRecording(true);
     } catch (err) {
-      console.warn("[Voice] Audio background fallback init error:", err);
+      console.warn("[Voice] Start recording error:", err);
+      setIsRecording(false);
     }
   }, [lang]);
 
@@ -137,15 +127,6 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
       return;
     }
 
-    // Stop VoiceBridge if active
-    if (voiceBridgeRef.current && bridgeActiveRef.current) {
-      try {
-        voiceBridgeRef.current.stop();
-      } catch {}
-      bridgeActiveRef.current = false;
-    }
-
-    // Unload expo-av recorder
     const rec = recordingRef.current;
     recordingRef.current = null;
 
@@ -157,9 +138,7 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
         });
 
         const uri = rec.getURI();
-
-        // If VoiceBridge already captured realtime text, we don't need server fallback
-        if (!bridgeReceivedTextRef.current && uri) {
+        if (uri) {
           setIsTranscribing(true);
           try {
             const text = await uploadVoiceAudio(uri, lang);
@@ -167,7 +146,7 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
               setTranscript(text);
             }
           } catch (uploadErr) {
-            console.warn("[Voice] Server transcription fallback error:", uploadErr);
+            console.warn("[Voice] Upload transcription error:", uploadErr);
           } finally {
             setIsTranscribing(false);
           }
@@ -181,7 +160,6 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
 
   const resetTranscript = useCallback(() => {
     setTranscript("");
-    bridgeReceivedTextRef.current = false;
   }, []);
 
   return {
@@ -192,9 +170,5 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
     startRecording,
     stopRecording,
     resetTranscript,
-    handleBridgeResult,
-    handleBridgeError,
-    handleBridgeEnd,
-    voiceBridgeRef,
   };
 }
