@@ -74,10 +74,7 @@ pip install -r requirements.txt
 Start the Desktop GUI Control Center using the batch launcher or Python:
 
 ```bash
-# Option A: One-click launcher
-run_gui.bat
-
-# Option B: Direct Python invocation
+# Direct Python invocation
 python gui.py
 ```
 
@@ -167,7 +164,6 @@ GravityDesk/
 ├── tests/                     # Integration test suite
 │   └── test_server.py         # Security, ConPTY, and endpoint harness
 ├── gui.py                     # Desktop GUI root launcher
-├── run_gui.bat                # Windows 1-click execution batch script
 ├── requirements.txt           # Python package dependencies
 ├── LICENSE                    # MIT Open Source License
 └── AGENTS.md                  # Autonomous agent operational manual
