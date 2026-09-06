@@ -37,6 +37,31 @@
 
 ---
 
+## 📸 Interface Preview
+
+<div align="center">
+
+### 🖥️ Desktop Host Control Center
+*Modern Windows dark-mode dashboard with dynamic QR pairing, hardware vitals, active session management, and instant access revocation.*
+
+<br/>
+<img src="assets/server-view.png" alt="GravityDesk Desktop Control Center" width="850" />
+<br/><br/>
+
+### 📱 Android Companion App
+*Control autonomous agent sessions, monitor Gemini quota limits, switch workspaces, and steer execution with voice or touch.*
+
+<br/>
+
+| **Mobile Dashboard & Engine Telemetry** | **Interactive Terminal & Voice Prompting** |
+|:---:|:---:|
+| <img src="assets/home-view.jpeg" alt="GravityDesk Mobile Home View" width="380" /> | <img src="assets/terminal-view.jpeg" alt="GravityDesk Mobile Terminal View" width="380" /> |
+| *Real-time host vitals & Gemini/Claude quota tracking* | *Zero-lag ConPTY terminal, breadcrumb nav & voice STT* |
+
+</div>
+
+---
+
 ## 🛠️ Tech Stack
 
 | Layer | Technologies |
@@ -155,8 +180,13 @@ All tests execute synchronously against the FastAPI test harness with zero netwo
 
 ```
 GravityDesk/
-├── assets/                    # Brand assets & application logos
-│   └── logo.png               # Official Astro-Orb mascot logo (512x512)
+├── assets/                    # Brand assets, preview banner & UI screenshots
+│   ├── logo.png               # Official Astro-Orb mascot logo (512x512)
+│   ├── logo.ico               # Windows application & taskbar icon
+│   ├── social-preview.png     # Repository social preview banner
+│   ├── server-view.png        # Desktop Control Center screenshot
+│   ├── home-view.jpeg         # Mobile dashboard & quota telemetry screenshot
+│   └── terminal-view.jpeg     # Mobile ConPTY terminal & voice screenshot
 ├── server/                    # Backend daemon bounded context
 │   ├── main.py                # FastAPI app, REST endpoints, WebSocket hub
 │   ├── terminal.py            # Windows ConPTY runner & sequence ring buffer
