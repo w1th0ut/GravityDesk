@@ -16,6 +16,7 @@ interface Props {
   onSendSignal: (signal: string) => void;
   onClearLogs?: () => void;
   onScrollToBottom?: () => void;
+  ffmpegAvailable?: boolean;
 }
 
 export const PromptBar: React.FC<Props> = ({
@@ -23,6 +24,7 @@ export const PromptBar: React.FC<Props> = ({
   onSendSignal,
   onClearLogs,
   onScrollToBottom,
+  ffmpegAvailable,
 }) => {
   const [promptText, setPromptText] = useState("");
   const [inputHeight, setInputHeight] = useState(36);
@@ -35,7 +37,7 @@ export const PromptBar: React.FC<Props> = ({
     startRecording,
     stopRecording,
     resetTranscript,
-  } = useVoiceRecognition("id-ID");
+  } = useVoiceRecognition("id-ID", ffmpegAvailable);
 
   // Sync spoken transcript into prompt bar as soon as transcription completes
   useEffect(() => {

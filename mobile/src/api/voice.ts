@@ -4,7 +4,17 @@ import { apiFetch } from "./client";
 export interface TranscribeResponse {
   status: string;
   transcript: string;
+  error_code?: string;
   message?: string;
+}
+
+export class TranscriptionError extends Error {
+  errorCode?: string;
+  constructor(message: string, errorCode?: string) {
+    super(message);
+    this.name = "TranscriptionError";
+    this.errorCode = errorCode;
+  }
 }
 
 /**
@@ -32,6 +42,10 @@ export async function uploadVoiceAudio(
       ...({ timeoutMs: 30000 } as any),
     }
   );
+
+  if (res?.status === "error") {
+    throw new TranscriptionError(res.message || "Transcription failed", res.error_code);
+  }
 
   return res?.transcript || "";
 }

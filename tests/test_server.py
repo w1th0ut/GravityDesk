@@ -54,6 +54,8 @@ def test_health_authorized_via_query_and_bearer():
         data = res_query.json()
         assert data["status"] == "online"
         assert "cpu_percent" in data
+        assert "ffmpeg_available" in data
+        assert isinstance(data["ffmpeg_available"], bool)
 
         # Test Authorization: Bearer header
         res_bearer = client.get("/api/health", headers={"Authorization": f"Bearer {token}"})
@@ -311,8 +313,22 @@ def test_voice_transcribe_endpoint():
         files = {"file": ("test.wav", b"12345", "audio/wav")}
         res_auth = client.post(f"/api/voice/transcribe?token={token}", files=files)
         assert res_auth.status_code == 200
-        assert res_auth.json()["status"] == "ok"
-        assert res_auth.json()["transcript"] == ""
+
+        # When ffmpeg is missing on host workstation
+        import server.main as main_mod
+        orig_get_ffmpeg = main_mod.get_ffmpeg_bin
+        try:
+            main_mod.get_ffmpeg_bin = lambda: None
+            large_audio = b"0" * 200
+            files_large = {"file": ("test.m4a", large_audio, "audio/m4a")}
+            res_no_ffmpeg = client.post(f"/api/voice/transcribe?token={token}", files=files_large)
+            assert res_no_ffmpeg.status_code == 200
+            res_json = res_no_ffmpeg.json()
+            assert res_json["status"] == "error"
+            assert res_json["error_code"] == "FFMPEG_MISSING"
+            assert "FFmpeg is not installed" in res_json["message"]
+        finally:
+            main_mod.get_ffmpeg_bin = orig_get_ffmpeg
 
 
 def test_antigravity_status_and_refresh():

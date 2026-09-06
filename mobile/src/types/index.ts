@@ -40,6 +40,7 @@ export interface HealthResponse {
   battery: BatteryInfo | null;
   sleep_inhibit_active: boolean;
   antigravity?: AntigravityStatus;
+  ffmpeg_available?: boolean;
 }
 
 export interface Breadcrumb {

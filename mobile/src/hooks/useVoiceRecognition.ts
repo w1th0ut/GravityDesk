@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import { Audio } from "expo-av";
-import { uploadVoiceAudio } from "../api/voice";
+import { uploadVoiceAudio, TranscriptionError } from "../api/voice";
 
 export interface UseVoiceRecognitionReturn {
   isRecording: boolean;
@@ -13,7 +13,18 @@ export interface UseVoiceRecognitionReturn {
   resetTranscript: () => void;
 }
 
-export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognitionReturn {
+const showFfmpegMissingAlert = () => {
+  Alert.alert(
+    "FFmpeg Not Installed",
+    "FFmpeg was not found on your host workstation. Voice transcription requires FFmpeg to convert audio files.\n\nPlease install FFmpeg on the host PC (e.g. 'winget install Gyan.FFmpeg' or add it to PATH) to use voice dictation.",
+    [{ text: "OK" }]
+  );
+};
+
+export function useVoiceRecognition(
+  lang: string = "id-ID",
+  ffmpegAvailable?: boolean
+): UseVoiceRecognitionReturn {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [transcript, setTranscript] = useState<string>("");
@@ -39,6 +50,12 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
 
   const startRecording = useCallback(async () => {
     setTranscript("");
+
+    // Check if host has FFmpeg available before starting native recording
+    if (Platform.OS !== "web" && ffmpegAvailable === false) {
+      showFfmpegMissingAlert();
+      return;
+    }
 
     // 1. Web browser fallback using native SpeechRecognition
     if (
@@ -113,7 +130,7 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
       console.warn("[Voice] Start recording error:", err);
       setIsRecording(false);
     }
-  }, [lang]);
+  }, [lang, ffmpegAvailable]);
 
   const stopRecording = useCallback(async () => {
     setIsRecording(false);
@@ -145,8 +162,20 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
             if (text) {
               setTranscript(text);
             }
-          } catch (uploadErr) {
+          } catch (uploadErr: any) {
             console.warn("[Voice] Upload transcription error:", uploadErr);
+            if (
+              uploadErr?.errorCode === "FFMPEG_MISSING" ||
+              uploadErr?.message?.toLowerCase().includes("ffmpeg")
+            ) {
+              showFfmpegMissingAlert();
+            } else {
+              Alert.alert(
+                "Voice Transcription Failed",
+                uploadErr?.message || "An error occurred while transcribing your voice prompt.",
+                [{ text: "OK" }]
+              );
+            }
           } finally {
             setIsTranscribing(false);
           }

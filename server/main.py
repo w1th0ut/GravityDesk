@@ -303,16 +303,18 @@ class SessionStartRequest(BaseModel):
 
 @app.get("/api/health")
 async def health(_: str = Depends(verify_token)):
-    """Returns laptop telemetry, network state, session status, and Antigravity status."""
+    """Returns laptop telemetry, network state, session status, Antigravity status, and tool availability."""
     vitals = get_system_vitals()
     session_info = hub.to_dict()
     agy_status = agy_monitor.get_status()
+    ffmpeg_bin = get_ffmpeg_bin()
 
     return {
         "status": "online",
         "tailscale_ip": server_ip,
         "active_session": session_info,
         "antigravity": agy_status,
+        "ffmpeg_available": bool(ffmpeg_bin),
         **vitals,
     }
 
@@ -407,8 +409,8 @@ async def stop_session(_: str = Depends(verify_token)):
     return {"status": "no_active_session"}
 
 
-def get_ffmpeg_bin() -> str:
-    """Resolves the ffmpeg executable location on the host system."""
+def get_ffmpeg_bin() -> Optional[str]:
+    """Resolves the ffmpeg executable location on the host system, or None if unavailable."""
     bin_path = shutil.which("ffmpeg")
     if bin_path:
         return bin_path
@@ -417,7 +419,7 @@ def get_ffmpeg_bin() -> str:
         matches = list(winget_guess.glob("**/bin/ffmpeg.exe"))
         if matches:
             return str(matches[0])
-    return "ffmpeg"
+    return None
 
 
 @app.post("/api/voice/transcribe")
@@ -429,15 +431,24 @@ async def transcribe_voice(
     """
     Transcribes audio uploaded from mobile client (e.g. m4a/aac/wav) using ffmpeg and Google Speech Recognition.
     """
+    ffmpeg_bin = get_ffmpeg_bin()
+    if not ffmpeg_bin:
+        return {
+            "status": "error",
+            "error_code": "FFMPEG_MISSING",
+            "message": "FFmpeg is not installed on the host workstation. Voice transcription requires FFmpeg to convert audio. Please install FFmpeg on the host PC (e.g. 'winget install Gyan.FFmpeg' or add it to PATH) to enable voice dictation.",
+            "transcript": "",
+        }
+
     audio_bytes = await file.read()
     if not audio_bytes or len(audio_bytes) < 100:
         return {"status": "ok", "transcript": ""}
 
-    ffmpeg_bin = get_ffmpeg_bin()
     with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp_in:
         tmp_in.write(audio_bytes)
         tmp_in_path = tmp_in.name
 
+    tmp_out_path = tmp_in_path + ".wav"
     create_no_window = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     try:
         proc = subprocess.run(
@@ -448,7 +459,12 @@ async def transcribe_voice(
             creationflags=create_no_window,
         )
         if proc.returncode != 0 or not os.path.exists(tmp_out_path):
-            return {"status": "error", "message": "Audio conversion failed", "transcript": ""}
+            return {
+                "status": "error",
+                "error_code": "CONVERSION_FAILED",
+                "message": "Audio conversion failed during FFmpeg processing.",
+                "transcript": "",
+            }
 
         recognizer = sr.Recognizer()
         with sr.AudioFile(tmp_out_path) as source:
@@ -465,6 +481,13 @@ async def transcribe_voice(
                 text = ""
 
         return {"status": "ok", "transcript": text.strip()}
+    except FileNotFoundError:
+        return {
+            "status": "error",
+            "error_code": "FFMPEG_MISSING",
+            "message": "FFmpeg executable not found on the host system. Please install FFmpeg to enable voice dictation.",
+            "transcript": "",
+        }
     except sr.RequestError as req_err:
         return {"status": "error", "message": f"Speech service unavailable: {req_err}", "transcript": ""}
     except Exception as e:

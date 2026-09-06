@@ -173,6 +173,7 @@ export const TerminalScreen: React.FC<Props> = ({
           terminalRef.current?.scrollToBottom();
         }}
         onScrollToBottom={() => terminalRef.current?.scrollToBottom()}
+        ffmpegAvailable={health?.ffmpeg_available}
       />
 
       {/* Modals */}
