@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo.png" alt="GravityDesk Logo" width="140" height="140" style="border-radius: 28px;" />
+
 # GravityDesk
 
 ### **Self-Hosted Remote Control System for Google Antigravity (`agy`) CLI & Windows Workstations over Tailscale**
