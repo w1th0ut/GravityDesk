@@ -57,7 +57,7 @@
 - **Python**: Version `3.12+` installed and added to `PATH`.
 - **Google Antigravity**: `agy` CLI installed globally and authenticated.
 - **Tailscale**: Installed and signed in on both your Windows PC and your Android phone on the same tailnet.
-- **ffmpeg** *(Optional, for Voice STT)*: Installed and accessible in `PATH` for remote audio transcription.
+- **FFmpeg** *(Optional)*: Required only if you want remote voice-to-text dictation. Typing prompts, running terminal commands, and telemetry work 100% without it.
 
 ### 2. Installation
 
@@ -69,13 +69,34 @@ cd GravityDesk
 pip install -r requirements.txt
 ```
 
+#### *(Optional)* Enable Voice Dictation with FFmpeg
+
+If you want to use the hands-free voice-to-text dictation feature from your Android phone, install FFmpeg on your Windows workstation:
+
+```powershell
+# Option A: Windows Package Manager (WinGet - Recommended)
+winget install Gyan.FFmpeg
+
+# Option B: Chocolatey
+choco install ffmpeg
+
+# Option C: Scoop
+scoop install ffmpeg
+```
+
+> [!NOTE]
+> FFmpeg is **completely optional**. GravityDesk operates normally without it; you will only receive an in-app notice on Android if you attempt to record a voice prompt without FFmpeg installed on the host.
+
 ### 3. Launching the Control Center
 
-Start the Desktop GUI Control Center using the batch launcher or Python:
+Start the Desktop GUI Control Center using the batch script or direct Python:
 
 ```bash
-# Direct Python invocation
+# Option A: Direct Python invocation
 python gui.py
+
+# Option B: Batch launcher
+run_gui.bat
 ```
 
 The GravityDesk Control Center will launch:
