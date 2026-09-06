@@ -104,7 +104,7 @@ The GravityDesk Control Center will launch:
 
 ### 4. Installing & Pairing the Mobile App
 
-1. **Download Android App**: Grab the latest `gravitydesk-v1.0.0.apk` directly from [**GitHub Releases**](https://github.com/w1th0ut/GravityDesk/releases) and install it on your Android phone.
+1. **Download Android App**: Grab the latest `gravitydesk-vx.x.x.apk` directly from [**GitHub Releases**](https://github.com/w1th0ut/GravityDesk/releases) and install it on your Android phone.
 2. **Connect Tailscale**: Ensure both your Windows PC and your Android phone are signed into the same Tailscale network.
 3. **Pair Instantly**:
    - Launch GravityDesk on your phone.
