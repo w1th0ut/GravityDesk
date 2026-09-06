@@ -47,16 +47,22 @@ const RefreshIcon: React.FC<{ color?: string; size?: number }> = ({ color = "#8b
 function formatResetTime(isoStr: string | null | undefined): string {
   if (!isoStr) return "";
   try {
-    const d = new Date(isoStr);
-    const now = new Date();
-    const diffHours = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60));
-    if (diffHours > 0 && diffHours <= 24) {
-      return `Resets in ~${diffHours}h`;
+    const resetTime = new Date(isoStr).getTime();
+    const now = Date.now();
+    const diffMs = resetTime - now;
+
+    if (diffMs <= 0) {
+      return "Resets shortly";
     }
-    if (d.toDateString() === now.toDateString()) {
-      return `Resets ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+
+    const totalMinutes = Math.floor(diffMs / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours > 0) {
+      return `Resets in ${hours}h ${minutes}m`;
     }
-    return `Resets ${d.toLocaleDateString([], { month: "short", day: "numeric" })}`;
+    return `Resets in ${minutes}m`;
   } catch {
     return "";
   }
