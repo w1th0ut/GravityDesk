@@ -215,7 +215,7 @@ def test_device_pairing_and_revocation():
             headers={"X-Device-Id": test_device_id},
         )
         assert blocked_res.status_code == 403
-        assert "dicabut" in blocked_res.json()["detail"].lower()
+        assert "revoked" in blocked_res.json()["detail"].lower()
 
         # 7. Re-pairing the device re-authorizes it seamlessly
         repair_res = client.post(

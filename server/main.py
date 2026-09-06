@@ -81,7 +81,7 @@ def kick_all_device_sockets() -> None:
 
 async def _close_socket_async(ws: WebSocket) -> None:
     try:
-        await ws.send_json({"type": "revoked", "message": "Akses perangkat telah dicabut dari host."})
+        await ws.send_json({"type": "revoked", "message": "Device access has been revoked from host."})
         await ws.close(code=4001, reason="Device Revoked")
     except Exception:
         pass
@@ -176,7 +176,7 @@ def verify_token(
         if is_device_revoked(active_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Akses perangkat telah dicabut",
+                detail="Device access has been revoked",
             )
         if is_device_authorized(active_id):
             touch_device(active_id)
@@ -187,7 +187,7 @@ def verify_token(
             return "master-and-device-authorized"
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Akses perangkat telah dicabut atau belum terdaftar",
+            detail="Device access has been revoked or is not registered",
         )
 
     # Master Token Authentication (when no device ID is provided)
@@ -196,7 +196,7 @@ def verify_token(
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Perangkat belum terdaftar atau token pairing tidak valid. Silakan scan QR Code di laptop.",
+        detail="Device is not registered or pairing token is invalid. Please scan QR Code on desktop.",
     )
 
 
@@ -217,7 +217,7 @@ async def pair_device_endpoint(req: PairDeviceRequest, request: Request):
     if not req.pair_token or not secrets.compare_digest(req.pair_token, server_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token pairing tidak valid",
+            detail="Invalid pairing token",
         )
 
     client_ip = request.client.host if request.client else "127.0.0.1"
@@ -227,7 +227,7 @@ async def pair_device_endpoint(req: PairDeviceRequest, request: Request):
         platform=req.platform or "android",
         ip=client_ip,
     )
-    hub.notify_event(f"Perangkat terhubung: {device['name']} ({device['platform']})")
+    hub.notify_event(f"Device connected: {device['name']} ({device['platform']})")
     return {
         "status": "paired",
         "device": device,
@@ -248,11 +248,11 @@ async def revoke_device_endpoint(req: RevokeDeviceRequest, _: str = Depends(veri
     if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Perangkat tidak ditemukan",
+            detail="Device not found",
         )
 
     kick_device_sockets(req.device_id)
-    hub.notify_event(f"Akses perangkat dicabut: {device['name']}")
+    hub.notify_event(f"Device access revoked: {device['name']}")
     return {"status": "revoked", "device": device}
 
 
@@ -268,9 +268,9 @@ async def rename_device_endpoint(req: RenameDeviceRequest, _: str = Depends(veri
     if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Perangkat tidak ditemukan",
+            detail="Device not found",
         )
-    hub.notify_event(f"Nama perangkat diubah: {device['name']}")
+    hub.notify_event(f"Device renamed: {device['name']}")
     return {"status": "renamed", "device": device}
 
 
@@ -286,9 +286,9 @@ async def delete_device_endpoint(req: DeleteDeviceRequest, _: str = Depends(veri
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Perangkat tidak ditemukan",
+            detail="Device not found",
         )
-    hub.notify_event(f"Perangkat dihapus: {req.device_id[:8]}")
+    hub.notify_event(f"Device deleted: {req.device_id[:8]}")
     return {"status": "deleted", "device_id": req.device_id}
 
 

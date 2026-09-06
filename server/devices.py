@@ -77,7 +77,7 @@ def pair_device(
     """
     now_iso = time.strftime("%Y-%m-%d %H:%M:%S")
     clean_id = device_id.strip()
-    clean_name = name.strip() or f"Perangkat ({clean_id[:6]})"
+    clean_name = name.strip() or f"Device ({clean_id[:6]})"
     clean_platform = platform.strip().lower() or "android"
 
     target_device: Optional[Dict[str, Any]] = None
