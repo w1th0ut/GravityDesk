@@ -36,7 +36,7 @@ GravityDesk is organized as a multi-context monorepo engineered to strict Clean 
 | Subsystem | Root Path | Primary Responsibilities | Domain Reference |
 |---|---|---|---|
 | **Backend Daemon** | `server/` | FastAPI REST/WebSocket endpoints, ConPTY runner, Tailscale resolver, process supervisor, system vitals, sleep inhibitor. | `server/main.py` |
-| **Desktop Control Center** | `gui.py`, `server/gui.py` | Modern Tkinter desktop dashboard, dynamic QR Code pairing, 1-click token copy, workspace directory picker, Instant Access Revocation. | `server/gui.py` |
+| **Desktop Control Center** | `app.py`, `server/gui.py` | Modern Tkinter desktop dashboard, dynamic QR Code pairing, 1-click token copy, workspace directory picker, Instant Access Revocation. | `server/gui.py` |
 | **Mobile Client** | `mobile/` | React Native (Expo) TypeScript application, Android native voice dictation, virtualized ANSI terminal renderer. | `mobile/src/screens/TerminalScreen.tsx` |
 | **Integration Tests** | `tests/` | End-to-end security, token entropy, ConPTY lifecycle, and endpoint contracts. | `tests/test_server.py` |
 
@@ -48,8 +48,8 @@ When operating within this codebase, all autonomous agents **MUST** comply with 
 
 1. **NEVER RUN `python -m server.main` AUTONOMOUSLY**:
    - The user or the Desktop GUI runs the live server daemon. Do not launch background instances of `server.main` as it binds port 8000 and interferes with the user's active session.
-2. **LAUNCHING THE DESKTOP GUI**:
-   - Use `python gui.py` or execute `run_gui.bat`.
+2. **LAUNCHING THE APPLICATION**:
+   - Use `python app.py` (Desktop GUI) or `python app.py --headless` (CLI mode).
 3. **RUNNING VERIFICATION & TESTS**:
    - Execute tests using `python -m tests.test_server` or `python -m pytest`.
    - Never consider a feature or refactor complete without verifying that all tests pass with exit code 0.

@@ -118,7 +118,7 @@ Start the Desktop GUI Control Center using Python:
 
 ```bash
 # Direct Python invocation
-python gui.py
+python app.py
 ```
 
 The GravityDesk Control Center will launch:
@@ -208,7 +208,7 @@ GravityDesk/
 │       └── types/             # Domain TypeScript interfaces
 ├── tests/                     # Integration test suite
 │   └── test_server.py         # Security, ConPTY, and endpoint harness
-├── gui.py                     # Desktop GUI root launcher
+├── app.py                     # Unified application launcher (GUI & Headless)
 ├── requirements.txt           # Python package dependencies
 ├── LICENSE                    # MIT Open Source License
 └── AGENTS.md                  # Autonomous agent operational manual
