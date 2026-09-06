@@ -232,13 +232,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#141414",
     borderBottomWidth: 1,
     borderBottomColor: "#262626",
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 10,
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   headerBanner: {
-    gap: 2,
+    paddingBottom: 14,
   },
   headerTitle: {
     fontSize: 20,
@@ -249,16 +248,16 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     color: "#8b949e",
-    marginTop: 1,
+    marginTop: 2,
   },
   separator: {
     height: 1,
     backgroundColor: "#262626",
-    marginVertical: 2,
   },
   chipsRow: {
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
+    marginTop: 12,
   },
   folderChip: {
     flex: 1,
@@ -266,8 +265,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#262626",
     borderRadius: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     flexDirection: "row",
     alignItems: "center",
   },
