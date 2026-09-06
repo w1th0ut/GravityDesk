@@ -105,14 +105,30 @@ The GravityDesk Control Center will launch:
 3. Renders a high-contrast **QR Code** directly in the desktop window.
 4. Starts the background FastAPI server on port `8000`.
 
-### 4. Pairing from Mobile
+### 4. Running & Pairing the Mobile App
 
-1. Open your Android device camera or mobile browser.
-2. Scan the QR code shown on your laptop desktop screen.
-3. The GravityDesk companion app will connect:
-   - Displays real-time **CPU, RAM, and Battery** vitals.
-   - Shows active **Antigravity Model & Quota Limits** with live reset countdowns.
-   - Allows instant workspace switching and conversation resumption.
+You can run the mobile companion on your Android device using **Expo Go** (instant development) or by building a standalone **APK**:
+
+#### Option A: Running via Expo Go (Quickest)
+1. Install **Expo Go** from the Google Play Store on your Android phone.
+2. Ensure both your Windows workstation and Android phone have **Tailscale active** on the same tailnet.
+3. Start the mobile Metro bundler:
+   ```bash
+   cd mobile
+   npm install
+   npm start
+   ```
+4. Scan the Metro terminal QR code with your phone camera or Expo Go to load GravityDesk.
+5. In GravityDesk on your phone, tap **Scan QR** and point your camera at the **MOBILE PAIRING** QR code displayed in the Desktop GUI.
+
+#### Option B: Standalone APK
+You can generate a standalone Android APK using EAS Build:
+```bash
+cd mobile
+npx eas-cli build -p android --profile preview
+```
+
+Once paired, your Android device automatically connects with sub-50ms latency over your secure Tailscale WireGuard mesh!
 
 ---
 
