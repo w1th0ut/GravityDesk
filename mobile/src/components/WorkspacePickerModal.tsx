@@ -84,6 +84,22 @@ export const WorkspacePickerModal: React.FC<Props> = ({
     }
   };
 
+  const handleDirectSelect = async (targetPath: string) => {
+    if (!targetPath) return;
+    setSelecting(true);
+    try {
+      await selectWorkspaceApi(targetPath);
+      onSelectWorkspace(targetPath);
+      onClose();
+    } catch (err) {
+      console.warn("Failed to select workspace on host:", err);
+      onSelectWorkspace(targetPath);
+      onClose();
+    } finally {
+      setSelecting(false);
+    }
+  };
+
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -166,17 +182,26 @@ export const WorkspacePickerModal: React.FC<Props> = ({
                 </View>
               ) : data?.entries && data.entries.length > 0 ? (
                 data.entries.map((entry, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={styles.folderRow}
-                    onPress={() => loadData(entry.path)}
-                    activeOpacity={0.7}
-                  >
-                    <FolderEntryIcon color="#58a6ff" size={14} />
-                    <Text style={styles.folderName} numberOfLines={1}>
-                      {entry.name}
-                    </Text>
-                  </TouchableOpacity>
+                  <View key={idx} style={styles.folderRowWrapper}>
+                    <TouchableOpacity
+                      style={styles.folderRowMain}
+                      onPress={() => handleDirectSelect(entry.path)}
+                      activeOpacity={0.7}
+                    >
+                      <FolderEntryIcon color="#58a6ff" size={14} />
+                      <Text style={styles.folderName} numberOfLines={1}>
+                        {entry.name}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.openSubBtn}
+                      onPress={() => loadData(entry.path)}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Text style={styles.openSubText}>Browse ›</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))
               ) : (
                 <Text style={styles.emptyText}>No accessible subdirectories</Text>
@@ -195,7 +220,11 @@ export const WorkspacePickerModal: React.FC<Props> = ({
               {selecting ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.selectBtnText}>Select This Folder</Text>
+                <Text style={styles.selectBtnText}>
+                  {currentNavPath
+                    ? `Select: ${currentNavPath.split(/[\\/]/).filter(Boolean).pop() || currentNavPath}`
+                    : "Select This Folder"}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -304,14 +333,36 @@ const styles = StyleSheet.create({
     color: "#58a6ff",
     fontFamily: "monospace",
   },
-  folderRow: {
+  folderRowWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+    backgroundColor: "#1c1c1c",
+    borderRadius: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "#262626",
+    overflow: "hidden",
+  },
+  folderRowMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 8,
+  },
+  openSubBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginRight: 6,
+    backgroundColor: "#262626",
     borderRadius: 4,
-    gap: 6,
-    marginBottom: 2,
+  },
+  openSubText: {
+    fontFamily: "monospace",
+    fontSize: 10,
+    color: "#8b949e",
+    fontWeight: "600",
   },
   folderName: {
     fontSize: 12,

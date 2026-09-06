@@ -49,6 +49,9 @@ interface Props {
   refreshVitals: () => Promise<void>;
 }
 
+let savedWorkspace = "";
+let savedFolderName = "Select Folder";
+
 export const TerminalScreen: React.FC<Props> = ({
   health,
   isConnected,
@@ -62,17 +65,34 @@ export const TerminalScreen: React.FC<Props> = ({
 }) => {
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [showConvoModal, setShowConvoModal] = useState(false);
-  const [activeWorkspace, setActiveWorkspace] = useState<string>("");
-  const [selectedFolderName, setSelectedFolderName] = useState<string>("Select Folder");
+  const [activeWorkspace, setActiveWorkspace] = useState<string>(savedWorkspace);
+  const [selectedFolderName, setSelectedFolderName] = useState<string>(savedFolderName);
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
   const [activeConvoName, setActiveConvoName] = useState<string>("Resume Chat");
   const terminalRef = useRef<TerminalViewRef>(null);
 
+  const handleWorkspaceChange = useCallback((path: string) => {
+    if (!path) return;
+    setActiveWorkspace(path);
+    savedWorkspace = path;
+    const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
+    setSelectedFolderName(name);
+    savedFolderName = name;
+  }, []);
+
   useEffect(() => {
-    if (health?.active_session?.cwd && !activeWorkspace) {
-      setActiveWorkspace(health.active_session.cwd);
+    if (health?.active_session?.cwd) {
+      if (!savedWorkspace) {
+        setActiveWorkspace(health.active_session.cwd);
+        savedWorkspace = health.active_session.cwd;
+      }
+      if (health.active_session.is_alive && savedFolderName === "Select Folder") {
+        const name = health.active_session.cwd.split(/[\\/]/).filter(Boolean).pop() || health.active_session.cwd;
+        setSelectedFolderName(name);
+        savedFolderName = name;
+      }
     }
-  }, [health, activeWorkspace]);
+  }, [health]);
 
   useEffect(() => {
     if (isConnected) {
@@ -167,11 +187,7 @@ export const TerminalScreen: React.FC<Props> = ({
         visible={showWorkspaceModal}
         activePath={activeWorkspace}
         onClose={() => setShowWorkspaceModal(false)}
-        onSelectWorkspace={(path) => {
-          setActiveWorkspace(path);
-          const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
-          setSelectedFolderName(name);
-        }}
+        onSelectWorkspace={handleWorkspaceChange}
       />
 
       <ConversationPickerModal
@@ -183,9 +199,7 @@ export const TerminalScreen: React.FC<Props> = ({
           const label = summary || (id ? (id === "new" ? "New Chat" : `Chat ${id.slice(0, 8)}`) : "New Chat");
           setActiveConvoName(label);
           if (wsPath) {
-            setActiveWorkspace(wsPath);
-            const name = wsPath.split(/[\\/]/).filter(Boolean).pop() || wsPath;
-            setSelectedFolderName(name);
+            handleWorkspaceChange(wsPath);
           }
           refreshVitals();
         }}
