@@ -11,6 +11,12 @@ os.environ["GRAVITYDESK_GUI"] = "1"
 
 if __name__ == "__main__":
     try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("w1th0ut.gravitydesk.controlcenter.1.0")
+    except Exception:
+        pass
+
+    try:
         sys.stdout = open(os.devnull, "w", encoding="utf-8")
     except Exception:
         pass

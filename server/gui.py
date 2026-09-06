@@ -44,13 +44,43 @@ C_WARNING = "#d29922"
 C_INPUT_BG = "#040d21"
 
 
+def ensure_app_icon() -> tuple[Optional[str], Optional[str]]:
+    """Ensures logo.ico and logo.png paths exist for window & taskbar icon setup."""
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    assets_dir = os.path.join(project_root, "assets")
+    ico_path = os.path.join(assets_dir, "logo.ico")
+    png_path = os.path.join(assets_dir, "logo.png")
+
+    if not os.path.exists(ico_path) and os.path.exists(png_path):
+        try:
+            img = Image.open(png_path)
+            icon_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+            img.save(ico_path, format="ICO", sizes=icon_sizes)
+        except Exception:
+            pass
+
+    return (ico_path if os.path.exists(ico_path) else None,
+            png_path if os.path.exists(png_path) else None)
+
+
 class GravityDeskGUI:
     def __init__(self, root: tk.Tk):
+        # Set Windows AppUserModelID so Windows taskbar treats this as a distinct app
+        # and displays our custom icon instead of the default Python / cmd icon
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("w1th0ut.gravitydesk.controlcenter.1.0")
+        except Exception:
+            pass
+
         self.root = root
         self.root.title("GravityDesk — Server & Pairing Control")
         self.root.geometry("960x760")
         self.root.minsize(900, 700)
         self.root.configure(bg=C_BG)
+
+        # Apply Astro-Orb icon (replaces Tkinter feather on title bar and Python icon on taskbar)
+        self._apply_app_icon()
 
         # Server state
         self.server: Optional[uvicorn.Server] = None
@@ -84,6 +114,26 @@ class GravityDeskGUI:
         # Start background telemetry polling
         self.root.after(1000, self._poll_telemetry)
 
+    def _apply_app_icon(self):
+        """Sets custom Astro-Orb icon on window title bar and Windows taskbar."""
+        ico_path, png_path = ensure_app_icon()
+        if ico_path:
+            try:
+                self.root.iconbitmap(default=ico_path)
+            except Exception:
+                try:
+                    self.root.iconbitmap(ico_path)
+                except Exception:
+                    pass
+
+        if png_path:
+            try:
+                self._app_icon_image = Image.open(png_path)
+                self._app_icon_photo = ImageTk.PhotoImage(self._app_icon_image)
+                self.root.iconphoto(True, self._app_icon_photo)
+            except Exception:
+                pass
+
     def _setup_styles(self):
         style = ttk.Style()
         style.theme_use("clam")
@@ -93,12 +143,25 @@ class GravityDeskGUI:
         header_frame = tk.Frame(self.root, bg=C_CARD, highlightthickness=1, highlightbackground=C_BORDER)
         header_frame.pack(fill=tk.X, padx=14, pady=(12, 6))
 
-        # Brand / Title
+        # Brand / Title with Astro-Orb Logo
         brand_frame = tk.Frame(header_frame, bg=C_CARD)
         brand_frame.pack(side=tk.LEFT, padx=14, pady=10)
 
+        _, png_path = ensure_app_icon()
+        if png_path:
+            try:
+                raw_logo = Image.open(png_path).resize((38, 38), Image.Resampling.LANCZOS)
+                self._header_logo_tk = ImageTk.PhotoImage(raw_logo)
+                logo_lbl = tk.Label(brand_frame, image=self._header_logo_tk, bg=C_CARD)
+                logo_lbl.pack(side=tk.LEFT, padx=(0, 10))
+            except Exception:
+                pass
+
+        text_frame = tk.Frame(brand_frame, bg=C_CARD)
+        text_frame.pack(side=tk.LEFT)
+
         title_lbl = tk.Label(
-            brand_frame,
+            text_frame,
             text="GravityDesk",
             font=("Segoe UI", 15, "bold"),
             fg=C_TEXT,
@@ -107,7 +170,7 @@ class GravityDeskGUI:
         title_lbl.pack(anchor="w")
 
         sub_lbl = tk.Label(
-            brand_frame,
+            text_frame,
             text="Antigravity (CLI) Remote Bridge",
             font=("Segoe UI", 9),
             fg=C_MUTED,
@@ -731,6 +794,12 @@ class GravityDeskGUI:
 
 
 def main():
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("w1th0ut.gravitydesk.controlcenter.1.0")
+    except Exception:
+        pass
+
     root = tk.Tk()
     app_gui = GravityDeskGUI(root)
     root.mainloop()
