@@ -102,30 +102,14 @@ The GravityDesk Control Center will launch:
 3. Renders a high-contrast **QR Code** directly in the desktop window.
 4. Starts the background FastAPI server on port `8000`.
 
-### 4. Running & Pairing the Mobile App
+### 4. Installing & Pairing the Mobile App
 
-You can run the mobile companion on your Android device using **Expo Go** (instant development) or by building a standalone **APK**:
-
-#### Option A: Running via Expo Go (Quickest)
-1. Install **Expo Go** from the Google Play Store on your Android phone.
-2. Ensure both your Windows workstation and Android phone have **Tailscale active** on the same tailnet.
-3. Start the mobile Metro bundler:
-   ```bash
-   cd mobile
-   npm install
-   npm start
-   ```
-4. Scan the Metro terminal QR code with your phone camera or Expo Go to load GravityDesk.
-5. In GravityDesk on your phone, tap **Scan QR** and point your camera at the **MOBILE PAIRING** QR code displayed in the Desktop GUI.
-
-#### Option B: Standalone APK
-You can generate a standalone Android APK using EAS Build:
-```bash
-cd mobile
-npx eas-cli build -p android --profile preview
-```
-
-Once paired, your Android device automatically connects with sub-50ms latency over your secure Tailscale WireGuard mesh!
+1. **Download Android App**: Grab the latest `gravitydesk-v1.0.0.apk` directly from [**GitHub Releases**](https://github.com/w1th0ut/GravityDesk/releases) and install it on your Android phone.
+2. **Connect Tailscale**: Ensure both your Windows PC and your Android phone are signed into the same Tailscale network.
+3. **Pair Instantly**:
+   - Launch GravityDesk on your phone.
+   - Tap **Scan QR** and scan the **MOBILE PAIRING** QR code displayed in your Desktop GUI.
+   - You are connected instantly with sub-50ms latency over your private WireGuard mesh tunnel!
 
 ---
 
@@ -135,7 +119,7 @@ GravityDesk is engineered with institutional-grade security principles for remot
 
 - **Private WireGuard Mesh**: The server binds exclusively within your private Tailscale network (`100.x.y.z`). No ports are forwarded to the public internet, completely eliminating external attack surfaces.
 - **Cryptographic Token Handshake**: Authentication requires a 256-bit token generated via Python's `secrets.token_hex(32)`. Requests are validated using constant-time comparison (`hmac.compare_digest`) to protect against side-channel timing attacks.
-- **Instant Revocation**: Compromised your phone or lost access? Tap **🚫 Revoke Access** in the Desktop GUI. GravityDesk generates a new 256-bit secret, overwrites `.env`, and invalidates all existing sessions immediately.
+- **Instant Revocation**: Compromised your phone or lost access? Tap **🚫 Reset Pairing Token** in the Desktop GUI. GravityDesk generates a new 256-bit secret, overwrites `.env`, and invalidates all existing sessions immediately.
 - **Binary Allowlist**: Spawning arbitrary executables is prohibited. Only pre-vetted shells (`cmd.exe`, `powershell.exe`) and Google Antigravity (`agy.exe`) are permitted.
 - **Path Traversal Protection**: Folder browsing requests are sanitized via `os.path.realpath`, validating paths against physical drive roots (`C:\`, `D:\`) to block traversal exploits.
 - **Headless Process Sandboxing**: Background executions run with `CREATE_NO_WINDOW` and concurrency mutex locks to prevent desktop UI disruption and runaway process cascades.
