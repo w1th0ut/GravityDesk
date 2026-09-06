@@ -425,13 +425,14 @@ async def transcribe_voice(
         tmp_in.write(audio_bytes)
         tmp_in_path = tmp_in.name
 
-    tmp_out_path = tmp_in_path + ".wav"
+    create_no_window = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     try:
         proc = subprocess.run(
             [ffmpeg_bin, "-y", "-i", tmp_in_path, "-ac", "1", "-ar", "16000", "-f", "wav", tmp_out_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=15,
+            creationflags=create_no_window,
         )
         if proc.returncode != 0 or not os.path.exists(tmp_out_path):
             return {"status": "error", "message": "Audio conversion failed", "transcript": ""}

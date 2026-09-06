@@ -332,6 +332,14 @@ class SessionHub:
             self.active_session.write(data)
             return
 
+        # Prevent duplicate subprocesses from spamming when one is already actively executing
+        if self.running_subprocess and self.running_subprocess.poll() is None:
+            self.broadcast_chunk(
+                "\r\x1b[33mAGY>\x1b[0m A command or prompt is already executing. "
+                "Please wait or press Ctrl+C to cancel.\r\n\x1b[32mprompt>\x1b[0m "
+            )
+            return
+
         # 3. Built-in navigation / shell helpers
         SHELL_CMDS = ("dir", "cls", "mkdir ", "rmdir ", "del ", "git ", "npm ", "node ", "python ", "cat ", "type ", "curl ")
         cmd_lower = clean_text.lower()
@@ -395,6 +403,7 @@ class SessionHub:
             "--output-format",
             "text",
         ])
+        create_no_window = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -405,6 +414,7 @@ class SessionHub:
                 encoding="utf-8",
                 errors="replace",
                 bufsize=1,
+                creationflags=create_no_window,
             )
             self.running_subprocess = proc
             for line in proc.stdout:
@@ -418,6 +428,7 @@ class SessionHub:
 
     def _run_shell_cmd(self, cmd_text: str, cwd: str) -> None:
         """Executes standard shell command and streams stdout."""
+        create_no_window = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         try:
             proc = subprocess.Popen(
                 f"cmd.exe /c {cmd_text}",
@@ -428,6 +439,7 @@ class SessionHub:
                 encoding="utf-8",
                 errors="replace",
                 bufsize=1,
+                creationflags=create_no_window,
             )
             self.running_subprocess = proc
             for line in proc.stdout:
