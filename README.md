@@ -89,14 +89,11 @@ scoop install ffmpeg
 
 ### 3. Launching the Control Center
 
-Start the Desktop GUI Control Center using the batch script or direct Python:
+Start the Desktop GUI Control Center using Python:
 
 ```bash
-# Option A: Direct Python invocation
+# Direct Python invocation
 python gui.py
-
-# Option B: Batch launcher
-run_gui.bat
 ```
 
 The GravityDesk Control Center will launch:
