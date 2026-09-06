@@ -14,3 +14,4 @@ android/
 ios/
 build_apk.bat
 *.apk
+RELEASE_NOTES.md
