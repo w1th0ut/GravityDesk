@@ -3,11 +3,24 @@ import { Platform } from "react-native";
 import { Audio } from "expo-av";
 import { uploadVoiceAudio } from "../api/voice";
 
+// Safely resolve ExpoSpeechRecognitionModule when compiled in native build
+let ExpoSpeechRecognitionModule: any = null;
+let addSpeechRecognitionListener: any = null;
+
+try {
+  const SpeechMod = require("expo-speech-recognition");
+  ExpoSpeechRecognitionModule = SpeechMod.ExpoSpeechRecognitionModule;
+  addSpeechRecognitionListener = SpeechMod.addSpeechRecognitionListener;
+} catch {
+  // Not available in standard Expo Go or unlinked environment
+}
+
 export interface UseVoiceRecognitionReturn {
   isRecording: boolean;
   isTranscribing: boolean;
   transcript: string;
   isAvailable: boolean;
+  isRealtime: boolean;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   resetTranscript: () => void;
@@ -20,10 +33,28 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const webRecRef = useRef<any>(null);
+  const listenersRef = useRef<any[]>([]);
+  const finalTranscriptRef = useRef<string>("");
+  const activeEngineRef = useRef<"native" | "web" | "fallback" | null>(null);
 
-  // Clean up any lingering recording handles on unmount
+  const cleanupListeners = useCallback(() => {
+    listenersRef.current.forEach((sub) => {
+      try {
+        sub?.remove?.();
+      } catch {}
+    });
+    listenersRef.current = [];
+  }, []);
+
+  // Clean up any lingering handles on unmount
   useEffect(() => {
     return () => {
+      cleanupListeners();
+      if (ExpoSpeechRecognitionModule) {
+        try {
+          ExpoSpeechRecognitionModule.abort();
+        } catch {}
+      }
       if (recordingRef.current) {
         recordingRef.current.stopAndUnloadAsync().catch(() => {});
         recordingRef.current = null;
@@ -35,12 +66,63 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
         webRecRef.current = null;
       }
     };
-  }, []);
+  }, [cleanupListeners]);
 
   const startRecording = useCallback(async () => {
     setTranscript("");
+    finalTranscriptRef.current = "";
+    cleanupListeners();
 
-    // 1. Web browser fallback using native SpeechRecognition
+    // 1. Native Speech Recognition (available in standalone Android/iOS build)
+    if (ExpoSpeechRecognitionModule && addSpeechRecognitionListener) {
+      try {
+        const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        if (perm.granted) {
+          activeEngineRef.current = "native";
+          setIsRecording(true);
+
+          const resultSub = addSpeechRecognitionListener("result", (event: any) => {
+            const currentHypothesis = event.results?.[0]?.transcript || "";
+            if (event.isFinal) {
+              const prev = finalTranscriptRef.current;
+              const updated = prev ? `${prev} ${currentHypothesis}` : currentHypothesis;
+              finalTranscriptRef.current = updated;
+              setTranscript(updated);
+            } else {
+              const prev = finalTranscriptRef.current;
+              const combined = prev ? `${prev} ${currentHypothesis}` : currentHypothesis;
+              setTranscript(combined);
+            }
+          });
+
+          const endSub = addSpeechRecognitionListener("end", () => {
+            setIsRecording(false);
+            cleanupListeners();
+          });
+
+          const errSub = addSpeechRecognitionListener("error", (err: any) => {
+            console.warn("[Voice Native] Error:", err);
+            setIsRecording(false);
+            cleanupListeners();
+          });
+
+          listenersRef.current = [resultSub, endSub, errSub];
+
+          await ExpoSpeechRecognitionModule.start({
+            lang: lang,
+            interimResults: true,
+            continuous: true,
+          });
+
+          return;
+        }
+      } catch (nativeErr) {
+        console.warn("[Voice] Native speech recognition failed to start, falling back:", nativeErr);
+        cleanupListeners();
+      }
+    }
+
+    // 2. Web browser fallback using native SpeechRecognition
     if (
       Platform.OS === "web" ||
       (typeof window !== "undefined" &&
@@ -50,6 +132,7 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
         const SpeechAPI =
           (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (SpeechAPI) {
+          activeEngineRef.current = "web";
           const rec = new SpeechAPI();
           rec.continuous = true;
           rec.interimResults = true;
@@ -84,8 +167,9 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
       }
     }
 
-    // 2. Native Android / iOS Audio Recording via expo-av
+    // 3. Fallback: Audio recording via expo-av with server transcription
     try {
+      activeEngineRef.current = "fallback";
       const perm = await Audio.requestPermissionsAsync();
       if (!perm.granted) {
         console.warn("[Voice] Microphone permission not granted");
@@ -110,16 +194,25 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
       recordingRef.current = recording;
       setIsRecording(true);
     } catch (err) {
-      console.warn("[Voice] Start recording error:", err);
+      console.warn("[Voice] Fallback audio record error:", err);
       setIsRecording(false);
     }
-  }, [lang]);
+  }, [lang, cleanupListeners]);
 
   const stopRecording = useCallback(async () => {
     setIsRecording(false);
 
-    // Stop web recognition if active
-    if (webRecRef.current) {
+    // Stop Native Speech Recognition if active
+    if (activeEngineRef.current === "native" && ExpoSpeechRecognitionModule) {
+      try {
+        await ExpoSpeechRecognitionModule.stop();
+      } catch {}
+      cleanupListeners();
+      return;
+    }
+
+    // Stop Web Recognition if active
+    if (activeEngineRef.current === "web" && webRecRef.current) {
       try {
         webRecRef.current.stop();
       } catch {}
@@ -127,6 +220,7 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
       return;
     }
 
+    // Fallback: Finalize expo-av and upload to server
     const rec = recordingRef.current;
     recordingRef.current = null;
 
@@ -156,10 +250,11 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
         setIsTranscribing(false);
       }
     }
-  }, [lang]);
+  }, [lang, cleanupListeners]);
 
   const resetTranscript = useCallback(() => {
     setTranscript("");
+    finalTranscriptRef.current = "";
   }, []);
 
   return {
@@ -167,6 +262,7 @@ export function useVoiceRecognition(lang: string = "id-ID"): UseVoiceRecognition
     isTranscribing,
     transcript,
     isAvailable: true,
+    isRealtime: !!ExpoSpeechRecognitionModule || Platform.OS === "web",
     startRecording,
     stopRecording,
     resetTranscript,

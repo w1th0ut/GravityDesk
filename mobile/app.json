@@ -32,6 +32,17 @@
     "plugins": [
       "expo-asset",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow GravityDesk to use microphone for speech recognition.",
+          "speechRecognitionPermission": "Allow GravityDesk to use speech recognition.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox",
+            "com.samsung.android.bixby.agent"
+          ]
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

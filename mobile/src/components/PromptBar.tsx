@@ -32,20 +32,20 @@ export const PromptBar: React.FC<Props> = ({
     isRecording,
     isTranscribing,
     transcript,
+    isRealtime,
     startRecording,
     stopRecording,
     resetTranscript,
   } = useVoiceRecognition("id-ID");
 
-  // Sync spoken transcript into prompt bar as soon as transcription completes
+  // Sync spoken transcript into prompt bar in REAL-TIME as user speaks
   useEffect(() => {
     if (transcript) {
       const prefix = prefixTextRef.current;
       const combined = prefix ? `${prefix} ${transcript}` : transcript;
       setPromptText(combined);
-      resetTranscript();
     }
-  }, [transcript, resetTranscript]);
+  }, [transcript]);
 
   const handleSend = () => {
     const trimmed = promptText.trim();
@@ -130,7 +130,9 @@ export const PromptBar: React.FC<Props> = ({
           }}
           placeholder={
             isRecording
-              ? "Listening... Tap mic again to finish"
+              ? isRealtime
+                ? "Listening in real-time..."
+                : "Listening... Tap mic again to finish"
               : isTranscribing
               ? "Transcribing voice to text..."
               : "Type message or command..."
