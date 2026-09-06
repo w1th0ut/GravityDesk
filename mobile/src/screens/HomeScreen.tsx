@@ -275,25 +275,19 @@ export const HomeScreen: React.FC<Props> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Active Model Card */}
-          <View style={styles.modelCard}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.telemetryLabel}>Active Model</Text>
-              <Text style={styles.modelNameText} numberOfLines={1}>
-                {health?.antigravity?.model || "Gemini 3.8 Flash (High)"}
-              </Text>
-            </View>
-            <View style={styles.modelActiveBadge}>
-              <View style={styles.activeDot} />
-              <Text style={styles.modelActiveBadgeText}>ACTIVE</Text>
-            </View>
+          {/* Active Model */}
+          <View style={styles.modelRow}>
+            <Text style={styles.telemetryLabel}>Active Model</Text>
+            <Text style={styles.modelNameText} numberOfLines={1}>
+              {health?.antigravity?.model || "Gemini 3.8 Flash (High)"}
+            </Text>
           </View>
 
           {/* Usage Limit Bars */}
           {health?.antigravity?.usage?.gemini && (
             <View style={styles.quotaContainer}>
               {/* 5-Hour Limit */}
-              <View style={styles.quotaCard}>
+              <View style={styles.quotaItem}>
                 <View style={styles.quotaHeader}>
                   <Text style={styles.quotaTitle}>Gemini 5-Hour Session Limit</Text>
                   <Text
@@ -326,7 +320,7 @@ export const HomeScreen: React.FC<Props> = ({
               </View>
 
               {/* Weekly Limit */}
-              <View style={styles.quotaCard}>
+              <View style={styles.quotaItem}>
                 <View style={styles.quotaHeader}>
                   <Text style={styles.quotaTitle}>Gemini Weekly Quota Limit</Text>
                   <Text
@@ -363,7 +357,7 @@ export const HomeScreen: React.FC<Props> = ({
                 <View style={styles.claudeGptRow}>
                   <Text style={styles.claudeGptLabel}>Claude & GPT Models</Text>
                   <Text style={styles.claudeGptValue}>
-                    {health.antigravity.usage.claude_gpt.hourly_percent}% (5h) · {health.antigravity.usage.claude_gpt.weekly_percent}% (wk)
+                    {health.antigravity.usage.claude_gpt.hourly_percent}% (5h) · {health.antigravity.usage.claude_gpt.weekly_percent}% (weekly)
                   </Text>
                 </View>
               )}
@@ -637,55 +631,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  modelCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#1e1e1e",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#262626",
+  modelRow: {
+    paddingVertical: 2,
   },
   modelNameText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "700",
     color: "#ffffff",
     marginTop: 2,
   },
-  modelActiveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(63, 185, 80, 0.15)",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(63, 185, 80, 0.3)",
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#3fb950",
-  },
-  modelActiveBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#3fb950",
-    letterSpacing: 0.5,
-  },
   quotaContainer: {
-    gap: 8,
-    marginTop: 2,
+    gap: 12,
+    marginTop: 4,
   },
-  quotaCard: {
-    backgroundColor: "#1e1e1e",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#262626",
+  quotaItem: {
     gap: 6,
   },
   quotaHeader: {
@@ -704,7 +663,7 @@ const styles = StyleSheet.create({
   },
   barTrack: {
     height: 6,
-    backgroundColor: "#2d333b",
+    backgroundColor: "#262626",
     borderRadius: 3,
     overflow: "hidden",
   },
@@ -721,8 +680,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 2,
-    marginTop: 2,
+    paddingTop: 4,
   },
   claudeGptLabel: {
     fontSize: 11,
