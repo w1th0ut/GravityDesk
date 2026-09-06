@@ -315,6 +315,37 @@ def test_voice_transcribe_endpoint():
         assert res_auth.json()["transcript"] == ""
 
 
+def test_antigravity_status_and_refresh():
+    from server.antigravity import parse_usage_output
+    tsv = (
+        "Gemini Models\tWeekly Limit Remaining\t45%\t2026-09-11T16:52:33Z\n"
+        "Gemini Models\tFive Hour Limit Remaining\t85%\t2026-09-06T17:20:53Z\n"
+        "Claude and GPT models\tWeekly Limit Remaining\t100%\t2026-09-13T13:08:57Z\n"
+        "Claude and GPT models\tFive Hour Limit Remaining\t100%\t2026-09-06T18:08:57Z\n"
+    )
+    parsed = parse_usage_output(tsv)
+    assert parsed["gemini"]["hourly_percent"] == 85
+    assert parsed["gemini"]["weekly_percent"] == 45
+    assert parsed["claude_gpt"]["hourly_percent"] == 100
+
+    token = get_or_create_token()
+    with TestClient(app) as client:
+        # Health includes antigravity telemetry
+        res = client.get(f"/api/health?token={token}")
+        assert res.status_code == 200
+        data = res.json()
+        assert "antigravity" in data
+        assert "model" in data["antigravity"]
+        assert "usage" in data["antigravity"]
+
+        # Refresh endpoint works
+        res_ref = client.post(f"/api/antigravity/refresh?token={token}")
+        assert res_ref.status_code == 200
+        ref_data = res_ref.json()
+        assert "model" in ref_data
+        assert "usage" in ref_data
+
+
 if __name__ == "__main__":
     print("Running Hardened Architecture & Security Test Suite...")
     test_token_entropy()
@@ -339,5 +370,7 @@ if __name__ == "__main__":
     print("[PASS] test_device_pairing_and_revocation (Device pairing, revocation & re-pairing)")
     test_voice_transcribe_endpoint()
     print("[PASS] test_voice_transcribe_endpoint (Voice transcription auth & payload processing)")
+    test_antigravity_status_and_refresh()
+    print("[PASS] test_antigravity_status_and_refresh (Antigravity telemetry & usage refresh)")
     print("\nALL HARDENED INTEGRATION TESTS PASSED WITH ZERO ERRORS! 🚀")
 

@@ -14,8 +14,60 @@ import {
   getOrCreateDeviceId,
   getDeviceName,
 } from "../storage/credentials";
-import { pairDeviceApi } from "../api/health";
+import { pairDeviceApi, refreshAntigravityUsageApi } from "../api/health";
 import { QRScannerModal } from "../components/QRScannerModal";
+import Svg, { Path } from "react-native-svg";
+
+const RefreshIcon: React.FC<{ color?: string; size?: number }> = ({ color = "#8b949e", size = 15 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M23 4v6h-6"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M1 20v-6h6"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+function formatResetTime(isoStr: string | null | undefined): string {
+  if (!isoStr) return "";
+  try {
+    const d = new Date(isoStr);
+    const now = new Date();
+    const diffHours = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60));
+    if (diffHours > 0 && diffHours <= 24) {
+      return `Resets in ~${diffHours}h`;
+    }
+    if (d.toDateString() === now.toDateString()) {
+      return `Resets ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    }
+    return `Resets ${d.toLocaleDateString([], { month: "short", day: "numeric" })}`;
+  } catch {
+    return "";
+  }
+}
+
+function getBarColor(pct: number | null): string {
+  if (pct === null) return "#8b949e";
+  if (pct > 40) return "#3fb950";
+  if (pct > 15) return "#d29922";
+  return "#f85149";
+}
 
 interface Props {
   health: HealthResponse | null;
@@ -45,6 +97,21 @@ export const HomeScreen: React.FC<Props> = ({
   const [isPairing, setIsPairing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+  const [isRefreshingAgy, setIsRefreshingAgy] = useState(false);
+
+  const handleRefreshAgy = async () => {
+    if (isRefreshingAgy) return;
+    setIsRefreshingAgy(true);
+    try {
+      await refreshAntigravityUsageApi();
+      setTimeout(async () => {
+        await onRefresh();
+        setIsRefreshingAgy(false);
+      }, 5500);
+    } catch {
+      setIsRefreshingAgy(false);
+    }
+  };
 
   const syncCredentials = useCallback(async () => {
     const creds = await loadCredentials();
@@ -187,6 +254,123 @@ export const HomeScreen: React.FC<Props> = ({
           </View>
         )}
       </View>
+
+      {/* Antigravity Engine & Usage Limits Section */}
+      {isConnected && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Antigravity Engine</Text>
+            <TouchableOpacity
+              onPress={handleRefreshAgy}
+              disabled={isRefreshingAgy}
+              style={styles.refreshBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              activeOpacity={0.6}
+            >
+              {isRefreshingAgy ? (
+                <ActivityIndicator size="small" color="#58a6ff" style={{ transform: [{ scale: 0.75 }] }} />
+              ) : (
+                <RefreshIcon color="#8b949e" size={15} />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Active Model Card */}
+          <View style={styles.modelCard}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.telemetryLabel}>Active Model</Text>
+              <Text style={styles.modelNameText} numberOfLines={1}>
+                {health?.antigravity?.model || "Gemini 3.8 Flash (High)"}
+              </Text>
+            </View>
+            <View style={styles.modelActiveBadge}>
+              <View style={styles.activeDot} />
+              <Text style={styles.modelActiveBadgeText}>ACTIVE</Text>
+            </View>
+          </View>
+
+          {/* Usage Limit Bars */}
+          {health?.antigravity?.usage?.gemini && (
+            <View style={styles.quotaContainer}>
+              {/* 5-Hour Limit */}
+              <View style={styles.quotaCard}>
+                <View style={styles.quotaHeader}>
+                  <Text style={styles.quotaTitle}>Gemini 5-Hour Session Limit</Text>
+                  <Text
+                    style={[
+                      styles.quotaPercent,
+                      { color: getBarColor(health.antigravity.usage.gemini.hourly_percent) },
+                    ]}
+                  >
+                    {health.antigravity.usage.gemini.hourly_percent !== null
+                      ? `${health.antigravity.usage.gemini.hourly_percent}%`
+                      : "—"}
+                  </Text>
+                </View>
+                <View style={styles.barTrack}>
+                  <View
+                    style={[
+                      styles.barFill,
+                      {
+                        width: `${Math.max(0, Math.min(100, health.antigravity.usage.gemini.hourly_percent ?? 0))}%`,
+                        backgroundColor: getBarColor(health.antigravity.usage.gemini.hourly_percent),
+                      },
+                    ]}
+                  />
+                </View>
+                {health.antigravity.usage.gemini.hourly_reset && (
+                  <Text style={styles.resetSubText}>
+                    {formatResetTime(health.antigravity.usage.gemini.hourly_reset)}
+                  </Text>
+                )}
+              </View>
+
+              {/* Weekly Limit */}
+              <View style={styles.quotaCard}>
+                <View style={styles.quotaHeader}>
+                  <Text style={styles.quotaTitle}>Gemini Weekly Quota Limit</Text>
+                  <Text
+                    style={[
+                      styles.quotaPercent,
+                      { color: getBarColor(health.antigravity.usage.gemini.weekly_percent) },
+                    ]}
+                  >
+                    {health.antigravity.usage.gemini.weekly_percent !== null
+                      ? `${health.antigravity.usage.gemini.weekly_percent}%`
+                      : "—"}
+                  </Text>
+                </View>
+                <View style={styles.barTrack}>
+                  <View
+                    style={[
+                      styles.barFill,
+                      {
+                        width: `${Math.max(0, Math.min(100, health.antigravity.usage.gemini.weekly_percent ?? 0))}%`,
+                        backgroundColor: getBarColor(health.antigravity.usage.gemini.weekly_percent),
+                      },
+                    ]}
+                  />
+                </View>
+                {health.antigravity.usage.gemini.weekly_reset && (
+                  <Text style={styles.resetSubText}>
+                    {formatResetTime(health.antigravity.usage.gemini.weekly_reset)}
+                  </Text>
+                )}
+              </View>
+
+              {/* Secondary Claude/GPT overview if available */}
+              {health.antigravity.usage.claude_gpt.hourly_percent !== null && (
+                <View style={styles.claudeGptRow}>
+                  <Text style={styles.claudeGptLabel}>Claude & GPT Models</Text>
+                  <Text style={styles.claudeGptValue}>
+                    {health.antigravity.usage.claude_gpt.hourly_percent}% (5h) · {health.antigravity.usage.claude_gpt.weekly_percent}% (wk)
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Device Identity Section (Seamless, Last Section - No Bottom Divider) */}
       <View style={[styles.section, styles.sectionLast]}>
@@ -441,5 +625,112 @@ const styles = StyleSheet.create({
   },
   textInfo: {
     color: "#58a6ff",
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  refreshBtn: {
+    backgroundColor: "transparent",
+    padding: 4,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modelCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#1e1e1e",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#262626",
+  },
+  modelNameText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginTop: 2,
+  },
+  modelActiveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(63, 185, 80, 0.15)",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(63, 185, 80, 0.3)",
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#3fb950",
+  },
+  modelActiveBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#3fb950",
+    letterSpacing: 0.5,
+  },
+  quotaContainer: {
+    gap: 8,
+    marginTop: 2,
+  },
+  quotaCard: {
+    backgroundColor: "#1e1e1e",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#262626",
+    gap: 6,
+  },
+  quotaHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  quotaTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#c9d1d9",
+  },
+  quotaPercent: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  barTrack: {
+    height: 6,
+    backgroundColor: "#2d333b",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  barFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  resetSubText: {
+    fontSize: 10,
+    color: "#8b949e",
+    alignSelf: "flex-end",
+  },
+  claudeGptRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 2,
+    marginTop: 2,
+  },
+  claudeGptLabel: {
+    fontSize: 11,
+    color: "#8b949e",
+  },
+  claudeGptValue: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#c9d1d9",
   },
 });

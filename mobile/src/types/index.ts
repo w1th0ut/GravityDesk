@@ -12,6 +12,25 @@ export interface ActiveSessionInfo {
   current_seq: number;
 }
 
+export interface QuotaLimit {
+  hourly_percent: number | null;
+  hourly_reset: string | null;
+  weekly_percent: number | null;
+  weekly_reset: string | null;
+}
+
+export interface AntigravityUsage {
+  gemini: QuotaLimit;
+  claude_gpt: QuotaLimit;
+}
+
+export interface AntigravityStatus {
+  model: string;
+  usage: AntigravityUsage;
+  last_updated: number | null;
+  is_refreshing: boolean;
+}
+
 export interface HealthResponse {
   status: "online" | "offline";
   tailscale_ip: string;
@@ -20,6 +39,7 @@ export interface HealthResponse {
   memory_percent: number;
   battery: BatteryInfo | null;
   sleep_inhibit_active: boolean;
+  antigravity?: AntigravityStatus;
 }
 
 export interface Breadcrumb {

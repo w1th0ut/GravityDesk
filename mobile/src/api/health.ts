@@ -1,11 +1,18 @@
 import { apiFetch } from "./client";
-import { HealthResponse } from "../types";
+import { HealthResponse, AntigravityStatus } from "../types";
 
 /**
  * Pings laptop daemon for telemetry and online state
  */
 export async function fetchHealth(customHost?: string, customToken?: string): Promise<HealthResponse> {
   return apiFetch<HealthResponse>("/api/health", { method: "GET" }, customHost, customToken);
+}
+
+/**
+ * Requests an asynchronous refresh of Antigravity /usage limits
+ */
+export async function refreshAntigravityUsageApi(): Promise<AntigravityStatus> {
+  return apiFetch<AntigravityStatus>("/api/antigravity/refresh", { method: "POST" });
 }
 
 export interface PairDeviceResult {

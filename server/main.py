@@ -29,6 +29,7 @@ from server.devices import (
     revoke_device,
     touch_device,
 )
+from server.antigravity import agy_monitor
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, print_ascii_qr, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import TerminalSession, hub
@@ -125,6 +126,9 @@ async def lifespan(app: FastAPI):
 
     # Inhibit Windows Sleep while daemon is active
     enable_sleep_inhibit()
+
+    # Pre-cache Antigravity active model and usage limits
+    agy_monitor.trigger_refresh_async()
 
     # Terminal Startup Banner & QR (suppressed in GUI mode)
     if os.environ.get("GRAVITYDESK_GUI") != "1":
@@ -299,16 +303,25 @@ class SessionStartRequest(BaseModel):
 
 @app.get("/api/health")
 async def health(_: str = Depends(verify_token)):
-    """Returns laptop telemetry, network state, and session status."""
+    """Returns laptop telemetry, network state, session status, and Antigravity status."""
     vitals = get_system_vitals()
     session_info = hub.to_dict()
+    agy_status = agy_monitor.get_status()
 
     return {
         "status": "online",
         "tailscale_ip": server_ip,
         "active_session": session_info,
+        "antigravity": agy_status,
         **vitals,
     }
+
+
+@app.post("/api/antigravity/refresh")
+async def refresh_antigravity_usage_endpoint(_: str = Depends(verify_token)):
+    """Triggers an async refresh of AGY /usage and returns current status."""
+    agy_monitor.trigger_refresh_async()
+    return agy_monitor.get_status()
 
 
 @app.get("/api/workspaces")
