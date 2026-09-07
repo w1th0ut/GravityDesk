@@ -132,6 +132,9 @@ gravitydesk
 
 # Option B: Headless / CLI Daemon Mode (Linux VPS, headless server, or SSH)
 gravitydesk --headless
+
+# Option C: Update GravityDesk to the latest version
+gravitydesk update
 ```
 
 *(If running directly from the cloned repository source without pip installation, `python app.py` and `python app.py --headless` continue to work identically).*
@@ -150,6 +153,17 @@ The GravityDesk host will launch:
    - Launch GravityDesk on your phone.
    - Tap **Scan QR** and scan the **MOBILE PAIRING** QR code displayed in your Desktop GUI or terminal.
    - You are connected instantly with sub-50ms latency over your private WireGuard mesh tunnel!
+
+### 5. Updating GravityDesk
+
+Keep your GravityDesk host up to date with the latest features, security patches, and engine optimizations with a single command:
+
+```bash
+gravitydesk update
+```
+
+- **If installed via Git / pip**: Automatically fetches and upgrades to the latest release directly from GitHub without needing to remember repository URLs.
+- **If cloned locally**: Automatically pulls the latest commits via `git pull` and refreshes your editable installation and dependencies (`pip install -e .`).
 
 ---
 
