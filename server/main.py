@@ -33,7 +33,7 @@ from server.antigravity import agy_monitor
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, print_ascii_qr, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import TerminalSession, hub
-from server.workspaces import get_favorites, list_directory, toggle_favorite
+from server.workspaces import list_directory
 
 # Global State
 server_token: str = ""
@@ -330,19 +330,6 @@ async def refresh_antigravity_usage_endpoint(_: str = Depends(verify_token)):
 async def get_workspaces(path: Optional[str] = Query(None), _: str = Depends(verify_token)):
     """Lists laptop directories, drives, and breadcrumbs with boundary checks."""
     return list_directory(path)
-
-
-@app.get("/api/favorites")
-async def get_favs(_: str = Depends(verify_token)):
-    """Returns pinned favorite folders."""
-    return get_favorites()
-
-
-@app.post("/api/favorites/toggle")
-async def toggle_fav(path: str = Query(...), _: str = Depends(verify_token)):
-    """Toggles folder pin in favorites."""
-    return toggle_favorite(path)
-
 
 @app.post("/api/workspaces/select")
 async def select_workspace(path: str = Query(...), _: str = Depends(verify_token)):

@@ -1,10 +1,7 @@
-import json
 import os
 import string
 from pathlib import Path
 from typing import List, Optional
-
-FAVORITES_FILE = "favorites.json"
 
 # Restricted system directories to protect host OS stability
 FORBIDDEN_NAMES = {
@@ -117,41 +114,3 @@ def list_directory(target_path: Optional[str] = None) -> dict:
     }
 
 
-def get_favorites() -> List[dict]:
-    """Retrieves pinned favorite folders."""
-    default_favs = [
-        {"name": "GravityDesk", "path": os.path.realpath(os.getcwd())},
-        {"name": "User Home", "path": str(Path.home())},
-    ]
-
-    if not os.path.exists(FAVORITES_FILE):
-        save_favorites(default_favs)
-        return default_favs
-
-    try:
-        with open(FAVORITES_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return default_favs
-
-
-def save_favorites(favs: List[dict]) -> None:
-    """Saves favorites to disk."""
-    with open(FAVORITES_FILE, "w", encoding="utf-8") as f:
-        json.dump(favs, f, indent=2)
-
-
-def toggle_favorite(folder_path: str) -> List[dict]:
-    """Adds or removes a directory from favorites."""
-    favs = get_favorites()
-    norm_path = os.path.realpath(folder_path)
-    existing = next((f for f in favs if os.path.realpath(f["path"]) == norm_path), None)
-
-    if existing:
-        favs = [f for f in favs if os.path.realpath(f["path"]) != norm_path]
-    else:
-        name = os.path.basename(norm_path) or norm_path
-        favs.append({"name": name, "path": norm_path})
-
-    save_favorites(favs)
-    return favs

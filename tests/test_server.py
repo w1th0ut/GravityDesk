@@ -75,23 +75,6 @@ def test_workspaces_navigation():
         assert len(data["drives"]) > 0
 
 
-def test_favorites_toggle():
-    token = get_or_create_token()
-    fav_file = "favorites.json"
-    try:
-        with TestClient(app) as client:
-            test_dir = os.path.realpath(os.getcwd())
-            res = client.post(f"/api/favorites/toggle?path={test_dir}&token={token}")
-            assert res.status_code == 200
-            favs = res.json()
-            assert isinstance(favs, list)
-    finally:
-        if os.path.exists(fav_file):
-            try:
-                os.remove(fav_file)
-            except Exception:
-                pass
-
 
 
 def test_command_allowlist_enforcement():
@@ -216,6 +199,11 @@ def test_device_pairing_and_revocation():
         assert revoke_res.status_code == 200
         assert revoke_res.json()["status"] == "revoked"
 
+        # 5b. Revoked device is completely purged from devices.json (only registered devices remain)
+        list_after_revoke = client.get(f"/api/devices?token={token}")
+        assert list_after_revoke.status_code == 200
+        assert not any(d["id"] == test_device_id for d in list_after_revoke.json())
+
         # 6. Revoked device is blocked from API endpoints with 403 Forbidden
         blocked_res = client.get(
             f"/api/health?token={token}",
@@ -291,9 +279,10 @@ def test_revoke_all_devices():
         revoked = revoke_all_devices()
         assert len(revoked) >= 2
 
-        active_after = [d for d in get_devices() if d.get("status") == "active"]
-        assert not any(d["id"] == dev1 for d in active_after)
-        assert not any(d["id"] == dev2 for d in active_after)
+        # All revoked devices are purged from devices.json
+        devs_after = get_devices()
+        assert not any(d["id"] == dev1 for d in devs_after)
+        assert not any(d["id"] == dev2 for d in devs_after)
 
         # Test API rejection
         with TestClient(app) as client:
@@ -381,8 +370,6 @@ if __name__ == "__main__":
     print("[PASS] test_workspaces_select (Workspace selection and directory change)")
     test_conversations_list_and_select()
     print("[PASS] test_conversations_list_and_select (Conversation discovery and resumption)")
-    test_favorites_toggle()
-    print("[PASS] test_favorites_toggle (Favorites persistence)")
     test_command_allowlist_enforcement()
     print("[PASS] test_command_allowlist_enforcement (Blocked Remote Code Execution)")
     test_session_lifecycle()

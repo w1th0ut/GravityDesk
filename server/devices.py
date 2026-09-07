@@ -2,11 +2,12 @@ import json
 import os
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Set
 
 DEVICES_FILE = "devices.json"
 _lock = threading.Lock()
 _device_listeners: List[Callable[[str, Dict[str, Any]], None]] = []
+_revoked_device_ids: Set[str] = set()
 
 
 def add_device_listener(callback: Callable[[str, Dict[str, Any]], None]) -> None:
@@ -32,7 +33,7 @@ def notify_device_event(event: str, device: Dict[str, Any]) -> None:
 
 
 def get_devices(filepath: str = DEVICES_FILE) -> List[Dict[str, Any]]:
-    """Loads all recorded devices from disk in a thread-safe manner."""
+    """Loads all registered active devices from disk in a thread-safe manner."""
     with _lock:
         if not os.path.exists(filepath):
             return []
@@ -40,7 +41,12 @@ def get_devices(filepath: str = DEVICES_FILE) -> List[Dict[str, Any]]:
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
-                    return data
+                    return [
+                        d for d in data
+                        if isinstance(d, dict)
+                        and d.get("status") == "active"
+                        and d.get("id") not in _revoked_device_ids
+                    ]
                 return []
         except Exception:
             return []
@@ -83,36 +89,30 @@ def pair_device(
     target_device: Optional[Dict[str, Any]] = None
 
     with _lock:
+        _revoked_device_ids.discard(clean_id)
         devices = []
         if os.path.exists(filepath):
             try:
                 with open(filepath, "r", encoding="utf-8") as f:
-                    devices = json.load(f)
+                    raw_devices = json.load(f)
+                    if isinstance(raw_devices, list):
+                        devices = [
+                            d for d in raw_devices
+                            if isinstance(d, dict) and d.get("status") == "active" and d.get("id") != clean_id
+                        ]
             except Exception:
                 devices = []
 
-        for d in devices:
-            if d.get("id") == clean_id:
-                d["name"] = clean_name
-                d["platform"] = clean_platform
-                d["ip"] = ip
-                d["status"] = "active"
-                d["last_seen"] = now_iso
-                target_device = d
-                break
-
-        if not target_device:
-            target_device = {
-                "id": clean_id,
-                "name": clean_name,
-                "platform": clean_platform,
-                "ip": ip,
-                "status": "active",
-                "paired_at": now_iso,
-                "last_seen": now_iso,
-            }
-            devices.append(target_device)
-
+        target_device = {
+            "id": clean_id,
+            "name": clean_name,
+            "platform": clean_platform,
+            "ip": ip,
+            "status": "active",
+            "paired_at": now_iso,
+            "last_seen": now_iso,
+        }
+        devices.append(target_device)
         _save_devices_locked(devices, filepath)
 
     if target_device:
@@ -122,11 +122,12 @@ def pair_device(
 
 
 def revoke_device(device_id: str, filepath: str = DEVICES_FILE) -> Optional[Dict[str, Any]]:
-    """Revokes access for a specific device, changing its status to 'revoked'."""
+    """Revokes access for a specific device, immediately removing it from devices.json."""
     clean_id = device_id.strip()
     target_device: Optional[Dict[str, Any]] = None
 
     with _lock:
+        _revoked_device_ids.add(clean_id)
         if not os.path.exists(filepath):
             return None
         try:
@@ -135,15 +136,17 @@ def revoke_device(device_id: str, filepath: str = DEVICES_FILE) -> Optional[Dict
         except Exception:
             return None
 
+        remaining_devices: List[Dict[str, Any]] = []
         for d in devices:
             if d.get("id") == clean_id:
-                d["status"] = "revoked"
-                d["last_seen"] = time.strftime("%Y-%m-%d %H:%M:%S")
-                target_device = d
-                break
+                target_device = dict(d)
+                target_device["status"] = "revoked"
+                target_device["last_seen"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            elif d.get("status") == "active":
+                remaining_devices.append(d)
 
         if target_device:
-            _save_devices_locked(devices, filepath)
+            _save_devices_locked(remaining_devices, filepath)
 
     if target_device:
         _notify_listeners("revoked", target_device)
@@ -152,7 +155,7 @@ def revoke_device(device_id: str, filepath: str = DEVICES_FILE) -> Optional[Dict
 
 
 def revoke_all_devices(filepath: str = DEVICES_FILE) -> List[Dict[str, Any]]:
-    """Revokes access for all currently active devices."""
+    """Revokes access for all currently active devices and purges devices.json."""
     revoked_list: List[Dict[str, Any]] = []
     now_iso = time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -166,13 +169,16 @@ def revoke_all_devices(filepath: str = DEVICES_FILE) -> List[Dict[str, Any]]:
             return []
 
         for d in devices:
-            if d.get("status") == "active":
-                d["status"] = "revoked"
-                d["last_seen"] = now_iso
-                revoked_list.append(d)
+            dev_id = d.get("id")
+            if dev_id:
+                _revoked_device_ids.add(dev_id.strip())
+            rev_dev = dict(d)
+            rev_dev["status"] = "revoked"
+            rev_dev["last_seen"] = now_iso
+            revoked_list.append(rev_dev)
 
         if revoked_list:
-            _save_devices_locked(devices, filepath)
+            _save_devices_locked([], filepath)
 
     for dev in revoked_list:
         _notify_listeners("revoked", dev)
@@ -190,6 +196,8 @@ def is_device_authorized(device_id: Optional[str], filepath: str = DEVICES_FILE)
 
     clean_id = device_id.strip()
     with _lock:
+        if clean_id in _revoked_device_ids:
+            return False
         if not os.path.exists(filepath):
             return False
         try:
@@ -206,12 +214,14 @@ def is_device_authorized(device_id: Optional[str], filepath: str = DEVICES_FILE)
 
 
 def is_device_revoked(device_id: Optional[str], filepath: str = DEVICES_FILE) -> bool:
-    """Checks if a device exists and specifically has 'revoked' status."""
+    """Checks if a device has been revoked."""
     if not device_id:
         return False
 
     clean_id = device_id.strip()
     with _lock:
+        if clean_id in _revoked_device_ids:
+            return True
         if not os.path.exists(filepath):
             return False
         try:
@@ -235,6 +245,8 @@ def touch_device(device_id: Optional[str], ip: Optional[str] = None, filepath: s
     now_iso = time.strftime("%Y-%m-%d %H:%M:%S")
 
     with _lock:
+        if clean_id in _revoked_device_ids:
+            return
         if not os.path.exists(filepath):
             return
         try:
@@ -245,7 +257,7 @@ def touch_device(device_id: Optional[str], ip: Optional[str] = None, filepath: s
 
         updated = False
         for d in devices:
-            if d.get("id") == clean_id:
+            if d.get("id") == clean_id and d.get("status") == "active":
                 d["last_seen"] = now_iso
                 if ip:
                     d["ip"] = ip
@@ -299,6 +311,7 @@ def delete_device(device_id: str, filepath: str = DEVICES_FILE) -> bool:
     removed = False
 
     with _lock:
+        _revoked_device_ids.discard(clean_id)
         if not os.path.exists(filepath):
             return False
         try:
