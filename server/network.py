@@ -2,9 +2,10 @@ import io
 import os
 import secrets
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import psutil
 import qrcode
+from server.config import get_env_path
 
 # Ensure Windows stdout supports UTF-8 characters
 if hasattr(sys.stdout, "reconfigure"):
@@ -56,11 +57,12 @@ def get_tailscale_or_lan_ip() -> str:
     return "127.0.0.1"
 
 
-def get_or_create_token(env_path: str = ".env") -> str:
+def get_or_create_token(env_path: Optional[str] = None) -> str:
     """Reads or generates a true 256-bit pairing secret token in .env (32 bytes / 64 hex chars)."""
+    target_path = get_env_path(env_path)
     token_key = "GRAVITYDESK_TOKEN"
-    if os.path.exists(env_path):
-        with open(env_path, "r", encoding="utf-8") as f:
+    if os.path.exists(target_path):
+        with open(target_path, "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip().startswith(f"{token_key}="):
                     token = line.strip().split("=", 1)[1].strip()
@@ -69,19 +71,20 @@ def get_or_create_token(env_path: str = ".env") -> str:
 
     # Generate 256-bit cryptographic token (32 bytes = 64 hex characters)
     token = secrets.token_hex(32)
-    with open(env_path, "a", encoding="utf-8") as f:
+    with open(target_path, "a", encoding="utf-8") as f:
         f.write(f"\n{token_key}={token}\n")
     return token
 
 
-def revoke_and_create_token(env_path: str = ".env") -> str:
+def revoke_and_create_token(env_path: Optional[str] = None) -> str:
     """Generates a new 256-bit token and overwrites GRAVITYDESK_TOKEN in .env."""
+    target_path = get_env_path(env_path)
     token_key = "GRAVITYDESK_TOKEN"
     new_token = secrets.token_hex(32)
     lines = []
     found = False
-    if os.path.exists(env_path):
-        with open(env_path, "r", encoding="utf-8") as f:
+    if os.path.exists(target_path):
+        with open(target_path, "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip().startswith(f"{token_key}="):
                     lines.append(f"{token_key}={new_token}\n")
@@ -90,7 +93,7 @@ def revoke_and_create_token(env_path: str = ".env") -> str:
                     lines.append(line)
     if not found:
         lines.append(f"{token_key}={new_token}\n")
-    with open(env_path, "w", encoding="utf-8") as f:
+    with open(target_path, "w", encoding="utf-8") as f:
         f.writelines(lines)
     return new_token
 

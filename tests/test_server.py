@@ -9,6 +9,7 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
+from server.config import get_devices_path
 from server.main import app
 from server.network import get_or_create_token
 
@@ -16,10 +17,11 @@ from server.network import get_or_create_token
 @pytest.fixture(autouse=True)
 def preserve_devices_file():
     """Preserves live devices.json and restores it after test runs so test runs never revoke live devices."""
+    dev_path = get_devices_path()
     backup = None
-    if os.path.exists("devices.json"):
+    if os.path.exists(dev_path):
         try:
-            with open("devices.json", "r", encoding="utf-8") as f:
+            with open(dev_path, "r", encoding="utf-8") as f:
                 backup = f.read()
         except Exception:
             pass
@@ -28,7 +30,7 @@ def preserve_devices_file():
     finally:
         if backup is not None:
             try:
-                with open("devices.json", "w", encoding="utf-8") as f:
+                with open(dev_path, "w", encoding="utf-8") as f:
                     f.write(backup)
             except Exception:
                 pass
@@ -358,27 +360,44 @@ def test_antigravity_status_and_refresh():
 
 if __name__ == "__main__":
     print("Running Hardened Architecture & Security Test Suite...")
-    test_token_entropy()
-    print("[PASS] test_token_entropy (256-bit cryptographic entropy)")
-    test_health_unauthorized()
-    print("[PASS] test_health_unauthorized (401 on unauthorized)")
-    test_health_authorized_via_query_and_bearer()
-    print("[PASS] test_health_authorized_via_query_and_bearer (Bearer and query auth)")
-    test_workspaces_navigation()
-    print("[PASS] test_workspaces_navigation (Safe directory navigation)")
-    test_workspaces_select()
-    print("[PASS] test_workspaces_select (Workspace selection and directory change)")
-    test_conversations_list_and_select()
-    print("[PASS] test_conversations_list_and_select (Conversation discovery and resumption)")
-    test_command_allowlist_enforcement()
-    print("[PASS] test_command_allowlist_enforcement (Blocked Remote Code Execution)")
-    test_session_lifecycle()
-    print("[PASS] test_session_lifecycle (PTY lifecycle & atomic state)")
-    test_device_pairing_and_revocation()
-    print("[PASS] test_device_pairing_and_revocation (Device pairing, revocation & re-pairing)")
-    test_voice_transcribe_endpoint()
-    print("[PASS] test_voice_transcribe_endpoint (Voice transcription auth & payload processing)")
-    test_antigravity_status_and_refresh()
-    print("[PASS] test_antigravity_status_and_refresh (Antigravity telemetry & usage refresh)")
-    print("\nALL HARDENED INTEGRATION TESTS PASSED WITH ZERO ERRORS! 🚀")
+    dev_path = get_devices_path()
+    backup = None
+    if os.path.exists(dev_path):
+        try:
+            with open(dev_path, "r", encoding="utf-8") as f:
+                backup = f.read()
+        except Exception:
+            pass
+
+    try:
+        test_token_entropy()
+        print("[PASS] test_token_entropy (256-bit cryptographic entropy)")
+        test_health_unauthorized()
+        print("[PASS] test_health_unauthorized (401 on unauthorized)")
+        test_health_authorized_via_query_and_bearer()
+        print("[PASS] test_health_authorized_via_query_and_bearer (Bearer and query auth)")
+        test_workspaces_navigation()
+        print("[PASS] test_workspaces_navigation (Safe directory navigation)")
+        test_workspaces_select()
+        print("[PASS] test_workspaces_select (Workspace selection and directory change)")
+        test_conversations_list_and_select()
+        print("[PASS] test_conversations_list_and_select (Conversation discovery and resumption)")
+        test_command_allowlist_enforcement()
+        print("[PASS] test_command_allowlist_enforcement (Blocked Remote Code Execution)")
+        test_session_lifecycle()
+        print("[PASS] test_session_lifecycle (PTY lifecycle & atomic state)")
+        test_device_pairing_and_revocation()
+        print("[PASS] test_device_pairing_and_revocation (Device pairing, revocation & re-pairing)")
+        test_voice_transcribe_endpoint()
+        print("[PASS] test_voice_transcribe_endpoint (Voice transcription auth & payload processing)")
+        test_antigravity_status_and_refresh()
+        print("[PASS] test_antigravity_status_and_refresh (Antigravity telemetry & usage refresh)")
+        print("\nALL HARDENED INTEGRATION TESTS PASSED WITH ZERO ERRORS! 🚀")
+    finally:
+        if backup is not None:
+            try:
+                with open(dev_path, "w", encoding="utf-8") as f:
+                    f.write(backup)
+            except Exception:
+                pass
 

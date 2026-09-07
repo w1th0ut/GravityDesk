@@ -86,12 +86,22 @@
 
 ### 2. Installation
 
-Clone the repository and install the verified dependencies:
+#### Option A: Install via Git (Recommended for Users)
+Install directly into your Python environment with automatic dependency resolution and global command registration:
 
+```bash
+# Direct pip install
+pip install git+https://github.com/w1th0ut/GravityDesk.git
+
+# Or via pipx (recommended for isolated environments on macOS / Linux)
+pipx install git+https://github.com/w1th0ut/GravityDesk.git
+```
+
+#### Option B: Clone for Development
 ```bash
 git clone https://github.com/w1th0ut/GravityDesk.git
 cd GravityDesk
-pip install -r requirements.txt
+pip install -e .
 ```
 
 #### *(Optional)* Enable Voice Dictation with FFmpeg
@@ -112,21 +122,23 @@ sudo apt update && sudo apt install -y ffmpeg
 > [!NOTE]
 > FFmpeg is **completely optional**. GravityDesk operates normally without it; you will only receive an in-app notice on Android if you attempt to record a voice prompt without FFmpeg installed on the host.
 
-### 3. Launching the Host Application
+### 3. Launching GravityDesk
 
-Start GravityDesk using Python:
+Once installed, you can launch GravityDesk from **any terminal window and from any directory** on your workstation:
 
 ```bash
 # Option A: Desktop GUI Control Center
-python app.py
+gravitydesk
 
-# Option B: Headless / CLI Mode (Server, VPS, or Remote Terminal)
-python app.py --headless
+# Option B: Headless / CLI Daemon Mode (Linux VPS, headless server, or SSH)
+gravitydesk --headless
 ```
+
+*(If running directly from the cloned repository source without pip installation, `python app.py` and `python app.py --headless` continue to work identically).*
 
 The GravityDesk host will launch:
 1. Automatically resolves your workstation's **Tailscale IPv4 address**.
-2. Loads (or generates) your **256-bit cryptographic auth token**.
+2. Loads (or generates) your persistent **256-bit cryptographic auth token** in `~/.gravitydesk/.env`.
 3. Renders a high-contrast **QR Code** directly in the GUI (or prints terminal QR in headless mode).
 4. Starts the background FastAPI server on port `8000`.
 
@@ -191,6 +203,8 @@ GravityDesk/
 │   ├── home-view.jpeg         # Mobile dashboard & quota telemetry screenshot
 │   └── terminal-view.jpeg     # Mobile terminal & voice screenshot
 ├── server/                    # Backend daemon bounded context
+│   ├── cli.py                 # Global CLI launcher & argument dispatcher
+│   ├── config.py              # Centralized user config directory & paths (~/.gravitydesk/)
 │   ├── main.py                # FastAPI app, REST endpoints, WebSocket hub
 │   ├── terminal.py            # Dual-engine PTY runner (ConPTY & Unix PTY)
 │   ├── antigravity.py         # AGY active model reader & quota telemetry

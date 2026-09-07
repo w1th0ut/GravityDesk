@@ -15,3 +15,5 @@ ios/
 build_apk.bat
 *.apk
 RELEASE_NOTES.md
+*.egg-info/
+build/

@@ -26,6 +26,7 @@ from server.main import (
     kick_device_sockets,
     update_server_token,
 )
+from server.config import get_assets_dir
 from server.network import get_or_create_token, get_tailscale_or_lan_ip, revoke_and_create_token
 from server.system import disable_sleep_inhibit, enable_sleep_inhibit, get_system_vitals
 from server.terminal import hub
@@ -46,8 +47,7 @@ C_INPUT_BG = "#040d21"
 
 def ensure_app_icon() -> tuple[Optional[str], Optional[str]]:
     """Ensures logo.ico and logo.png paths exist for window & taskbar icon setup."""
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    assets_dir = os.path.join(project_root, "assets")
+    assets_dir = str(get_assets_dir())
     ico_path = os.path.join(assets_dir, "logo.ico")
     png_path = os.path.join(assets_dir, "logo.png")
 

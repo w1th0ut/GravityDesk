@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gravitydesk"
+version = "1.0.0"
+description = "Remote Control & Telemetry System for Google Antigravity (agy) CLI from Mobile to Developer Workstations"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "w1th0ut" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Terminals",
+]
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "psutil>=5.9.0",
+    "qrcode>=7.4.2",
+    "pillow>=10.0.0",
+    "httpx>=0.27.0",
+    "pytest>=8.0.0",
+    "SpeechRecognition>=3.10.0",
+    "python-multipart>=0.0.9",
+    "pywinpty>=2.0.10; sys_platform == 'win32'",
+]
+
+[project.scripts]
+gravitydesk = "server.cli:main"
+
+[tool.setuptools]
+packages = ["server"]
+
+[tool.setuptools.package-data]
+server = ["assets/*"]
