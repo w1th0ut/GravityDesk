@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   DEVICE_NAME: "gravitydesk_device_name",
   ACTIVE_WORKSPACE: "gravitydesk_active_workspace",
   ACTIVE_WORKSPACE_NAME: "gravitydesk_active_workspace_name",
+  ACTIVE_WORKSPACE_EXPLICIT: "gravitydesk_active_workspace_explicit",
   ACTIVE_CONVO_ID: "gravitydesk_active_convo_id",
   ACTIVE_CONVO_NAME: "gravitydesk_active_convo_name",
 };
@@ -52,12 +53,17 @@ export async function loadSavedPreferences(): Promise<{
     const SecureStore = require("expo-secure-store");
     const storedWs = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE);
     const storedWsName = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+    const isExplicit = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_EXPLICIT);
     const storedCId = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_CONVO_ID);
     const storedCName = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_CONVO_NAME);
 
     if (storedWs) {
       ws = storedWs;
-      wsName = storedWsName || (storedWs.split(/[\\/]/).filter(Boolean).pop() || storedWs);
+      if (isExplicit === "true") {
+        wsName = storedWsName || (storedWs.split(/[\\/]/).filter(Boolean).pop() || storedWs);
+      } else {
+        wsName = "Select Folder";
+      }
     }
     if (storedCId) {
       cId = storedCId;
@@ -69,12 +75,17 @@ export async function loadSavedPreferences(): Promise<{
     if (typeof window !== "undefined" && window.localStorage) {
       const storedWs = localStorage.getItem(STORAGE_KEYS.ACTIVE_WORKSPACE);
       const storedWsName = localStorage.getItem(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+      const isExplicit = localStorage.getItem(STORAGE_KEYS.ACTIVE_WORKSPACE_EXPLICIT);
       const storedCId = localStorage.getItem(STORAGE_KEYS.ACTIVE_CONVO_ID);
       const storedCName = localStorage.getItem(STORAGE_KEYS.ACTIVE_CONVO_NAME);
 
       if (storedWs) {
         ws = storedWs;
-        wsName = storedWsName || (storedWs.split(/[\\/]/).filter(Boolean).pop() || storedWs);
+        if (isExplicit === "true") {
+          wsName = storedWsName || (storedWs.split(/[\\/]/).filter(Boolean).pop() || storedWs);
+        } else {
+          wsName = "Select Folder";
+        }
       }
       if (storedCId) {
         cId = storedCId;
@@ -99,19 +110,33 @@ export async function loadSavedPreferences(): Promise<{
 /**
  * Persists selected workspace path and folder name
  */
-export async function saveWorkspacePreference(path: string, name?: string): Promise<void> {
+export async function saveWorkspacePreference(path: string, name?: string, explicit: boolean = true): Promise<void> {
   const folderName = name || (path.split(/[\\/]/).filter(Boolean).pop() || path);
   cachedWorkspace = path;
-  cachedWorkspaceName = folderName;
+  if (explicit) {
+    cachedWorkspaceName = folderName;
+  }
 
   try {
     const SecureStore = require("expo-secure-store");
     await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE, path);
-    await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME, folderName);
+    if (explicit) {
+      await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME, folderName);
+      await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_EXPLICIT, "true");
+    } else {
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_EXPLICIT);
+    }
   } catch {
     if (typeof window !== "undefined" && window.localStorage) {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE, path);
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME, folderName);
+      if (explicit) {
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME, folderName);
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE_EXPLICIT, "true");
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE_EXPLICIT);
+      }
     }
   }
 }
@@ -159,6 +184,7 @@ export async function clearCredentials(): Promise<void> {
     await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN);
     await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE);
     await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_EXPLICIT);
     await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_CONVO_ID);
     await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_CONVO_NAME);
   } catch {
@@ -167,6 +193,7 @@ export async function clearCredentials(): Promise<void> {
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE);
       localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE_EXPLICIT);
       localStorage.removeItem(STORAGE_KEYS.ACTIVE_CONVO_ID);
       localStorage.removeItem(STORAGE_KEYS.ACTIVE_CONVO_NAME);
     }

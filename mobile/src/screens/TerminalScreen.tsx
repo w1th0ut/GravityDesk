@@ -99,16 +99,12 @@ export const TerminalScreen: React.FC<Props> = ({
     const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
     setActiveWorkspace(path);
     setSelectedFolderName(name);
-    saveWorkspacePreference(path, name);
+    saveWorkspacePreference(path, name, true);
   }, []);
 
   useEffect(() => {
     if (health?.active_session?.cwd && !activeWorkspace) {
-      const path = health.active_session.cwd;
-      const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
-      setActiveWorkspace(path);
-      setSelectedFolderName(name);
-      saveWorkspacePreference(path, name);
+      setActiveWorkspace(health.active_session.cwd);
     }
   }, [health, activeWorkspace]);
 
