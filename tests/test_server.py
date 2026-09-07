@@ -136,11 +136,30 @@ def test_conversations_list_and_select():
         assert "conversations" in data
         assert isinstance(data["conversations"], list)
         assert "active_id" in data
+        assert "active_title" in data
 
+        # Select a titled conversation
+        res_named = client.post(
+            f"/api/conversations/select?id=test-convo-1234&title=Custom+Title&token={token}"
+        )
+        assert res_named.status_code == 200
+        assert res_named.json()["status"] == "resumed"
+        assert res_named.json()["active_id"] == "test-convo-1234"
+        assert res_named.json()["active_title"] == "Custom Title"
+
+        # Verify SessionHub instance restored state
+        from server.terminal import SessionHub
+        hub_restored = SessionHub()
+        assert hub_restored.active_conversation_id == "test-convo-1234"
+        assert hub_restored.active_conversation_title == "Custom Title"
+
+        # Reset to new chat
         res_sel = client.post(f"/api/conversations/select?id=new&token={token}")
         assert res_sel.status_code == 200
         assert res_sel.json()["status"] == "resumed"
         assert res_sel.json()["active_id"] is None
+        assert res_sel.json()["active_title"] == "New Chat"
+
 
 
 def test_device_pairing_and_revocation():

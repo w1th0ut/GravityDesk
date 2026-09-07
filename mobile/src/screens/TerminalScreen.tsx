@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { HealthResponse } from "../types";
-import { fetchConversations } from "../api/conversations";
+import { fetchConversations, selectConversationApi } from "../api/conversations";
+import { selectWorkspaceApi } from "../api/workspaces";
 import { WorkspacePickerModal } from "../components/WorkspacePickerModal";
 import { ConversationPickerModal } from "../components/ConversationPickerModal";
 import { TerminalView, TerminalViewRef } from "../components/TerminalView";
@@ -79,6 +80,7 @@ export const TerminalScreen: React.FC<Props> = ({
   const [activeConvoId, setActiveConvoId] = useState<string | null>(cachedConvo.id);
   const [activeConvoName, setActiveConvoName] = useState<string>(cachedConvo.name);
   const terminalRef = useRef<TerminalViewRef>(null);
+  const hasAutoSyncedRef = useRef<boolean>(false);
 
   // Restore persistent preferences immediately on mount
   useEffect(() => {
@@ -102,11 +104,50 @@ export const TerminalScreen: React.FC<Props> = ({
     saveWorkspacePreference(path, name, true);
   }, []);
 
+  // Reconcile and synchronize workspace & conversation state with host daemon
   useEffect(() => {
-    if (health?.active_session?.cwd && !activeWorkspace) {
-      setActiveWorkspace(health.active_session.cwd);
+    if (!isConnected) {
+      hasAutoSyncedRef.current = false;
+      return;
     }
-  }, [health, activeWorkspace]);
+
+    const session = health?.active_session;
+    if (!session) return;
+
+    // First connection/pairing handshake: if host started fresh in default directory,
+    // but phone has explicit saved workspace or conversation, push them to the host.
+    if (!hasAutoSyncedRef.current) {
+      hasAutoSyncedRef.current = true;
+      if (session.is_default_workspace && (activeWorkspace || activeConvoId)) {
+        if (activeWorkspace) {
+          selectWorkspaceApi(activeWorkspace).catch(() => {});
+        }
+        if (activeConvoId) {
+          selectConversationApi(activeConvoId, activeConvoName, activeWorkspace || undefined).catch(() => {});
+        }
+        return;
+      }
+    }
+
+    // Reflect host's authoritative directory if different
+    if (session.cwd && session.cwd !== activeWorkspace) {
+      const name = session.cwd.split(/[\\/]/).filter(Boolean).pop() || session.cwd;
+      setActiveWorkspace(session.cwd);
+      setSelectedFolderName(name);
+      saveWorkspacePreference(session.cwd, name, true);
+    }
+
+    // Reflect host's authoritative conversation if different
+    if (session.active_conversation_title !== undefined) {
+      const hostConvoId = session.active_conversation_id || null;
+      const hostConvoTitle = session.active_conversation_title || (hostConvoId ? `Chat ${hostConvoId.slice(0, 8)}` : "New Chat");
+      if (hostConvoId !== activeConvoId || hostConvoTitle !== activeConvoName) {
+        setActiveConvoId(hostConvoId);
+        setActiveConvoName(hostConvoTitle);
+        saveConversationPreference(hostConvoId, hostConvoTitle);
+      }
+    }
+  }, [isConnected, health?.active_session, activeWorkspace, activeConvoId, activeConvoName]);
 
   useEffect(() => {
     if (isConnected) {
@@ -115,15 +156,18 @@ export const TerminalScreen: React.FC<Props> = ({
           if (res.active_id) {
             setActiveConvoId(res.active_id);
             const active = (res.conversations || []).find((c) => c.id === res.active_id);
-            if (active) {
-              const label =
-                active.title ||
-                active.summary ||
-                active.preview ||
-                `Chat ${res.active_id.slice(0, 8)}`;
-              setActiveConvoName(label);
-              saveConversationPreference(res.active_id, label);
-            }
+            const label =
+              res.active_title ||
+              active?.title ||
+              active?.summary ||
+              active?.preview ||
+              `Chat ${res.active_id.slice(0, 8)}`;
+            setActiveConvoName(label);
+            saveConversationPreference(res.active_id, label);
+          } else if (res.active_id === null && hasAutoSyncedRef.current) {
+            setActiveConvoId(null);
+            setActiveConvoName("New Chat");
+            saveConversationPreference(null, "New Chat");
           }
         })
         .catch(() => {});

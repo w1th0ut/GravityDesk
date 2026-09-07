@@ -3,6 +3,7 @@ Centralized Configuration and Path Management for GravityDesk.
 Ensures universal path resolution across Windows, macOS, and Linux,
 storing persistent runtime state in ~/.gravitydesk/.
 """
+import json
 import os
 import shutil
 from pathlib import Path
@@ -94,3 +95,59 @@ def get_assets_dir() -> Path:
     user_assets = get_config_dir() / "assets"
     user_assets.mkdir(parents=True, exist_ok=True)
     return user_assets
+
+
+def get_session_state_path(override_path: Optional[str] = None) -> str:
+    """
+    Returns the path to the session_state.json file.
+    If override_path is provided, uses that.
+    Otherwise defaults to ~/.gravitydesk/session_state.json.
+    """
+    if override_path:
+        return override_path
+    return str(get_config_dir() / "session_state.json")
+
+
+def load_session_state() -> dict:
+    """
+    Loads saved session state (cwd, active_conversation_id, active_conversation_title).
+    Returns an empty dict if not found or corrupted.
+    """
+    path = get_session_state_path()
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+
+def save_session_state(
+    cwd: str,
+    active_conversation_id: Optional[str] = None,
+    active_conversation_title: Optional[str] = None,
+) -> None:
+    """
+    Atomically writes active session state to ~/.gravitydesk/session_state.json.
+    """
+    path = get_session_state_path()
+    data = {
+        "cwd": cwd,
+        "active_conversation_id": active_conversation_id,
+        "active_conversation_title": active_conversation_title,
+    }
+    try:
+        temp_path = f"{path}.tmp"
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        os.replace(temp_path, path)
+    except Exception:
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            pass
+

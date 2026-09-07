@@ -500,9 +500,12 @@ class GravityDeskGUI:
         tk.Label(info_grid, text="Active Chat:", font=("Segoe UI", 9), fg=C_MUTED, bg=C_CARD).grid(
             row=1, column=0, sticky="w", pady=3
         )
+        init_chat = hub.active_conversation_title or ("New Chat" if not hub.active_conversation_id else f"Chat {hub.active_conversation_id[:8]}")
+        if len(init_chat) > 35:
+            init_chat = init_chat[:32] + "..."
         self.chat_lbl = tk.Label(
             info_grid,
-            text="New Chat",
+            text=init_chat,
             font=("Segoe UI", 9),
             fg=C_TEXT,
             bg=C_CARD,
@@ -772,10 +775,13 @@ class GravityDeskGUI:
             online_count = len(get_online_device_ids())
             self.clients_lbl.config(text=f"{len(active_devs)} registered ({online_count} online)")
 
-            chat_name = "New Chat"
-            if hub.active_conversation_id:
-                chat_name = f"Chat: {hub.active_conversation_id[:12]}..."
-            self.chat_lbl.config(text=chat_name)
+            raw_title = hub.active_conversation_title or ("New Chat" if not hub.active_conversation_id else f"Chat {hub.active_conversation_id[:8]}")
+            if len(raw_title) > 35:
+                chat_name = raw_title[:32] + "..."
+            else:
+                chat_name = raw_title
+            if self.chat_lbl["text"] != chat_name:
+                self.chat_lbl.config(text=chat_name)
 
             # Keep device list and online/offline status updated in real-time
             self.refresh_devices_ui()

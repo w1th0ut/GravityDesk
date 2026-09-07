@@ -346,6 +346,7 @@ async def get_conversations(_: str = Depends(verify_token)):
     convs = list_conversations(current_cwd=hub.current_cwd)
     return {
         "active_id": hub.active_conversation_id,
+        "active_title": hub.active_conversation_title or ("New Chat" if not hub.active_conversation_id else f"Chat {hub.active_conversation_id[:8]}"),
         "current_cwd": hub.current_cwd,
         "current_repo": os.path.basename(hub.current_cwd.rstrip("\\/")) if hub.current_cwd else "",
         "conversations": convs,
@@ -368,6 +369,7 @@ async def select_conversation(
     return {
         "status": "resumed",
         "active_id": hub.active_conversation_id,
+        "active_title": hub.active_conversation_title,
         "cwd": hub.current_cwd,
     }
 

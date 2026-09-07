@@ -201,3 +201,66 @@ def list_conversations(current_cwd: Optional[str] = None, limit: int = 50) -> Li
 
     items.sort(key=lambda x: x.get("updated_at", 0), reverse=True)
     return items[:limit]
+
+
+def get_conversation_title(conv_id: Optional[str]) -> str:
+    """
+    Retrieves the human-readable title or summary for a specific conversation ID.
+    Queries the SQLite conversation_summaries.db first, falling back to transcript file scan.
+    """
+    if not conv_id or conv_id == "new":
+        return "New Chat"
+
+    db_path = os.path.expanduser("~/.gemini/antigravity-cli/conversation_summaries.db")
+    if os.path.isfile(db_path):
+        try:
+            try:
+                uri = f"file:///{os.path.abspath(db_path).replace(os.sep, '/')}?mode=ro"
+                conn = sqlite3.connect(uri, uri=True, timeout=3.0)
+            except Exception:
+                conn = sqlite3.connect(db_path, timeout=3.0)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            row = cursor.execute(
+                "SELECT title, preview FROM conversation_summaries WHERE conversation_id = ? LIMIT 1",
+                (conv_id,),
+            ).fetchone()
+            conn.close()
+            if row:
+                raw_title = (row["title"] or "").strip()
+                preview = (row["preview"] or "").strip()
+                if raw_title:
+                    return raw_title
+                if preview:
+                    return preview
+        except Exception:
+            pass
+
+    # Fallback to brain/ directory scan
+    base = os.path.expanduser("~/.gemini/antigravity-cli/brain")
+    transcript_path = os.path.join(base, conv_id, ".system_generated", "logs", "transcript.jsonl")
+    if os.path.isfile(transcript_path):
+        try:
+            with open(transcript_path, "r", encoding="utf-8", errors="replace") as f:
+                for _ in range(15):
+                    line = f.readline()
+                    if not line:
+                        break
+                    try:
+                        d = json.loads(line)
+                        if d.get("type") == "USER_INPUT" and d.get("content"):
+                            raw = str(d["content"])
+                            if "You are the " in raw and "Reviewer" in raw:
+                                continue
+                            cleaned = re.sub(r"<ADDITIONAL_METADATA>.*?</ADDITIONAL_METADATA>", "", raw, flags=re.DOTALL)
+                            cleaned = re.sub(r"<[^>]+>", "", cleaned).strip()
+                            first_line = cleaned.split("\n")[0].strip()
+                            if first_line and first_line.lower() not in ("exit", "quit"):
+                                return (first_line[:55] + "...") if len(first_line) > 55 else first_line
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+    return f"Chat {conv_id[:8]}"
+

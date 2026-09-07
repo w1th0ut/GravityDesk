@@ -7,6 +7,9 @@ export interface BatteryInfo {
 export interface ActiveSessionInfo {
   is_alive: boolean;
   cwd: string;
+  is_default_workspace?: boolean;
+  active_conversation_id?: string | null;
+  active_conversation_title?: string | null;
   command: string;
   pid: number | null;
   current_seq: number;
@@ -79,6 +82,8 @@ export interface ConversationItem {
 export interface ConversationsResponse {
   conversations: ConversationItem[];
   active_id: string | null;
+  active_title?: string | null;
+  current_cwd?: string;
   current_repo?: string;
 }
 

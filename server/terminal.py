@@ -10,6 +10,10 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Set
 
+from server.config import load_session_state, save_session_state
+from server.conversations import get_conversation_title
+
+
 if sys.platform == "win32":
     import winpty
 else:
@@ -280,13 +284,25 @@ class SessionHub:
     def __init__(self, capacity: int = 3000):
         self.active_session: Optional[TerminalSession] = None
         self.listeners: Set[asyncio.Queue] = set()
-        self.current_cwd: str = os.environ.get("DEFAULT_WORKSPACE", str(Path.home()))
+
+        # Load persisted session state from ~/.gravitydesk/session_state.json if available
+        saved_state = load_session_state()
+        saved_cwd = saved_state.get("cwd")
+        if saved_cwd and os.path.isdir(saved_cwd):
+            self.current_cwd = os.path.realpath(saved_cwd)
+        else:
+            self.current_cwd = os.environ.get("DEFAULT_WORKSPACE", str(Path.home()))
+
+        self.active_conversation_id: Optional[str] = saved_state.get("active_conversation_id")
+        self.active_conversation_title: Optional[str] = saved_state.get("active_conversation_title")
+        if self.active_conversation_id and not self.active_conversation_title:
+            self.active_conversation_title = get_conversation_title(self.active_conversation_id)
+
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.ring_buffer = collections.deque(maxlen=capacity)
         self.current_seq = 0
         self.lock = threading.Lock()
         self.running_subprocess: Optional[subprocess.Popen] = None
-        self.active_conversation_id: Optional[str] = None
         self.event_callbacks: list = []
         self._seed_initial_banner()
 
@@ -414,13 +430,30 @@ class SessionHub:
             self.active_session.stop()
             self.active_session = None
 
+        save_session_state(
+            cwd=self.current_cwd,
+            active_conversation_id=self.active_conversation_id,
+            active_conversation_title=self.active_conversation_title,
+        )
+
         self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Workspace: {clean_dir}\r\n\x1b[32mprompt>\x1b[0m ")
         self.notify_event(f"Workspace set to: {os.path.basename(clean_dir)}")
 
     def resume_conversation(self, conv_id: str, title: str = "") -> None:
         """Switches active conversation target for subsequent prompts."""
         self.active_conversation_id = conv_id if conv_id != "new" else None
-        label = title or (f"Chat {conv_id[:8]}" if conv_id != "new" else "New Chat")
+        if not self.active_conversation_id:
+            self.active_conversation_title = "New Chat"
+        else:
+            self.active_conversation_title = title or get_conversation_title(conv_id)
+
+        save_session_state(
+            cwd=self.current_cwd,
+            active_conversation_id=self.active_conversation_id,
+            active_conversation_title=self.active_conversation_title,
+        )
+
+        label = self.active_conversation_title or "New Chat"
         self.broadcast_chunk(f"\r\x1b[36mAGY>\x1b[0m Resumed chat: {label}\r\n\x1b[32mprompt>\x1b[0m ")
         self.notify_event(f"Resumed conversation: {label}")
 
@@ -585,10 +618,20 @@ class SessionHub:
     def to_dict(self) -> Dict:
         is_sub_running = bool(self.running_subprocess and self.running_subprocess.poll() is None)
         is_session_running = bool(self.active_session and self.active_session.is_alive)
+        default_home = os.environ.get("DEFAULT_WORKSPACE", str(Path.home()))
+        try:
+            is_default_ws = (os.path.realpath(self.current_cwd).lower() == os.path.realpath(default_home).lower())
+        except Exception:
+            is_default_ws = False
+
+        title = self.active_conversation_title or ("New Chat" if not self.active_conversation_id else f"Chat {self.active_conversation_id[:8]}")
+
         return {
             "is_alive": is_sub_running or is_session_running,
             "cwd": self.current_cwd,
+            "is_default_workspace": is_default_ws,
             "active_conversation_id": self.active_conversation_id,
+            "active_conversation_title": title,
             "command": self.active_session.command if self.active_session else DEFAULT_AGY_PATH,
             "pid": (self.running_subprocess.pid if is_sub_running else (self.active_session.pid if self.active_session else None)),
             "current_seq": self.current_seq,
