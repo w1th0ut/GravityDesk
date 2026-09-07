@@ -25,19 +25,13 @@ if sys.platform == "win32":
 
 
 def run_update() -> None:
-    """
-    Updates GravityDesk to the latest version from GitHub.
-    - If running inside a git clone, executes `git pull` and `pip install -e .`.
-    - Otherwise, executes `pip install --upgrade --no-cache-dir git+https://github.com/w1th0ut/GravityDesk.git`.
-    """
-    print("=" * 60, flush=True)
-    print("[*] GravityDesk Self-Updater", flush=True)
-    print("=" * 60, flush=True)
+    """Updates GravityDesk quietly from GitHub."""
+    print("Updating GravityDesk...", flush=True)
 
-    # 1. Check if running inside a local git clone
     repo_root = Path(__file__).resolve().parent.parent
     git_dir = repo_root / ".git"
 
+    # 1. Local git repository
     if git_dir.exists() and shutil.which("git"):
         try:
             check_git = subprocess.run(
@@ -47,49 +41,49 @@ def run_update() -> None:
                 text=True,
             )
             if check_git.returncode == 0 and "true" in check_git.stdout.lower():
-                print(f"[*] Detected local git repository at: {repo_root}", flush=True)
-                print("[*] Pulling latest updates from GitHub...", flush=True)
-                pull_res = subprocess.run(["git", "pull"], cwd=repo_root)
+                pull_res = subprocess.run(
+                    ["git", "pull", "--quiet"],
+                    cwd=repo_root,
+                    capture_output=True,
+                    text=True,
+                )
                 if pull_res.returncode == 0:
-                    print("[*] Updating package dependencies in editable mode...", flush=True)
                     pip_res = subprocess.run(
-                        [sys.executable, "-m", "pip", "install", "-e", "."],
+                        [sys.executable, "-m", "pip", "install", "-q", "-e", "."],
                         cwd=repo_root,
+                        capture_output=True,
+                        text=True,
                     )
                     if pip_res.returncode == 0:
                         from server import __version__
-                        print(f"\n[OK] Successfully updated GravityDesk to latest version (v{__version__})!", flush=True)
+                        print(f"[OK] GravityDesk updated to v{__version__}!", flush=True)
                         return
-                    else:
-                        print("\n[!] 'pip install -e .' returned an error. Please check your Python environment.", flush=True)
-                        return
-                else:
-                    print("[!] 'git pull' failed. Falling back to global pip upgrade...", flush=True)
-        except Exception as e:
-            print(f"[!] Git check failed: {e}. Falling back to pip upgrade...", flush=True)
+        except Exception:
+            pass
 
-    # 2. Pip upgrade fallback for global / pip-installed environments
+    # 2. Global pip upgrade fallback
     repo_url = "git+https://github.com/w1th0ut/GravityDesk.git"
-    print(f"[*] Upgrading GravityDesk via pip ({repo_url})...", flush=True)
     cmd = [
         sys.executable,
         "-m",
         "pip",
         "install",
+        "-q",
         "--upgrade",
         "--no-cache-dir",
         repo_url,
     ]
     try:
-        pip_res = subprocess.run(cmd)
+        pip_res = subprocess.run(cmd, capture_output=True, text=True)
         if pip_res.returncode == 0:
-            print("\n[OK] Successfully updated GravityDesk to latest version!", flush=True)
+            from server import __version__
+            print(f"[OK] GravityDesk updated to v{__version__}!", flush=True)
         else:
-            print("\n[ERROR] Automated update failed. Please run manually:", flush=True)
+            print("[ERROR] Update failed. Run manually:", flush=True)
             print(f"        pip install --upgrade {repo_url}", flush=True)
     except Exception as e:
-        print(f"\n[ERROR] Error during update: {e}", flush=True)
-        print(f"        Please run manually: pip install --upgrade {repo_url}", flush=True)
+        print(f"[ERROR] Update failed: {e}", flush=True)
+        print(f"        pip install --upgrade {repo_url}", flush=True)
 
 
 def main(args: Optional[List[str]] = None) -> None:
