@@ -28,8 +28,18 @@ export const PromptBar: React.FC<Props> = ({
 }) => {
   const [promptText, setPromptText] = useState("");
   const [inputHeight, setInputHeight] = useState(36);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const prefixTextRef = useRef<string>("");
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   const {
     isRecording,
     isTranscribing,
@@ -101,7 +111,7 @@ export const PromptBar: React.FC<Props> = ({
       </View>
 
       {/* Input Dock (.input-dock matching index.html) */}
-      <View style={styles.inputDock}>
+      <View style={[styles.inputDock, { paddingBottom: isKeyboardVisible ? 8 : 78 }]}>
         <TouchableOpacity
           style={[
             styles.micBtn,
@@ -141,6 +151,9 @@ export const PromptBar: React.FC<Props> = ({
           multiline={true}
           autoCapitalize="none"
           autoCorrect={false}
+          underlineColorAndroid="transparent"
+          selectionColor="#58a6ff"
+          cursorColor="#58a6ff"
         />
 
         <TouchableOpacity
@@ -157,7 +170,7 @@ export const PromptBar: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#141414",
+    backgroundColor: "#0c0c0c",
     borderTopWidth: 1,
     borderTopColor: "#262626",
   },
@@ -166,7 +179,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: "#141414",
+    backgroundColor: "#0c0c0c",
     alignItems: "center",
   },
   keyBtn: {
@@ -199,8 +212,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingTop: 4,
-    paddingBottom: 78,
-    backgroundColor: "#141414",
+    backgroundColor: "#0c0c0c",
     alignItems: "flex-end",
   },
   micBtn: {

@@ -49,8 +49,13 @@ interface Props {
   refreshVitals: () => Promise<void>;
 }
 
-let savedWorkspace = "";
-let savedFolderName = "Select Folder";
+import {
+  getCachedWorkspace,
+  getCachedConversation,
+  loadSavedPreferences,
+  saveWorkspacePreference,
+  saveConversationPreference,
+} from "../storage/credentials";
 
 export const TerminalScreen: React.FC<Props> = ({
   health,
@@ -65,25 +70,45 @@ export const TerminalScreen: React.FC<Props> = ({
 }) => {
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [showConvoModal, setShowConvoModal] = useState(false);
-  const [activeWorkspace, setActiveWorkspace] = useState<string>(savedWorkspace);
-  const [selectedFolderName, setSelectedFolderName] = useState<string>(savedFolderName);
-  const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
-  const [activeConvoName, setActiveConvoName] = useState<string>("Resume Chat");
+  
+  const cachedWs = getCachedWorkspace();
+  const cachedConvo = getCachedConversation();
+
+  const [activeWorkspace, setActiveWorkspace] = useState<string>(cachedWs.path);
+  const [selectedFolderName, setSelectedFolderName] = useState<string>(cachedWs.name);
+  const [activeConvoId, setActiveConvoId] = useState<string | null>(cachedConvo.id);
+  const [activeConvoName, setActiveConvoName] = useState<string>(cachedConvo.name);
   const terminalRef = useRef<TerminalViewRef>(null);
+
+  // Restore persistent preferences immediately on mount
+  useEffect(() => {
+    loadSavedPreferences().then((pref) => {
+      if (pref.workspace.path) {
+        setActiveWorkspace((prev) => prev || pref.workspace.path);
+        setSelectedFolderName((prev) => (prev && prev !== "Select Folder" ? prev : pref.workspace.name));
+      }
+      if (pref.conversation.id || (pref.conversation.name && pref.conversation.name !== "Resume Chat")) {
+        setActiveConvoId((prev) => prev || pref.conversation.id);
+        setActiveConvoName((prev) => (prev && prev !== "Resume Chat" ? prev : pref.conversation.name));
+      }
+    });
+  }, []);
 
   const handleWorkspaceChange = useCallback((path: string) => {
     if (!path) return;
-    setActiveWorkspace(path);
-    savedWorkspace = path;
     const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
+    setActiveWorkspace(path);
     setSelectedFolderName(name);
-    savedFolderName = name;
+    saveWorkspacePreference(path, name);
   }, []);
 
   useEffect(() => {
     if (health?.active_session?.cwd && !activeWorkspace) {
-      setActiveWorkspace(health.active_session.cwd);
-      savedWorkspace = health.active_session.cwd;
+      const path = health.active_session.cwd;
+      const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
+      setActiveWorkspace(path);
+      setSelectedFolderName(name);
+      saveWorkspacePreference(path, name);
     }
   }, [health, activeWorkspace]);
 
@@ -101,6 +126,7 @@ export const TerminalScreen: React.FC<Props> = ({
                 active.preview ||
                 `Chat ${res.active_id.slice(0, 8)}`;
               setActiveConvoName(label);
+              saveConversationPreference(res.active_id, label);
             }
           }
         })
@@ -192,6 +218,7 @@ export const TerminalScreen: React.FC<Props> = ({
           setActiveConvoId(id);
           const label = summary || (id ? (id === "new" ? "New Chat" : `Chat ${id.slice(0, 8)}`) : "New Chat");
           setActiveConvoName(label);
+          saveConversationPreference(id, label);
           if (wsPath) {
             handleWorkspaceChange(wsPath);
           }

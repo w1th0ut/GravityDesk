@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   StatusBar,
   TouchableOpacity,
+  Keyboard,
 } from "react-native";
 import Svg, { Path, Polyline, Line } from "react-native-svg";
 import { useLaptopVitals } from "./src/hooks/useLaptopVitals";
@@ -61,6 +62,16 @@ const TerminalNavIcon: React.FC<{ color: string; size?: number }> = ({ color, si
 export default function App() {
   const [currentTab, setCurrentTab] = useState<TabKey>("home");
   const [revocationNotice, setRevocationNotice] = useState<string | null>(null);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleRevocation = useCallback(async () => {
     await clearCredentials();
@@ -87,12 +98,12 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#141414" />
+      <StatusBar barStyle="light-content" backgroundColor="#0c0c0c" />
 
       <ErrorBoundary>
-        {/* Screen Content */}
+        {/* Screen Content - keep both mounted to preserve active state & avoid tab switch flicker */}
         <View style={styles.mainContent}>
-          {currentTab === "home" ? (
+          <View style={[styles.screenContainer, currentTab !== "home" && styles.hiddenScreen]}>
             <HomeScreen
               health={health}
               isConnected={isConnected}
@@ -103,7 +114,9 @@ export default function App() {
               revocationNotice={revocationNotice}
               onDismissNotice={() => setRevocationNotice(null)}
             />
-          ) : (
+          </View>
+
+          <View style={[styles.screenContainer, currentTab !== "terminal" && styles.hiddenScreen]}>
             <TerminalScreen
               health={health}
               isConnected={isConnected}
@@ -115,37 +128,39 @@ export default function App() {
               clearLogs={clearLogs}
               refreshVitals={refresh}
             />
-          )}
-        </View>
-
-        {/* Floating Capsule Bottom Navigation Bar */}
-        <View style={styles.floatingNavContainer} pointerEvents="box-none">
-          <View style={styles.capsuleNav}>
-            {/* Tab 1: Home */}
-            <TouchableOpacity
-              style={[styles.capsuleItem, currentTab === "home" && styles.capsuleItemActive]}
-              onPress={() => setCurrentTab("home")}
-              activeOpacity={0.8}
-            >
-              <HomeNavIcon color={currentTab === "home" ? "#ffffff" : "#888888"} size={18} />
-              {currentTab === "home" && (
-                <Text style={styles.capsuleLabelActive}>Home</Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Tab 2: Terminal */}
-            <TouchableOpacity
-              style={[styles.capsuleItem, currentTab === "terminal" && styles.capsuleItemActive]}
-              onPress={() => setCurrentTab("terminal")}
-              activeOpacity={0.8}
-            >
-              <TerminalNavIcon color={currentTab === "terminal" ? "#ffffff" : "#888888"} size={18} />
-              {currentTab === "terminal" && (
-                <Text style={styles.capsuleLabelActive}>Terminal</Text>
-              )}
-            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Floating Capsule Bottom Navigation Bar (Hidden when keyboard is active) */}
+        {!isKeyboardVisible && (
+          <View style={styles.floatingNavContainer} pointerEvents="box-none">
+            <View style={styles.capsuleNav}>
+              {/* Tab 1: Home */}
+              <TouchableOpacity
+                style={[styles.capsuleItem, currentTab === "home" && styles.capsuleItemActive]}
+                onPress={() => setCurrentTab("home")}
+                activeOpacity={0.8}
+              >
+                <HomeNavIcon color={currentTab === "home" ? "#ffffff" : "#888888"} size={18} />
+                {currentTab === "home" && (
+                  <Text style={styles.capsuleLabelActive}>Home</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Tab 2: Terminal */}
+              <TouchableOpacity
+                style={[styles.capsuleItem, currentTab === "terminal" && styles.capsuleItemActive]}
+                onPress={() => setCurrentTab("terminal")}
+                activeOpacity={0.8}
+              >
+                <TerminalNavIcon color={currentTab === "terminal" ? "#ffffff" : "#888888"} size={18} />
+                {currentTab === "terminal" && (
+                  <Text style={styles.capsuleLabelActive}>Terminal</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ErrorBoundary>
     </SafeAreaView>
   );
@@ -154,10 +169,18 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#141414",
+    backgroundColor: "#0c0c0c",
   },
   mainContent: {
     flex: 1,
+    backgroundColor: "#0c0c0c",
+  },
+  screenContainer: {
+    flex: 1,
+    backgroundColor: "#0c0c0c",
+  },
+  hiddenScreen: {
+    display: "none",
   },
   floatingNavContainer: {
     position: "absolute",

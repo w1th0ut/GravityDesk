@@ -175,16 +175,17 @@ export const TerminalView = forwardRef<TerminalViewRef, Props>(
           ListEmptyComponent={
             <View style={styles.emptyBanner}>
               <Text style={styles.bannerAgyAscii}>
-{`  █████   ██████  ██    ██
- ██   ██ ██        ██  ██ 
- ███████ ██  ███    ████  
- ██   ██ ██    ██    ██   
- ██   ██  ██████     ██   `}
+{`  ____                 _ _         ____            _   
+ / ___|_ __ __ ___   _(_) |_ _   _|  _ \\  ___  ___| | __
+| |  _| '__/ _\` \\ \\ / / | __| | | | | | |/ _ \\/ __| |/ /
+| |_| | | | (_| |\\ V /| | |_| |_| | |_| |  __/\\__ \\   < 
+ \\____|_|  \\__,_| \\_/ |_|\\__|\\__, |____/ \\___||___/_|\\_\\
+                             |___/                      `}
               </Text>
-              <Text style={styles.bannerDivider}>──────────────────────────────</Text>
+              <Text style={styles.bannerDivider}>────────────────────────────────────────────────────────</Text>
               <Text style={styles.bannerTitle}>
-                <Text style={styles.cyanText}>Anti-Gravity</Text>
-                <Text style={styles.whiteText}> (AGY) Remote CLI</Text>
+                <Text style={styles.cyanText}>GravityDesk</Text>
+                <Text style={styles.whiteText}> • Remote Control & Telemetry</Text>
               </Text>
               <Text style={styles.bannerSubtitle}>Ready for prompts & commands.</Text>
               <Text style={styles.bannerPrompt}>
@@ -234,8 +235,8 @@ const styles = StyleSheet.create({
   },
   bannerAgyAscii: {
     fontFamily: "monospace",
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontSize: 9.5,
+    lineHeight: 12,
     color: "#39c5cf",
     fontWeight: "700",
   },

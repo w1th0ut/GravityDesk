@@ -13,13 +13,14 @@ export interface UseTerminalSocketReturn {
 }
 
 export const AGY_BANNER =
-  "\x1b[36m  █████   ██████  ██    ██\x1b[0m\r\n" +
-  "\x1b[36m ██   ██ ██        ██  ██ \x1b[0m\r\n" +
-  "\x1b[36m ███████ ██  ███    ████  \x1b[0m\r\n" +
-  "\x1b[36m ██   ██ ██    ██    ██   \x1b[0m\r\n" +
-  "\x1b[36m ██   ██  ██████     ██   \x1b[0m\r\n" +
-  "\x1b[90m──────────────────────────────\x1b[0m\r\n" +
-  "\x1b[36mAnti-Gravity\x1b[0m \x1b[37m(AGY) Remote CLI\x1b[0m\r\n" +
+  "\x1b[36m  ____                 _ _         ____            _   \x1b[0m\r\n" +
+  "\x1b[36m / ___|_ __ __ ___   _(_) |_ _   _|  _ \\  ___  ___| | __\x1b[0m\r\n" +
+  "\x1b[36m| |  _| '__/ _` \\ \\ / / | __| | | | | | |/ _ \\/ __| |/ /\x1b[0m\r\n" +
+  "\x1b[36m| |_| | | | (_| |\\ V /| | |_| |_| | |_| |  __/\\__ \\   < \x1b[0m\r\n" +
+  "\x1b[36m \\____|_|  \\__,_| \\_/ |_|\\__|\\__, |____/ \\___||___/_|\\_\\\x1b[0m\r\n" +
+  "\x1b[36m                             |___/                      \x1b[0m\r\n" +
+  "\x1b[90m────────────────────────────────────────────────────────\x1b[0m\r\n" +
+  "\x1b[36mGravityDesk\x1b[0m \x1b[37m• Remote Control & Telemetry for Antigravity\x1b[0m\r\n" +
   "\x1b[90mReady for prompts & commands.\x1b[0m\r\n\r\n" +
   "\x1b[32mprompt>\x1b[0m ";
 

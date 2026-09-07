@@ -6,19 +6,22 @@
     "newArchEnabled": true,
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "backgroundColor": "#0c0c0c",
     "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#182230"
+      "backgroundColor": "#0c0c0c"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.gravitydesk.mobile",
+      "backgroundColor": "#0c0c0c",
+      "softwareKeyboardLayoutMode": "resize",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#182230"
+        "backgroundColor": "#0c0c0c"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",

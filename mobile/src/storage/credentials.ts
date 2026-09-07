@@ -11,7 +11,167 @@ const STORAGE_KEYS = {
   TOKEN: "gravitydesk_token",
   DEVICE_ID: "gravitydesk_device_id",
   DEVICE_NAME: "gravitydesk_device_name",
+  ACTIVE_WORKSPACE: "gravitydesk_active_workspace",
+  ACTIVE_WORKSPACE_NAME: "gravitydesk_active_workspace_name",
+  ACTIVE_CONVO_ID: "gravitydesk_active_convo_id",
+  ACTIVE_CONVO_NAME: "gravitydesk_active_convo_name",
 };
+
+let cachedWorkspace = "";
+let cachedWorkspaceName = "Select Folder";
+let cachedConvoId: string | null = null;
+let cachedConvoName = "Resume Chat";
+
+/**
+ * Gets currently cached workspace without awaiting storage
+ */
+export function getCachedWorkspace(): { path: string; name: string } {
+  return { path: cachedWorkspace, name: cachedWorkspaceName };
+}
+
+/**
+ * Gets currently cached conversation without awaiting storage
+ */
+export function getCachedConversation(): { id: string | null; name: string } {
+  return { id: cachedConvoId, name: cachedConvoName };
+}
+
+/**
+ * Loads saved workspace and conversation preferences from persistent storage
+ */
+export async function loadSavedPreferences(): Promise<{
+  workspace: { path: string; name: string };
+  conversation: { id: string | null; name: string };
+}> {
+  let ws = "";
+  let wsName = "Select Folder";
+  let cId: string | null = null;
+  let cName = "Resume Chat";
+
+  try {
+    const SecureStore = require("expo-secure-store");
+    const storedWs = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE);
+    const storedWsName = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+    const storedCId = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_CONVO_ID);
+    const storedCName = await SecureStore.getItemAsync(STORAGE_KEYS.ACTIVE_CONVO_NAME);
+
+    if (storedWs) {
+      ws = storedWs;
+      wsName = storedWsName || (storedWs.split(/[\\/]/).filter(Boolean).pop() || storedWs);
+    }
+    if (storedCId) {
+      cId = storedCId;
+      cName = storedCName || (storedCId === "new" ? "New Chat" : `Chat ${storedCId.slice(0, 8)}`);
+    } else if (storedCName) {
+      cName = storedCName;
+    }
+  } catch {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const storedWs = localStorage.getItem(STORAGE_KEYS.ACTIVE_WORKSPACE);
+      const storedWsName = localStorage.getItem(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+      const storedCId = localStorage.getItem(STORAGE_KEYS.ACTIVE_CONVO_ID);
+      const storedCName = localStorage.getItem(STORAGE_KEYS.ACTIVE_CONVO_NAME);
+
+      if (storedWs) {
+        ws = storedWs;
+        wsName = storedWsName || (storedWs.split(/[\\/]/).filter(Boolean).pop() || storedWs);
+      }
+      if (storedCId) {
+        cId = storedCId;
+        cName = storedCName || (storedCId === "new" ? "New Chat" : `Chat ${storedCId.slice(0, 8)}`);
+      } else if (storedCName) {
+        cName = storedCName;
+      }
+    }
+  }
+
+  cachedWorkspace = ws;
+  cachedWorkspaceName = wsName;
+  cachedConvoId = cId;
+  cachedConvoName = cName;
+
+  return {
+    workspace: { path: ws, name: wsName },
+    conversation: { id: cId, name: cName },
+  };
+}
+
+/**
+ * Persists selected workspace path and folder name
+ */
+export async function saveWorkspacePreference(path: string, name?: string): Promise<void> {
+  const folderName = name || (path.split(/[\\/]/).filter(Boolean).pop() || path);
+  cachedWorkspace = path;
+  cachedWorkspaceName = folderName;
+
+  try {
+    const SecureStore = require("expo-secure-store");
+    await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE, path);
+    await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME, folderName);
+  } catch {
+    if (typeof window !== "undefined" && window.localStorage) {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE, path);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME, folderName);
+    }
+  }
+}
+
+/**
+ * Persists selected conversation ID and display title
+ */
+export async function saveConversationPreference(id: string | null, name: string): Promise<void> {
+  cachedConvoId = id;
+  cachedConvoName = name;
+
+  try {
+    const SecureStore = require("expo-secure-store");
+    if (id) {
+      await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_CONVO_ID, id);
+    } else {
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_CONVO_ID);
+    }
+    await SecureStore.setItemAsync(STORAGE_KEYS.ACTIVE_CONVO_NAME, name);
+  } catch {
+    if (typeof window !== "undefined" && window.localStorage) {
+      if (id) {
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_CONVO_ID, id);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_CONVO_ID);
+      }
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_CONVO_NAME, name);
+    }
+  }
+}
+
+/**
+ * Clears stored connection credentials while retaining persistent Device ID
+ */
+export async function clearCredentials(): Promise<void> {
+  cachedConfig = null;
+  cachedWorkspace = "";
+  cachedWorkspaceName = "Select Folder";
+  cachedConvoId = null;
+  cachedConvoName = "Resume Chat";
+
+  try {
+    const SecureStore = require("expo-secure-store");
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.HOST_URL);
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN);
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE);
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_CONVO_ID);
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.ACTIVE_CONVO_NAME);
+  } catch {
+    if (typeof window !== "undefined" && window.localStorage) {
+      localStorage.removeItem(STORAGE_KEYS.HOST_URL);
+      localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE_NAME);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_CONVO_ID);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_CONVO_NAME);
+    }
+  }
+}
 
 /**
  * Generates a standard RFC4122 v4 UUID
@@ -141,23 +301,6 @@ export async function saveCredentials(config: ConnectionConfig): Promise<void> {
       localStorage.setItem(STORAGE_KEYS.TOKEN, config.token);
       localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
       localStorage.setItem(STORAGE_KEYS.DEVICE_NAME, deviceName);
-    }
-  }
-}
-
-/**
- * Clears stored connection credentials while retaining persistent Device ID
- */
-export async function clearCredentials(): Promise<void> {
-  cachedConfig = null;
-  try {
-    const SecureStore = require("expo-secure-store");
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.HOST_URL);
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN);
-  } catch {
-    if (typeof window !== "undefined" && window.localStorage) {
-      localStorage.removeItem(STORAGE_KEYS.HOST_URL);
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
     }
   }
 }
