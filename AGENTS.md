@@ -1,12 +1,12 @@
 # GravityDesk — Agent Operational Manual & Architecture Guide
 
-Remote Control & Telemetry System for Google Antigravity (`agy`) CLI from Android to Windows Host over Tailscale WireGuard Mesh.
+Remote Control & Telemetry System for Google Antigravity (`agy`) CLI from Android to Developer Workstations (Windows, macOS, Linux) over Tailscale WireGuard Mesh.
 
 ---
 
 ## 1. System Overview & Bounded Contexts
 
-GravityDesk is organized as a multi-context monorepo engineered to strict Clean Architecture paradigms. The project bridges mobile devices to a Windows developer workstation, streaming bidirectional terminal I/O and telemetry with sub-50ms latency.
+GravityDesk is organized as a multi-context monorepo engineered to strict Clean Architecture paradigms. The project bridges mobile devices to a developer workstation (Windows, macOS, or Linux), streaming bidirectional terminal I/O and telemetry with sub-50ms latency.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -19,13 +19,13 @@ GravityDesk is organized as a multi-context monorepo engineered to strict Clean 
 ┌────────────────────────────▼─────────────────────────────┐
 │              GravityDesk Daemon (`server/`)              │
 │   • FastAPI REST Endpoints & WebSocket `/ws/terminal`    │
-│   • Windows ConPTY Runner (`server/terminal.py`)         │
+│   • Dual-Engine PTY Runner (`server/terminal.py`)        │
 │   • SQLite / JSON Chat Resume (`conversations.py`)       │
-│   • Windows Sleep Inhibit & Vitals (`system.py`)         │
+│   • Power & Sleep Inhibit / Vitals (`system.py`)         │
 └────────────────────────────┬─────────────────────────────┘
                              │  Local Subprocess / IPC
 ┌────────────────────────────▼─────────────────────────────┐
-│          Google Antigravity CLI (`agy.exe`) / CMD        │
+│          Google Antigravity CLI (`agy`) / Shell          │
 │   • Headless CLI with `--dangerously-skip-permissions`   │
 │   • Active Workspace Directory                           │
 └──────────────────────────────────────────────────────────┘
@@ -73,13 +73,16 @@ GravityDesk provides remote terminal execution into the host workstation. The fo
 ### Remote Code Execution (RCE) Allowlist
 - Arbitrary binary spawning is blocked with `400 Bad Request`.
 - Only explicitly whitelisted binaries are allowed:
+  - `bash`
+  - `zsh`
+  - `sh`
   - `cmd.exe`
   - `powershell.exe`
   - `agy.exe` (or `agy`)
 
 ### Path Traversal Mitigation
 - All folder browsing and workspace selection endpoints validate paths via `os.path.realpath`.
-- Input paths must resolve to an existing directory and validate against detected drive roots (`C:\`, `D:\`, etc.). Unsanitized paths are rejected with `400 Bad Request`.
+- Input paths must resolve to an existing directory and validate against detected drive roots (`C:\`, `D:\` on Windows, `/` and `/Volumes` on Unix). Unsanitized paths are rejected with `400 Bad Request`.
 
 ---
 

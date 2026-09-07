@@ -13,16 +13,45 @@ FORBIDDEN_NAMES = {
     "recovery",
     "$windows.~bt",
     "$windows.~ws",
+    "proc",
+    "sys",
+    "dev",
 }
 
 
 def get_available_drives() -> List[str]:
-    """Returns accessible drive letters on Windows."""
-    drives = []
-    for letter in string.ascii_uppercase:
-        drive_path = f"{letter}:\\"
-        if os.path.exists(drive_path):
-            drives.append(drive_path)
+    """Returns accessible drive roots across operating systems (Windows drives, macOS/Linux roots & volumes)."""
+    if os.name == "nt":
+        drives = []
+        for letter in string.ascii_uppercase:
+            drive_path = f"{letter}:\\"
+            if os.path.exists(drive_path):
+                drives.append(drive_path)
+        return drives
+
+    # Unix (macOS / Linux)
+    drives = ["/"]
+    # Check macOS mounted volumes
+    if os.path.exists("/Volumes"):
+        try:
+            for vol in os.listdir("/Volumes"):
+                vol_path = os.path.join("/Volumes", vol)
+                if os.path.isdir(vol_path) and not vol.startswith("."):
+                    drives.append(vol_path)
+        except Exception:
+            pass
+
+    # Check Linux /media or /mnt
+    for media_root in ("/media", "/mnt"):
+        if os.path.exists(media_root):
+            try:
+                for entry in os.listdir(media_root):
+                    entry_path = os.path.join(media_root, entry)
+                    if os.path.isdir(entry_path) and not entry.startswith("."):
+                        drives.append(entry_path)
+            except Exception:
+                pass
+
     return drives
 
 

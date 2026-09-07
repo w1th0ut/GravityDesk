@@ -5,20 +5,41 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
-from typing import Dict, List, Optional, Set
-import winpty
+from typing import Any, Dict, List, Optional, Set
 
-DEFAULT_AGY_PATH = os.path.join(
-    os.environ.get("LOCALAPPDATA", os.path.expanduser(r"~\AppData\Local")),
-    "agy",
-    "bin",
-    "agy.exe",
-)
+if sys.platform == "win32":
+    import winpty
+else:
+    import pty
+    import termios
+    import fcntl
+    import struct
+    import select
+    import signal
+
+if sys.platform == "win32":
+    DEFAULT_AGY_PATH = os.path.join(
+        os.environ.get("LOCALAPPDATA", os.path.expanduser(r"~\AppData\Local")),
+        "agy",
+        "bin",
+        "agy.exe",
+    )
+else:
+    DEFAULT_AGY_PATH = os.path.expanduser("~/.local/bin/agy")
 
 # Whitelist of executables permitted to be spawned
-PERMITTED_COMMANDS = {"agy", "powershell.exe", "cmd.exe"}
+PERMITTED_COMMANDS = {
+    "agy",
+    "agy.exe",
+    "powershell.exe",
+    "cmd.exe",
+    "bash",
+    "zsh",
+    "sh",
+}
 
 ANSI_CONTROL_RE = re.compile(r"\x1b\[[0-9;?]*[A-LN-Za-ln-z]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)")
 WINDOWS_BOILERPLATE_RE = re.compile(
@@ -29,7 +50,7 @@ WINDOWS_PROMPT_RE = re.compile(r"^[A-Za-z]:\\[^>\r\n]*>", re.MULTILINE)
 
 
 def clean_output_chunk(chunk: str) -> str:
-    """Strips terminal control codes, [0K, and Windows cmd boot noise."""
+    """Strips terminal control codes, [0K, and shell boot noise."""
     cleaned = ANSI_CONTROL_RE.sub("", chunk)
     cleaned = WINDOWS_BOILERPLATE_RE.sub("", cleaned)
     cleaned = WINDOWS_PROMPT_RE.sub("", cleaned)
@@ -38,7 +59,7 @@ def clean_output_chunk(chunk: str) -> str:
 
 class TerminalSession:
     """
-    Manages an interactive Windows PTY process, routing output to SessionHub.
+    Manages an interactive PTY process (Windows ConPTY or Unix POSIX PTY), routing output to SessionHub.
     """
 
     def __init__(
@@ -55,7 +76,9 @@ class TerminalSession:
         self.command = self._resolve_and_validate_command(command)
         self.hub = hub
 
-        self.pty: Optional[winpty.PTY] = None
+        self.pty: Optional[Any] = None
+        self._master_fd: Optional[int] = None
+        self._proc: Optional[subprocess.Popen] = None
         self.is_alive = False
         self.pid: Optional[int] = None
         self._reader_thread: Optional[threading.Thread] = None
@@ -72,11 +95,18 @@ class TerminalSession:
         elif os.path.exists(DEFAULT_AGY_PATH):
             agy_cmd = DEFAULT_AGY_PATH
         else:
-            agy_cmd = r"C:\Windows\System32\cmd.exe"
+            agy_cmd = None
 
-        default_shell = r"C:\Windows\System32\cmd.exe"
-        if not os.path.exists(default_shell):
-            default_shell = shutil.which("cmd.exe") or shutil.which("powershell.exe") or "cmd.exe"
+        if sys.platform == "win32":
+            default_shell = r"C:\Windows\System32\cmd.exe"
+            if not os.path.exists(default_shell):
+                default_shell = shutil.which("cmd.exe") or shutil.which("powershell.exe") or "cmd.exe"
+            if not agy_cmd:
+                agy_cmd = default_shell
+        else:
+            default_shell = os.environ.get("SHELL") or shutil.which("bash") or shutil.which("zsh") or "/bin/sh"
+            if not agy_cmd:
+                agy_cmd = default_shell
 
         if not requested_command:
             return default_shell
@@ -98,32 +128,69 @@ class TerminalSession:
         if self.is_alive:
             return
 
-        # Spawn with WinPTY backend for maximum Windows 11 compatibility
-        try:
-            self.pty = winpty.PTY(self.cols, self.rows, backend=winpty.Backend.WinPTY)
-            self.pty.spawn(self.command, cwd=self.cwd)
-        except Exception as e:
-            print(f"[Terminal] WinPTY fallback to ConPTY due to: {e}")
-            self.pty = winpty.PTY(self.cols, self.rows, backend=winpty.Backend.ConPTY)
-            self.pty.spawn(self.command, cwd=self.cwd)
+        if sys.platform == "win32":
+            # Spawn with WinPTY backend for maximum Windows 11 compatibility
+            try:
+                self.pty = winpty.PTY(self.cols, self.rows, backend=winpty.Backend.WinPTY)
+                self.pty.spawn(self.command, cwd=self.cwd)
+            except Exception as e:
+                print(f"[Terminal] WinPTY fallback to ConPTY due to: {e}")
+                self.pty = winpty.PTY(self.cols, self.rows, backend=winpty.Backend.ConPTY)
+                self.pty.spawn(self.command, cwd=self.cwd)
+            self.pid = getattr(self.pty, "pid", None)
+        else:
+            master_fd, slave_fd = pty.openpty()
+            self._master_fd = master_fd
+
+            try:
+                winsize = struct.pack("HHHH", self.rows, self.cols, 0, 0)
+                fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
+            except Exception:
+                pass
+
+            cmd_args = self.command if isinstance(self.command, list) else [self.command]
+            self._proc = subprocess.Popen(
+                cmd_args,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                cwd=self.cwd,
+                preexec_fn=os.setsid,
+                close_fds=True,
+            )
+            os.close(slave_fd)
+            self.pid = self._proc.pid
 
         self.is_alive = True
-        self.pid = getattr(self.pty, "pid", None)
-
         self._reader_thread = threading.Thread(
-            target=self._reader_loop, daemon=True, name="ConPTY-Reader"
+            target=self._reader_loop, daemon=True, name="PTY-Reader"
         )
         self._reader_thread.start()
         print(f"[Terminal] Started {self.command} (PID: {self.pid}) in {self.cwd}")
 
     def _reader_loop(self) -> None:
         """Continuously reads stdout from PTY, cleans noise, and dispatches to Hub."""
-        while self.is_alive and self.pty:
+        while self.is_alive:
             try:
-                chunk = self.pty.read(blocking=True)
-                if not chunk:
-                    time.sleep(0.01)
-                    continue
+                if sys.platform == "win32":
+                    if not self.pty:
+                        break
+                    chunk = self.pty.read(blocking=True)
+                    if not chunk:
+                        time.sleep(0.01)
+                        continue
+                else:
+                    if self._master_fd is None:
+                        break
+                    r, _, _ = select.select([self._master_fd], [], [], 0.05)
+                    if not r:
+                        if self._proc and self._proc.poll() is not None:
+                            break
+                        continue
+                    data = os.read(self._master_fd, 4096)
+                    if not data:
+                        break
+                    chunk = data.decode("utf-8", errors="replace")
 
                 cleaned = clean_output_chunk(chunk)
                 if cleaned and self.hub:
@@ -139,33 +206,60 @@ class TerminalSession:
 
     def write(self, data: str) -> None:
         """Writes input to terminal stdin."""
-        if self.is_alive and self.pty:
-            self.pty.write(data)
+        if not self.is_alive:
+            return
+        try:
+            if sys.platform == "win32" and self.pty:
+                self.pty.write(data)
+            elif self._master_fd is not None:
+                os.write(self._master_fd, data.encode("utf-8"))
+        except Exception:
+            pass
 
     def send_ctrl_c(self) -> None:
         """Sends SIGINT (ASCII 0x03) to process."""
         self.write("\x03")
 
     def resize(self, cols: int, rows: int) -> None:
-        if self.is_alive and self.pty:
-            self.cols = cols
-            self.rows = rows
-            try:
+        if not self.is_alive:
+            return
+        self.cols = cols
+        self.rows = rows
+        try:
+            if sys.platform == "win32" and self.pty:
                 self.pty.set_size(cols, rows)
-            except Exception:
-                pass
+            elif self._master_fd is not None:
+                winsize = struct.pack("HHHH", rows, cols, 0, 0)
+                fcntl.ioctl(self._master_fd, termios.TIOCSWINSZ, winsize)
+        except Exception:
+            pass
 
     def stop(self) -> None:
         """Gracefully closes PTY."""
         self.is_alive = False
-        if self.pty:
-            try:
-                self.send_ctrl_c()
-                time.sleep(0.05)
-                self.pty.write("exit\r\n")
-            except Exception:
-                pass
+        try:
+            self.send_ctrl_c()
+            time.sleep(0.05)
+            self.write("exit\r\n" if sys.platform == "win32" else "exit\n")
+        except Exception:
+            pass
+
+        if sys.platform == "win32":
             self.pty = None
+        else:
+            if self._proc:
+                try:
+                    if self._proc.poll() is None:
+                        os.killpg(os.getpgid(self._proc.pid), signal.SIGTERM)
+                except Exception:
+                    pass
+                self._proc = None
+            if self._master_fd is not None:
+                try:
+                    os.close(self._master_fd)
+                except Exception:
+                    pass
+                self._master_fd = None
 
     def to_dict(self) -> Dict:
         return {
@@ -356,7 +450,12 @@ class SessionHub:
             return
 
         # 3. Built-in navigation / shell helpers
-        SHELL_CMDS = ("dir", "cls", "mkdir ", "rmdir ", "del ", "git ", "npm ", "node ", "python ", "cat ", "type ", "curl ")
+        SHELL_CMDS = (
+            "dir", "ls", "ls ", "cls", "clear",
+            "mkdir ", "rmdir ", "rm ", "del ",
+            "git ", "npm ", "node ", "python ", "python3 ",
+            "cat ", "type ", "curl ",
+        )
         cmd_lower = clean_text.lower()
 
         if cmd_lower.startswith("cd "):
@@ -444,9 +543,13 @@ class SessionHub:
     def _run_shell_cmd(self, cmd_text: str, cwd: str) -> None:
         """Executes standard shell command and streams stdout."""
         create_no_window = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+        if os.name == "nt":
+            shell_target = f"cmd.exe /c {cmd_text}"
+        else:
+            shell_target = ["/bin/sh", "-c", cmd_text]
         try:
             proc = subprocess.Popen(
-                f"cmd.exe /c {cmd_text}",
+                shell_target,
                 cwd=cwd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,

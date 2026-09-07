@@ -11,12 +11,15 @@ import time
 from typing import Optional, Dict, Any
 
 DEFAULT_SETTINGS_PATH = os.path.expanduser("~/.gemini/antigravity-cli/settings.json")
-DEFAULT_AGY_PATH = os.path.join(
-    os.environ.get("LOCALAPPDATA", os.path.expanduser(r"~\AppData\Local")),
-    "agy",
-    "bin",
-    "agy.exe",
-)
+if os.name == "nt":
+    DEFAULT_AGY_PATH = os.path.join(
+        os.environ.get("LOCALAPPDATA", os.path.expanduser(r"~\AppData\Local")),
+        "agy",
+        "bin",
+        "agy.exe",
+    )
+else:
+    DEFAULT_AGY_PATH = os.path.expanduser("~/.local/bin/agy")
 
 
 def get_active_model() -> str:
@@ -42,6 +45,9 @@ def find_agy_binary() -> Optional[str]:
         return which_agy
     if os.path.exists(DEFAULT_AGY_PATH):
         return DEFAULT_AGY_PATH
+    for unix_path in ("/usr/local/bin/agy", "/usr/bin/agy", os.path.expanduser("~/.local/bin/agy")):
+        if os.path.exists(unix_path):
+            return unix_path
     return None
 
 

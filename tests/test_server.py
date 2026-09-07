@@ -109,10 +109,15 @@ def test_command_allowlist_enforcement():
 def test_session_lifecycle():
     token = get_or_create_token()
     with TestClient(app) as client:
-        # Start session with permitted command (cmd.exe)
+        import shutil
+        test_cmd = (
+            r"C:\Windows\System32\cmd.exe"
+            if os.name == "nt"
+            else shutil.which("bash") or shutil.which("sh") or "/bin/sh"
+        )
         res_start = client.post(
             f"/api/session/start?token={token}",
-            json={"cwd": os.getcwd(), "command": r"C:\Windows\System32\cmd.exe"},
+            json={"cwd": os.getcwd(), "command": test_cmd},
         )
         assert res_start.status_code == 200
         assert res_start.json()["status"] == "started"

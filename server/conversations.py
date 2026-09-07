@@ -17,14 +17,20 @@ def _parse_workspace_uri(uris_json: Optional[str]) -> tuple[str, str]:
         if isinstance(uris, list) and uris:
             raw = uris[0]
             if raw.startswith("file:///"):
-                clean = urllib.parse.unquote(raw[8:])
-                clean = clean.replace("/", "\\")
-                name = os.path.basename(clean.rstrip("\\"))
+                path_part = urllib.parse.unquote(raw[8:])
+                if os.name == "nt":
+                    clean = path_part.replace("/", "\\")
+                else:
+                    clean = "/" + path_part.lstrip("/")
+                name = os.path.basename(clean.rstrip("/\\"))
                 return name, clean
             elif raw.startswith("file://"):
-                clean = urllib.parse.unquote(raw[7:])
-                clean = clean.replace("/", "\\")
-                name = os.path.basename(clean.rstrip("\\"))
+                path_part = urllib.parse.unquote(raw[7:])
+                if os.name == "nt":
+                    clean = path_part.replace("/", "\\")
+                else:
+                    clean = "/" + path_part.lstrip("/")
+                name = os.path.basename(clean.rstrip("/\\"))
                 return name, clean
     except Exception:
         pass
